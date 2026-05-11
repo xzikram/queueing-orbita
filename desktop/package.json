@@ -1,0 +1,35 @@
+{
+  "name": "orbita-queue-desktop",
+  "version": "1.0.0",
+  "description": "Orbita Queue Desktop Caller App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "keywords": [
+    "queue",
+    "electron"
+  ],
+  "author": "Antigravity",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "electron": "^29.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.orbita.queue.caller",
+    "productName": "Orbita Queue Caller",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  }
+}

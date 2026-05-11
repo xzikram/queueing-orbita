@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Orbita Queue Caller</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Title Bar (Drag area) -->
+  <div class="titlebar">
+    <div class="titlebar-text">Orbita Queue Caller</div>
+    <div class="titlebar-controls">
+      <button id="minBtn" class="control-btn">−</button>
+    </div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen active">
+      <div class="logo">Orbita</div>
+      <h2>Login Operator</h2>
+      <div class="form-group">
+        <label>Server URL</label>
+        <input type="text" id="serverUrl" value="http://localhost:3001" placeholder="http://192.168.1.100:3001">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="admin@orbita.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••">
+      </div>
+      <button id="loginBtn" class="btn btn-primary">Login</button>
+      <div id="loginError" class="error-msg"></div>
+    </div>
+
+    <!-- Caller Screen -->
+    <div id="callerScreen" class="screen">
+      <div class="header">
+        <div class="user-info">
+          <span id="userName">User</span>
+          <span class="badge" id="userRole">ROLE</span>
+        </div>
+        <button id="logoutBtn" class="btn btn-small btn-secondary">Keluar</button>
+      </div>
+
+      <div class="main-card">
+        <div class="label">ANTRIAN SAAT INI</div>
+        <div id="currentTicket" class="ticket-no">-</div>
+        <div id="currentDest" class="ticket-dest">Menunggu...</div>
+      </div>
+
+      <div class="action-grid">
+        <button id="callNextBtn" class="btn btn-large btn-primary">
+          ▶ Panggil Berikutnya
+        </button>
+        <button id="recallBtn" class="btn btn-large btn-secondary" disabled>
+          🔊 Panggil Ulang
+        </button>
+      </div>
+      
+      <!-- Counter selector (If applicable, e.g. admission) -->
+      <div id="counterSelectorBox" class="counter-box" style="display: none;">
+        <label>Pilih Loket Tujuan:</label>
+        <select id="counterSelect" class="input-select"></select>
+      </div>
+
+      <!-- Action logs -->
+      <div class="logs">
+        <div class="log-title">Aktivitas Terakhir:</div>
+        <div id="statusLog" class="log-text">Sistem siap digunakan.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
