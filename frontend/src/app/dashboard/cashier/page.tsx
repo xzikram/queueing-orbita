@@ -1,0 +1,116 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import api from '@/lib/api';
+import styles from '../unit-queue.module.css';
+
+export default function CashierPage() {
+  const [queue, setQueue] = useState<any[]>([]);
+  const [counters, setCounters] = useState<any[]>([]);
+  const [selectedCounter, setSelectedCounter] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [destModal, setDestModal] = useState<string | null>(null);
+
+  const loadQueue = useCallback(async () => {
+    try { const res = await api.get('/cashier/queue'); setQueue(res.data); }
+    catch (err) { console.error(err); }
+  }, []);
+
+  useEffect(() => {
+    loadQueue();
+    const i = setInterval(loadQueue, 5000);
+    api.get('/counters').then(res => {
+      const cashierCounters = res.data.filter((c: any) => c.canHandleCashier && c.isActive);
+      setCounters(cashierCounters);
+      if (cashierCounters.length > 0) setSelectedCounter(cashierCounters[0].id);
+    }).catch(() => {});
+    return () => clearInterval(i);
+  }, [loadQueue]);
+
+  const action = async (visitId: string, endpoint: string, body?: any) => {
+    setActionLoading(visitId);
+    try { await api.post(`/cashier/${visitId}/${endpoint}`, body || {}); await loadQueue(); }
+    catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
+  };
+
+  const setDestination = async (visitId: string, dest: string) => {
+    setDestModal(null);
+    setActionLoading(visitId);
+    try { await api.post(`/cashier/${visitId}/next-destination`, { destination: dest }); await loadQueue(); }
+    catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
+  };
+
+  const waiting = queue.filter(v => v.journeySessions?.[0]?.status === 'WAITING');
+  const active = queue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
+  const needDest = queue.filter(v => v.currentStatus === 'WAITING_DESTINATION');
+
+  return (
+    <div className={styles.unitPage}>
+      <div className={`glass-card ${styles.filterBar}`}>
+        <span className={styles.filterLabel}>Counter:</span>
+        <div className={styles.filterSelect}>
+          {counters.map((c: any) => (
+            <button key={c.id} className={`${styles.filterBtn} ${selectedCounter === c.id ? styles.filterActive : ''}`} onClick={() => setSelectedCounter(c.id)}>{c.name}</button>
+          ))}
+        </div>
+      </div>
+      <div className={styles.columns}>
+        <div className={`glass-card ${styles.column}`}>
+          <div className={styles.columnHeader}><h3>⏳ Menunggu ({waiting.length})</h3></div>
+          <div className={styles.queueList}>
+            {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
+              <div key={v.id} className={styles.queueCard}>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                <div className={styles.ticketInfo}><span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span></div>
+                <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter}>📢 Panggil</button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className={`glass-card ${styles.column}`}>
+          <div className={styles.columnHeader}><h3>🔄 Aktif ({active.length + needDest.length})</h3></div>
+          <div className={styles.queueList}>
+            {active.length === 0 && needDest.length === 0 ? <div className={styles.empty}>Tidak ada</div> : (
+              <>
+                {active.map((v: any) => {
+                  const s = v.journeySessions?.[0];
+                  return (
+                    <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
+                      <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span></div>
+                      <div className={styles.actionBtns}>
+                        {s?.status === 'CALLED' && <button className="btn btn-success btn-sm" onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai</button>}
+                        {s?.status === 'SERVING' && <button className="btn btn-primary btn-sm" onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+                {needDest.map((v: any) => (
+                  <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
+                    <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-info">PILIH TUJUAN</span></div>
+                    <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => setDestModal(v.id)}>🗺️ Pilih Tujuan</button>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {destModal && (
+        <div className={styles.modalOverlay} onClick={() => setDestModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>Tujuan Setelah Kasir</h3>
+            <div className={styles.destGrid}>
+              <button className={styles.destBtn} onClick={() => setDestination(destModal, 'PHARMACY')}><div className={styles.destIcon}>💊</div><div className={styles.destLabel}>Farmasi</div></button>
+              <button className={styles.destBtn} onClick={() => setDestination(destModal, 'OPTIC')}><div className={styles.destIcon}>👓</div><div className={styles.destLabel}>Optik</div></button>
+              <button className={styles.destBtn} style={{ gridColumn: '1 / -1' }} onClick={() => setDestination(destModal, 'FINISHED')}><div className={styles.destIcon}>🏠</div><div className={styles.destLabel}>Selesai (Pulang)</div></button>
+            </div>
+            <button className={styles.modalClose} onClick={() => setDestModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

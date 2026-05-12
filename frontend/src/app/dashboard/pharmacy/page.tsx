@@ -1,0 +1,76 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import api from '@/lib/api';
+import styles from '../unit-queue.module.css';
+
+export default function PharmacyPage() {
+  const [queue, setQueue] = useState<any[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const loadQueue = useCallback(async () => {
+    try { const res = await api.get('/pharmacy/queue'); setQueue(res.data); }
+    catch (err) { console.error(err); }
+  }, []);
+
+  useEffect(() => { loadQueue(); const i = setInterval(loadQueue, 5000); return () => clearInterval(i); }, [loadQueue]);
+
+  const action = async (visitId: string, endpoint: string) => {
+    setActionLoading(visitId);
+    try { await api.post(`/pharmacy/${visitId}/${endpoint}`); await loadQueue(); }
+    catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
+  };
+
+  const waiting = queue.filter(v => v.currentStatus === 'WAITING');
+  const processing = queue.filter(v => v.currentStatus === 'SERVING');
+  const ready = queue.filter(v => v.currentStatus === 'READY' || v.currentStatus === 'CALLED');
+
+  return (
+    <div className={styles.unitPage}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+        {/* Column: Waiting to Process */}
+        <div className={`glass-card ${styles.column}`}>
+          <div className={styles.columnHeader}><h3>⏳ Antrian Obat ({waiting.length})</h3></div>
+          <div className={styles.queueList}>
+            {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
+              <div key={v.id} className={styles.queueCard}>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                <button className="btn btn-success btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'start-process')} disabled={actionLoading === v.id}>🧪 Siapkan Obat</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Column: Being Prepared */}
+        <div className={`glass-card ${styles.column}`}>
+          <div className={styles.columnHeader}><h3>🧪 Disiapkan ({processing.length})</h3></div>
+          <div className={styles.queueList}>
+            {processing.length === 0 ? <div className={styles.empty}>Tidak ada</div> : processing.map((v: any) => (
+              <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-primary">PROCESSING</span></div>
+                <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'ready')} disabled={actionLoading === v.id}>✅ Obat Siap</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Column: Ready — Call & Finish */}
+        <div className={`glass-card ${styles.column}`}>
+          <div className={styles.columnHeader}><h3>📢 Siap Ambil ({ready.length})</h3></div>
+          <div className={styles.queueList}>
+            {ready.length === 0 ? <div className={styles.empty}>Tidak ada</div> : ready.map((v: any) => (
+              <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>{v.currentStatus}</span></div>
+                <div className={styles.actionBtns}>
+                  {v.currentStatus === 'READY' && <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>}
+                  <button className="btn btn-primary btn-sm" onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
