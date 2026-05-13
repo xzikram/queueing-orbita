@@ -283,7 +283,7 @@ export default function DisplayAdmisiKasirPage() {
                 setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
               }
             }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px' }}
+            style={{ width: '100%', aspectRatio: '16/9', objectFit: 'contain', borderRadius: '24px', backgroundColor: '#000' }}
           />
         ) : (
           <div className={styles.videoPlaceholder}>

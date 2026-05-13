@@ -60,7 +60,7 @@
 }
 
 .headerTitle {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   color: #ffffff;
@@ -102,13 +102,13 @@
 
 /* ===== MAIN CONTENT ===== */
 .mainContent {
-  order: 2;
+  order: 3;
   display: flex;
   flex-direction: column;
   gap: 16px;
   padding: 16px 40px;
   overflow: hidden;
-  flex-shrink: 0;
+  flex: 1;
 }
 
 /* --- Current Call Card --- */
@@ -288,12 +288,12 @@
 
 /* ===== VIDEO AREA ===== */
 .videoArea {
-  order: 3;
+  order: 2;
   padding: 16px 40px;
   display: flex;
   justify-content: center;
-  flex: 1;
-  min-height: 0;
+  flex: none;
+  width: 100%;
 }
 
 .videoPlaceholder {
