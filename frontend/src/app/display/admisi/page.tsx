@@ -86,10 +86,10 @@ export default function DisplayAdmisiPage() {
 
   const loadInitialData = useCallback(async () => {
     try {
-      const [callsRes, displayRes, playlistsRes] = await Promise.all([
+      const [callsRes, displayRes, videosRes] = await Promise.all([
         api.get('/admission/recent-calls?limit=2'),
         api.get('/displays/code/display_admisi').catch(() => ({ data: null })),
-        api.get('/video/playlists').catch(() => ({ data: [] }))
+        api.get('/video/active').catch(() => ({ data: [] }))
       ]);
 
       const calls = callsRes.data.map((c: any) => ({
@@ -107,11 +107,10 @@ export default function DisplayAdmisiPage() {
         if (displayRes.data.runningText) setRunningText(displayRes.data.runningText);
       }
 
-      // Load video items from all playlists
-      const allPlaylists = playlistsRes.data || [];
-      const allItems = allPlaylists.flatMap((pl: any) => pl.items || []);
-      if (allItems.length > 0) {
-        setPlaylist(allItems);
+      // Load active videos directly
+      const activeVideos = videosRes.data || [];
+      if (activeVideos.length > 0) {
+        setPlaylist(activeVideos);
       }
     } catch (err) {
       console.error('Failed to load initial data', err);
@@ -250,7 +249,8 @@ export default function DisplayAdmisiPage() {
             ref={videoRef}
             src={(process.env.NEXT_PUBLIC_API_URL || '/api') + playlist[currentVideoIdx]?.fileUrl}
             autoPlay
-            muted={false}
+            muted
+            loop={playlist.length === 1}
             onEnded={handleVideoEnded}
             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px' }}
           />
@@ -258,7 +258,7 @@ export default function DisplayAdmisiPage() {
           <div className={styles.videoPlaceholder}>
             <div className={styles.videoIcon}>🎬</div>
             <div className={styles.videoText}>Area Video Informasi</div>
-            <div className={styles.videoSub}>Video akan diputar di sini saat tidak ada panggilan</div>
+            <div className={styles.videoSub}>Upload video dari Dashboard untuk ditampilkan di sini</div>
           </div>
         )}
       </div>

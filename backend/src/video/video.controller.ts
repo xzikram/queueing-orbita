@@ -20,6 +20,19 @@ if (!fs.existsSync(uploadDir)) {
 export class VideoController {
   constructor(private videoService: VideoService) {}
 
+  // Get all videos (for admin management)
+  @Get('all')
+  async getAllVideos() {
+    return this.videoService.getAllVideos();
+  }
+
+  // Get only active videos (for TV displays)
+  @Get('active')
+  async getActiveVideos() {
+    return this.videoService.getActiveVideos();
+  }
+
+  // Keep old endpoints for compatibility
   @Get('playlists')
   async getPlaylists() {
     return this.videoService.getPlaylists();
@@ -39,6 +52,36 @@ export class VideoController {
     return this.videoService.deletePlaylist(id);
   }
 
+  // Simple upload - just file, auto-generate title from filename
+  @Post('upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: uploadDir,
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
+      },
+    }),
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.match(/\/(mp4|webm|ogg)$/)) {
+        cb(null, true);
+      } else {
+        cb(new BadRequestException('Only video files are allowed!'), false);
+      }
+    },
+  }))
+  async uploadSimple(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Video file is required');
+    const fileUrl = `/uploads/videos/${file.filename}`;
+    const title = file.originalname.replace(/\.[^/.]+$/, ''); // Use filename as title
+    return this.videoService.uploadSimpleVideo({ title, fileUrl });
+  }
+
+  // Old upload endpoint (keep for compatibility)
   @Post('playlists/:id/items')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
@@ -66,6 +109,14 @@ export class VideoController {
     if (!file) throw new BadRequestException('Video file is required');
     const fileUrl = `/uploads/videos/${file.filename}`;
     return this.videoService.addVideoItem(playlistId, { title: body.title, fileUrl });
+  }
+
+  // Toggle video on/off
+  @Put('items/:id/toggle')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async toggleItem(@Param('id') id: string) {
+    return this.videoService.toggleVideoItem(id);
   }
 
   @Delete('items/:id')
