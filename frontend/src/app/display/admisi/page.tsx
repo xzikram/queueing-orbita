@@ -24,15 +24,55 @@ export default function DisplayAdmisiPage() {
   const [connected, setConnected] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   
-  // Custom speech synthesis
-  const playBell = useCallback((data: CallData) => {
+  const [isAudioInit, setIsAudioInit] = useState(false);
+
+  const initAudio = () => {
+    // Unlock Web Audio API & SpeechSynthesis
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      const ctx = new AudioContextClass();
+      ctx.resume();
+    }
+    const utterance = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(utterance);
+    setIsAudioInit(true);
+  };
+
+  const playDingDong = async () => {
     try {
-      if (videoRef.current) videoRef.current.volume = 0.1; // lower volume
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      const playTone = (freq: number, startTime: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.5, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + dur);
+      };
+      playTone(523.25, ctx.currentTime, 0.5); // C5
+      playTone(440.00, ctx.currentTime + 0.4, 0.8); // A4
+      return new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (e) {
+      console.error('DingDong error', e);
+    }
+  };
+
+  // Custom speech synthesis
+  const playBell = useCallback(async (data: CallData) => {
+    try {
+      if (videoRef.current) videoRef.current.volume = 0.1;
+      
+      await playDingDong();
       
       const msg = `Nomor antrian. ${data.ticketNo.split('').join(' ')}. silakan menuju ke. ${data.counterName || 'Counter'}.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
-      utterance.rate = 0.85; // slightly slower for clarity
+      utterance.rate = 0.85;
       
       utterance.onend = () => {
         if (videoRef.current) videoRef.current.volume = 1.0;
@@ -47,7 +87,7 @@ export default function DisplayAdmisiPage() {
   const loadInitialData = useCallback(async () => {
     try {
       const [callsRes, displayRes] = await Promise.all([
-        api.get('/admission/recent-calls?limit=8'),
+        api.get('/admission/recent-calls?limit=2'),
         api.get('/displays/code/display_admisi').catch(() => ({ data: null }))
       ]);
 
@@ -59,7 +99,7 @@ export default function DisplayAdmisiPage() {
       }));
       if (calls.length > 0) {
         setCurrentCall(calls[0]);
-        setRecentCalls(calls.slice(1));
+        setRecentCalls(calls.slice(1, 2));
       }
 
       if (displayRes.data) {
@@ -89,9 +129,8 @@ export default function DisplayAdmisiPage() {
       setCurrentCall((prev) => {
         if (prev && prev.ticketNo !== data.ticketNo) {
           setRecentCalls((recent) => {
-            // Prevent pushing duplicate consecutive tickets into history
             if (recent.length > 0 && recent[0].ticketNo === prev.ticketNo) return recent;
-            return [prev, ...recent].slice(0, 7);
+            return [prev]; // Only keep 1 recent call
           });
         }
         return data;
@@ -131,6 +170,15 @@ export default function DisplayAdmisiPage() {
       setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
     }
   };
+
+  if (!isAudioInit) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1e40af', color: 'white', cursor: 'pointer' }} onClick={initAudio}>
+        <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>📺 Layar Admisi Siap</h1>
+        <p style={{ fontSize: '1.5rem', opacity: 0.8 }}>Klik / Tap di mana saja untuk memulai (Aktivasi Suara)</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

@@ -4,12 +4,11 @@
    ============================================= */
 
 .container {
-  min-height: 100vh;
+  height: 100vh;
   background: #f1f5f9;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   user-select: none;
   font-family: 'Inter', system-ui, sans-serif;
   color: #1e293b;
@@ -21,24 +20,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 40px;
+  padding: 16px 40px;
   background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
   box-shadow: 0 4px 20px rgba(30, 64, 175, 0.3);
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .headerLeft {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
 }
 
 .logoContainer {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 60px;
-  padding: 8px 16px;
+  height: 50px;
+  padding: 6px 14px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   backdrop-filter: blur(8px);
@@ -55,12 +55,12 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding-left: 24px;
+  padding-left: 20px;
   border-left: 2px solid rgba(255, 255, 255, 0.25);
 }
 
 .headerTitle {
-  font-size: 2.5rem;
+  font-size: 1.8rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   color: #ffffff;
@@ -73,7 +73,7 @@
 }
 
 .clock {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
@@ -106,8 +106,9 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  padding: 32px 40px;
+  gap: 16px;
+  padding: 16px 40px;
+  overflow: hidden;
 }
 
 /* --- Current Call Card --- */
@@ -119,7 +120,7 @@
 
 .currentCallCard {
   text-align: center;
-  padding: 48px 40px;
+  padding: 24px 40px;
   background: #ffffff;
   border: 2px solid #dbeafe;
   border-radius: 24px;
@@ -153,7 +154,7 @@
 }
 
 .callNumber {
-  font-size: 12rem;
+  font-size: 7rem;
   font-weight: 900;
   background: linear-gradient(135deg, #1e40af, #3b82f6);
   -webkit-background-clip: text;
@@ -164,13 +165,13 @@
 }
 
 .callArrow {
-  font-size: 2.5rem;
+  font-size: 2rem;
   color: #cbd5e1;
-  margin: 12px 0;
+  margin: 8px 0;
 }
 
 .callCounter {
-  font-size: 2.8rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #ea580c;
   letter-spacing: 0.02em;
@@ -288,11 +289,11 @@
 /* ===== VIDEO AREA ===== */
 .videoArea {
   order: 2;
-  padding: 24px 40px 0;
+  padding: 16px 40px 0;
   display: flex;
   justify-content: center;
   flex-shrink: 0;
-  max-height: 35vh;
+  max-height: 25vh;
 }
 
 .videoPlaceholder {
