@@ -14,7 +14,7 @@ interface CallData {
   calledAt: Date;
 }
 
-export default function DisplayAdmisiPage() {
+export default function DisplayAdmisiKasirPage() {
   const [currentCall, setCurrentCall] = useState<CallData | null>(null);
   const [recentCalls, setRecentCalls] = useState<CallData[]>([]);
   const [runningText, setRunningText] = useState('Selamat datang di RS MATA JEC ORBITA @ MAKASSAR. Mohon menunggu nomor antrian Anda dipanggil.');
@@ -84,23 +84,45 @@ export default function DisplayAdmisiPage() {
     }
   }, []);
 
+  // Build video URL correctly
+  const getVideoUrl = (fileUrl: string) => {
+    if (!fileUrl) return '';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001/api` : '/api');
+    // fileUrl is like /uploads/videos/file.mp4
+    // apiBase might be http://host:3001/api or /api
+    return apiBase + fileUrl;
+  };
+
   const loadInitialData = useCallback(async () => {
     try {
-      const [callsRes, displayRes, videosRes] = await Promise.all([
-        api.get('/admission/recent-calls?limit=2'),
+      const [admissionRes, cashierRes, displayRes, videosRes] = await Promise.all([
+        api.get('/admission/recent-calls?limit=2').catch(() => ({ data: [] })),
+        api.get('/cashier/recent-calls?limit=2').catch(() => ({ data: [] })),
         api.get('/displays/code/display_admisi').catch(() => ({ data: null })),
         api.get('/video/active').catch(() => ({ data: [] }))
       ]);
 
-      const calls = callsRes.data.map((c: any) => ({
+      // Combine calls from both admisi and kasir, sort by calledAt
+      const admissionCalls = (admissionRes.data || []).map((c: any) => ({
         ticketNo: c.ticketNo,
         counterName: c.targetCounter,
-        unitType: c.unitType,
+        unitType: c.unitType || 'ADMISI',
         calledAt: c.calledAt,
       }));
-      if (calls.length > 0) {
-        setCurrentCall(calls[0]);
-        setRecentCalls(calls.slice(1, 2));
+      const cashierCalls = (cashierRes.data || []).map((c: any) => ({
+        ticketNo: c.ticketNo,
+        counterName: c.targetCounter || 'Kasir',
+        unitType: c.unitType || 'KASIR',
+        calledAt: c.calledAt,
+      }));
+
+      const allCalls = [...admissionCalls, ...cashierCalls].sort(
+        (a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()
+      );
+
+      if (allCalls.length > 0) {
+        setCurrentCall(allCalls[0]);
+        setRecentCalls(allCalls.slice(1, 3));
       }
 
       if (displayRes.data) {
@@ -124,7 +146,9 @@ export default function DisplayAdmisiPage() {
 
     socket.on('connect', () => {
       setConnected(true);
+      // Join BOTH admisi and kasir display rooms
       joinDisplay('display_admisi');
+      joinDisplay('display_kasir');
     });
 
     socket.on('disconnect', () => setConnected(false));
@@ -134,7 +158,7 @@ export default function DisplayAdmisiPage() {
         if (prev && prev.ticketNo !== data.ticketNo) {
           setRecentCalls((recent) => {
             if (recent.length > 0 && recent[0].ticketNo === prev.ticketNo) return recent;
-            return [prev]; // Only keep 1 recent call
+            return [prev, ...recent].slice(0, 2); // Keep up to 2 recent calls
           });
         }
         return data;
@@ -178,7 +202,7 @@ export default function DisplayAdmisiPage() {
   if (!isAudioInit) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1e40af', color: 'white', cursor: 'pointer' }} onClick={initAudio}>
-        <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>📺 Layar Admisi Siap</h1>
+        <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>📺 Layar Admisi & Kasir Siap</h1>
         <p style={{ fontSize: '1.5rem', opacity: 0.8 }}>Klik / Tap di mana saja untuk memulai (Aktivasi Suara)</p>
       </div>
     );
@@ -192,7 +216,7 @@ export default function DisplayAdmisiPage() {
             <img src="/logo.png" alt="Logo" className={styles.logoImage} />
           </div>
           <div className={styles.titleWrapper}>
-            <h1 className={styles.headerTitle}>Admisi</h1>
+            <h1 className={styles.headerTitle}>Admisi dan Kasir</h1>
           </div>
         </div>
         <div className={styles.headerRight}>
@@ -247,11 +271,18 @@ export default function DisplayAdmisiPage() {
         {playlist.length > 0 ? (
           <video
             ref={videoRef}
-            src={(process.env.NEXT_PUBLIC_API_URL || '/api') + playlist[currentVideoIdx]?.fileUrl}
+            src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
             autoPlay
             muted
             loop={playlist.length === 1}
             onEnded={handleVideoEnded}
+            onError={(e) => {
+              console.error('Video load error:', e);
+              // Try next video if current fails
+              if (playlist.length > 1) {
+                setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
+              }
+            }}
             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px' }}
           />
         ) : (
