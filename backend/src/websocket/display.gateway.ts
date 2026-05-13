@@ -14,6 +14,7 @@ import { Logger } from '@nestjs/common';
     origin: '*',
   },
   namespace: '/',
+  path: '/api/socket.io/',
 })
 export class DisplayGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
