@@ -17,13 +17,13 @@ interface CallData {
 export default function DisplayAdmisiPage() {
   const [currentCall, setCurrentCall] = useState<CallData | null>(null);
   const [recentCalls, setRecentCalls] = useState<CallData[]>([]);
-  const [runningText, setRunningText] = useState('Selamat datang di Klinik Orbita. Mohon menunggu nomor antrian Anda dipanggil.');
+  const [runningText, setRunningText] = useState('Selamat datang di RS MATA JEC ORBITA @ MAKASSAR. Mohon menunggu nomor antrian Anda dipanggil.');
   const [playlist, setPlaylist] = useState<any[]>([]);
   const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
   const [time, setTime] = useState(new Date());
   const [connected, setConnected] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  
+
   const [isAudioInit, setIsAudioInit] = useState(false);
 
   const initAudio = () => {
@@ -66,14 +66,14 @@ export default function DisplayAdmisiPage() {
   const playBell = useCallback(async (data: CallData) => {
     try {
       if (videoRef.current) videoRef.current.volume = 0.1;
-      
+
       await playDingDong();
-      
+
       const msg = `Nomor antrian. ${data.ticketNo.split('').join(' ')}. silakan menuju ke. ${data.counterName || 'Counter'}.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
       utterance.rate = 0.85;
-      
+
       utterance.onend = () => {
         if (videoRef.current) videoRef.current.volume = 1.0;
       };
@@ -241,7 +241,7 @@ export default function DisplayAdmisiPage() {
 
       <div className={styles.videoArea}>
         {playlist.length > 0 ? (
-          <video 
+          <video
             ref={videoRef}
             src={process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') + playlist[currentVideoIdx]?.fileUrl}
             autoPlay
