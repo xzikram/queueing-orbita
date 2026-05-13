@@ -207,7 +207,7 @@ export default function FloorDisplayPage() {
             {playlist.length > 0 ? (
               <video 
                 ref={videoRef}
-                src={process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') + playlist[currentVideoIdx]?.fileUrl}
+                src={process.env.NEXT_PUBLIC_API_URL + playlist[currentVideoIdx]?.fileUrl}
                 autoPlay
                 muted={false}
                 onEnded={handleVideoEnded}

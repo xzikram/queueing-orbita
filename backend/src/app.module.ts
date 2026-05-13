@@ -26,7 +26,7 @@ import { VideoModule } from './video/video.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
-      serveRoot: '/',
+      serveRoot: '/api',
     }),
     PrismaModule,
     AuthModule,
