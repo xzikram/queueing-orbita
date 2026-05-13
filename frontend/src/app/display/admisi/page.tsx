@@ -86,9 +86,10 @@ export default function DisplayAdmisiPage() {
 
   const loadInitialData = useCallback(async () => {
     try {
-      const [callsRes, displayRes] = await Promise.all([
+      const [callsRes, displayRes, playlistsRes] = await Promise.all([
         api.get('/admission/recent-calls?limit=2'),
-        api.get('/displays/code/display_admisi').catch(() => ({ data: null }))
+        api.get('/displays/code/display_admisi').catch(() => ({ data: null })),
+        api.get('/video/playlists').catch(() => ({ data: [] }))
       ]);
 
       const calls = callsRes.data.map((c: any) => ({
@@ -104,9 +105,13 @@ export default function DisplayAdmisiPage() {
 
       if (displayRes.data) {
         if (displayRes.data.runningText) setRunningText(displayRes.data.runningText);
-        if (displayRes.data.videoPlaylist?.items?.length > 0) {
-          setPlaylist(displayRes.data.videoPlaylist.items);
-        }
+      }
+
+      // Load video items from all playlists
+      const allPlaylists = playlistsRes.data || [];
+      const allItems = allPlaylists.flatMap((pl: any) => pl.items || []);
+      if (allItems.length > 0) {
+        setPlaylist(allItems);
       }
     } catch (err) {
       console.error('Failed to load initial data', err);
@@ -243,7 +248,7 @@ export default function DisplayAdmisiPage() {
         {playlist.length > 0 ? (
           <video
             ref={videoRef}
-            src={process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') + playlist[currentVideoIdx]?.fileUrl}
+            src={(process.env.NEXT_PUBLIC_API_URL || '/api') + playlist[currentVideoIdx]?.fileUrl}
             autoPlay
             muted={false}
             onEnded={handleVideoEnded}
