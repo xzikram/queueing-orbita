@@ -69,10 +69,11 @@
 
 .headerRight {
   text-align: right;
+  flex-shrink: 0;
 }
 
 .clock {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 800;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
@@ -80,13 +81,14 @@
 }
 
 .date {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.9);
   margin-top: 2px;
 }
 
 .connectionDot {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
   margin-top: 4px;
 }
 
