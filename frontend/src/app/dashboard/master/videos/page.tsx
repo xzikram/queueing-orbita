@@ -62,15 +62,14 @@ export default function VideoPlaylistsPage() {
     formData.append('title', uploadTitle);
 
     try {
-      await api.post(`/video/playlists/${selectedPlaylistId}/items`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      await api.post(`/video/playlists/${selectedPlaylistId}/items`, formData);
       setUploadFile(null);
       setUploadTitle('');
+      setSelectedPlaylistId(null);
       fetchPlaylists();
       alert('Video berhasil di-upload!');
-    } catch (err) {
-      alert('Gagal upload video');
+    } catch (err: any) {
+      alert(`Gagal upload video: ${err.response?.data?.message || err.message}`);
     } finally {
       setUploading(false);
     }
@@ -86,106 +85,182 @@ export default function VideoPlaylistsPage() {
     }
   };
 
-  if (loading) return <div>Memuat...</div>;
+  if (loading) return <div style={{ padding: '24px' }}>Memuat data video...</div>;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>Manajemen Video Playlist</h1>
-      </div>
-
-      <div className={styles.card} style={{ marginBottom: '24px' }}>
-        <h3>Buat Playlist Baru</h3>
-        <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-          <input 
-            type="text" 
-            placeholder="Nama Playlist" 
-            value={newPlaylistName}
-            onChange={(e) => setNewPlaylistName(e.target.value)}
-            className="form-control"
-            style={{ maxWidth: '300px' }}
-          />
-          <button onClick={handleCreatePlaylist} className="btn btn-primary">Simpan</button>
+        <div className={styles.headerLeft}>
+          <h1>Manajemen Video Playlist</h1>
+          <p className={styles.subtitle}>Kelola video promosi dan informasi untuk layar TV</p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
-        <div>
-          {playlists.map(pl => (
-            <div key={pl.id} className={styles.card} style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0 }}>{pl.name}</h3>
-                <div>
-                  <button onClick={() => setSelectedPlaylistId(pl.id)} className="btn btn-secondary btn-sm" style={{ marginRight: '8px' }}>+ Upload Video</button>
-                  <button onClick={() => handleDeletePlaylist(pl.id)} className="btn btn-danger btn-sm">Hapus</button>
-                </div>
-              </div>
-
-              {pl.items?.length === 0 ? (
-                <p style={{ color: '#64748b' }}>Belum ada video.</p>
-              ) : (
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '50px' }}>Urutan</th>
-                      <th>Judul Video</th>
-                      <th>File/URL</th>
-                      <th style={{ width: '80px' }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pl.items?.map((item: any) => (
-                      <tr key={item.id}>
-                        <td>{item.sortOrder}</td>
-                        <td>{item.title}</td>
-                        <td>
-                          <a href={process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') + item.fileUrl} target="_blank" rel="noreferrer">Lihat</a>
-                        </td>
-                        <td>
-                          <button onClick={() => handleDeleteItem(item.id)} className="btn btn-danger btn-sm">X</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {selectedPlaylistId && (
-          <div className={styles.card}>
-            <h3>Upload ke: {playlists.find(p => p.id === selectedPlaylistId)?.name}</h3>
-            <form onSubmit={handleUpload} style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label>Judul Video</label>
-                <input 
-                  type="text" 
-                  required 
-                  className="form-control"
-                  value={uploadTitle}
-                  onChange={(e) => setUploadTitle(e.target.value)}
-                />
-              </div>
-              <div>
-                <label>File Video (.mp4)</label>
-                <input 
-                  type="file" 
-                  accept="video/mp4,video/webm"
-                  required 
-                  className="form-control"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                />
-              </div>
-              <button type="submit" disabled={uploading} className="btn btn-primary">
-                {uploading ? 'Mengupload...' : 'Upload Video'}
-              </button>
-              <button type="button" onClick={() => setSelectedPlaylistId(null)} className="btn btn-secondary">
-                Batal
-              </button>
-            </form>
+      <div className={styles.content}>
+        {/* Create Playlist Form */}
+        <div className={styles.card} style={{ marginBottom: '24px' }}>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.cardTitle}>Buat Playlist Baru</h3>
           </div>
-        )}
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div className={styles.formGroup} style={{ flex: 1, maxWidth: '400px', marginBottom: 0 }}>
+              <input 
+                type="text" 
+                placeholder="Contoh: Playlist Admisi Utama" 
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                className={styles.input}
+              />
+            </div>
+            <button onClick={handleCreatePlaylist} className={styles.btnPrimary}>
+              Simpan Playlist
+            </button>
+          </div>
+        </div>
+
+        {/* Playlists Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: selectedPlaylistId ? '1fr 400px' : '1fr', gap: '24px', alignItems: 'start' }}>
+          
+          {/* List of Playlists */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {playlists.map(pl => (
+              <div key={pl.id} className={styles.card}>
+                <div className={styles.cardHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 className={styles.cardTitle} style={{ fontSize: '1.25rem', color: '#1e40af' }}>{pl.name}</h3>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button 
+                      onClick={() => setSelectedPlaylistId(pl.id)} 
+                      className={styles.btnSecondary}
+                      style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}
+                    >
+                      + Tambah Video
+                    </button>
+                    <button onClick={() => handleDeletePlaylist(pl.id)} className={styles.btnDanger}>
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+
+                {pl.items?.length === 0 ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🎥</div>
+                    <p>Belum ada video di playlist ini.</p>
+                  </div>
+                ) : (
+                  <div className={styles.tableContainer}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '60px', textAlign: 'center' }}>No</th>
+                          <th>Judul Video</th>
+                          <th>Preview</th>
+                          <th style={{ width: '80px', textAlign: 'center' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pl.items?.map((item: any, index: number) => (
+                          <tr key={item.id}>
+                            <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>{index + 1}</td>
+                            <td style={{ fontWeight: 500 }}>{item.title}</td>
+                            <td>
+                              <a 
+                                href={process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') + item.fileUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                              >
+                                📺 Buka Video
+                              </a>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button 
+                                onClick={() => handleDeleteItem(item.id)} 
+                                className={styles.btnDanger}
+                                style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                              >
+                                Hapus
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {playlists.length === 0 && (
+              <div style={{ padding: '40px', textAlign: 'center', background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ color: '#64748b' }}>Belum ada playlist yang dibuat.</h3>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Form Sidebar */}
+          {selectedPlaylistId && (
+            <div className={styles.card} style={{ position: 'sticky', top: '24px', border: '2px solid #bfdbfe', boxShadow: '0 10px 25px rgba(37,99,235,0.1)' }}>
+              <div className={styles.cardHeader}>
+                <h3 className={styles.cardTitle}>Upload Video Baru</h3>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '4px' }}>
+                  Ke: <strong style={{ color: '#1e40af' }}>{playlists.find(p => p.id === selectedPlaylistId)?.name}</strong>
+                </p>
+              </div>
+              
+              <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Judul Video</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Contoh: Promo Layanan Katarak"
+                    className={styles.input}
+                    value={uploadTitle}
+                    onChange={(e) => setUploadTitle(e.target.value)}
+                  />
+                </div>
+                
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>File Video (.mp4 / .webm)</label>
+                  <div style={{ border: '2px dashed #cbd5e1', padding: '16px', borderRadius: '12px', background: '#f8fafc' }}>
+                    <input 
+                      type="file" 
+                      accept="video/mp4,video/webm"
+                      required 
+                      style={{ width: '100%' }}
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '8px' }}>
+                    * Pastikan ukuran file tidak terlalu besar agar pemutaran lancar. Maksimal disarankan: 50MB.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <button 
+                    type="submit" 
+                    disabled={uploading} 
+                    className={styles.btnPrimary}
+                    style={{ flex: 1, padding: '12px' }}
+                  >
+                    {uploading ? '⏳ Mengupload...' : '📤 Mulai Upload'}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setSelectedPlaylistId(null);
+                      setUploadFile(null);
+                      setUploadTitle('');
+                    }} 
+                    className={styles.btnSecondary}
+                  >
+                    Batal
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
