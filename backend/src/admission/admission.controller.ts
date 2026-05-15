@@ -15,6 +15,11 @@ export class AdmissionController {
     return this.admissionService.getQueue();
   }
 
+  @Get('destinations')
+  getDestinations() {
+    return this.admissionService.getDestinations();
+  }
+
   @Post(':ticketId/call')
   callPatient(
     @Param('ticketId') ticketId: string,
@@ -35,12 +40,25 @@ export class AdmissionController {
   @Post(':ticketId/finish')
   finishService(
     @Param('ticketId') ticketId: string,
-    @Body() body: { patientRmNo?: string; patientName?: string; patientDob?: string },
+    @Body() body: { patientRmNo?: string; patientName?: string; patientDob?: string; nextUnitType?: string },
     @Request() req: any,
   ) {
     return this.admissionService.finishService(ticketId, {
       userId: req.user.id,
       ...body,
+    });
+  }
+
+  @Post(':ticketId/transfer')
+  transferPatient(
+    @Param('ticketId') ticketId: string,
+    @Body() body: { targetUnitType: string; reason: string },
+    @Request() req: any,
+  ) {
+    return this.admissionService.transferPatient(ticketId, {
+      targetUnitType: body.targetUnitType,
+      reason: body.reason,
+      userId: req.user.id,
     });
   }
 

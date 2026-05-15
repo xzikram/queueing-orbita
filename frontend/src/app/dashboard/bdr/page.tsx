@@ -4,11 +4,22 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import styles from '../unit-queue.module.css';
 
+interface Destination {
+  unitType: string;
+  label: string;
+  icon: string;
+  isDefault: boolean;
+}
+
 export default function BdrPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [floors, setFloors] = useState<any[]>([]);
   const [selectedFloor, setSelectedFloor] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [destModal, setDestModal] = useState<string | null>(null);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  const [transferModal, setTransferModal] = useState<string | null>(null);
+  const [transferReason, setTransferReason] = useState('');
 
   const loadQueue = useCallback(async () => {
     try {
@@ -20,6 +31,7 @@ export default function BdrPage() {
 
   useEffect(() => {
     api.get('/floors').then(res => setFloors(res.data)).catch(() => {});
+    api.get('/bdr/destinations').then(res => setDestinations(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -32,6 +44,27 @@ export default function BdrPage() {
     setActionLoading(visitId);
     try {
       await api.post(`/bdr/${visitId}/${endpoint}`);
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
+  };
+
+  const finishWithDest = async (visitId: string, nextUnitType: string) => {
+    setDestModal(null);
+    setActionLoading(visitId);
+    try {
+      await api.post(`/bdr/${visitId}/finish`, { nextUnitType });
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
+  };
+
+  const confirmTransfer = async (visitId: string, targetUnitType: string) => {
+    if (!transferReason.trim()) { alert('Masukkan alasan transfer'); return; }
+    setTransferModal(null);
+    setActionLoading(visitId);
+    try {
+      await api.post(`/bdr/${visitId}/transfer`, { targetUnitType, reason: transferReason });
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
@@ -65,7 +98,10 @@ export default function BdrPage() {
                   <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
                   <span>🏢 {v.selectedFloor?.name || '-'}</span>
                 </div>
-                <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>
+                <div className={styles.actionBtns}>
+                  <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                </div>
               </div>
             ))}
           </div>
@@ -83,8 +119,9 @@ export default function BdrPage() {
                   </div>
                   <div className={styles.actionBtns}>
                     {s?.status === 'CALLED' && <button className="btn btn-success btn-sm" onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai</button>}
-                    {s?.status === 'SERVING' && <button className="btn btn-primary btn-sm" onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai → Dokter</button>}
+                    {s?.status === 'SERVING' && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setDestModal(v.id)} disabled={actionLoading === v.id}>✅ Selesai</button>}
                     {s?.status === 'CALLED' && <button className="btn btn-secondary btn-sm" onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>🔁 Ulang</button>}
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                   </div>
                 </div>
               );
@@ -92,6 +129,47 @@ export default function BdrPage() {
           </div>
         </div>
       </div>
+
+      {/* Destination Modal */}
+      {destModal && (
+        <div className={styles.modalOverlay} onClick={() => setDestModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🗺️ Tujuan Setelah BDR</h3>
+            <div className={styles.destGrid}>
+              {destinations.map(dest => (
+                <button key={dest.unitType} className={`${styles.destBtn} ${dest.isDefault ? styles.destDefault : ''}`} onClick={() => finishWithDest(destModal, dest.unitType)} style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}>
+                  <div className={styles.destIcon}>{dest.icon}</div>
+                  <div className={styles.destLabel}>{dest.label}</div>
+                  {dest.isDefault && <div className={styles.destBadge}>Default</div>}
+                </button>
+              ))}
+            </div>
+            <button className={styles.modalClose} onClick={() => setDestModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {transferModal && (
+        <div className={styles.modalOverlay} onClick={() => setTransferModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🔄 Transfer Pasien</h3>
+            <div className="form-group">
+              <label className="form-label">Alasan Transfer *</label>
+              <input className="form-input" value={transferReason} onChange={e => setTransferReason(e.target.value)} placeholder="Contoh: Skip BDR, langsung ke dokter" />
+            </div>
+            <div className={styles.destGrid}>
+              {destinations.filter(d => d.unitType !== 'BDR').map(dest => (
+                <button key={dest.unitType} className={styles.destBtn} onClick={() => confirmTransfer(transferModal, dest.unitType)} style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}>
+                  <div className={styles.destIcon}>{dest.icon}</div>
+                  <div className={styles.destLabel}>{dest.label}</div>
+                </button>
+              ))}
+            </div>
+            <button className={styles.modalClose} onClick={() => setTransferModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

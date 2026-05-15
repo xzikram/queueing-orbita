@@ -150,6 +150,47 @@ export class JourneyService {
   }
 
   /**
+   * Transfer session — mark as TRANSFERRED and log event
+   */
+  async transferSession(
+    sessionId: string,
+    data: { reason: string; targetUnitType: string; createdBy?: string },
+  ) {
+    const now = new Date();
+    const session = await this.prisma.journeyUnitSession.findUnique({ where: { id: sessionId } });
+    if (!session) return null;
+
+    const serviceDuration = session.serviceStartedAt
+      ? Math.round((now.getTime() - session.serviceStartedAt.getTime()) / 1000)
+      : null;
+
+    const updated = await this.prisma.journeyUnitSession.update({
+      where: { id: sessionId },
+      data: {
+        serviceFinishedAt: now,
+        serviceDurationSeconds: serviceDuration,
+        status: 'TRANSFERRED',
+        updatedBy: data.createdBy,
+      },
+    });
+
+    await this.createEvent({
+      visitId: updated.visitId,
+      journeyUnitSessionId: updated.id,
+      unitType: updated.unitType,
+      eventType: 'TRANSFERRED',
+      roomId: updated.roomId,
+      floorId: updated.floorId,
+      doctorId: updated.doctorId,
+      counterId: updated.counterId,
+      note: `Transfer ke ${data.targetUnitType}. Alasan: ${data.reason}`,
+      createdBy: data.createdBy,
+    });
+
+    return updated;
+  }
+
+  /**
    * Edit time (for "lupa klik" correction)
    */
   async editTime(

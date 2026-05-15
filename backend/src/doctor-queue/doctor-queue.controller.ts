@@ -15,6 +15,11 @@ export class DoctorQueueController {
     return this.service.getQueue(roomId, floorId);
   }
 
+  @Get('destinations')
+  getDestinations() {
+    return this.service.getDestinations();
+  }
+
   @Post(':visitId/call')
   call(@Param('visitId') visitId: string, @Request() req: any) {
     return this.service.callPatient(visitId, req.user.id);
@@ -37,5 +42,18 @@ export class DoctorQueueController {
     @Request() req: any,
   ) {
     return this.service.setNextDestination(visitId, body.destination, req.user.id);
+  }
+
+  @Post(':visitId/transfer')
+  transfer(
+    @Param('visitId') visitId: string,
+    @Body() body: { targetUnitType: string; reason: string },
+    @Request() req: any,
+  ) {
+    return this.service.transferPatient(visitId, {
+      targetUnitType: body.targetUnitType,
+      reason: body.reason,
+      userId: req.user.id,
+    });
   }
 }

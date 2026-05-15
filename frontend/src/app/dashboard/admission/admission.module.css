@@ -180,6 +180,76 @@
   margin-top: 24px;
 }
 
+.destGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.destBtn {
+  padding: 20px 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+  color: var(--gray-700);
+  position: relative;
+}
+
+.destBtn:hover {
+  border-color: var(--primary-400);
+  background: var(--primary-50);
+}
+
+.destDefault {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+
+.destIcon {
+  font-size: 1.5rem;
+  margin-bottom: 4px;
+}
+
+.destLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.destBadge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--primary-600);
+  background: var(--primary-100);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+.modalClose {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--gray-500);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+}
+
+.modalClose:hover {
+  border-color: var(--gray-400);
+  color: var(--gray-700);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }

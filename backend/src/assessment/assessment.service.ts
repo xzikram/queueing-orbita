@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
+import { RoutingService } from '../routing/routing.service';
 
 @Injectable()
 export class AssessmentService {
   constructor(
     private prisma: PrismaService,
     private journeyService: JourneyService,
+    private routingService: RoutingService,
   ) {}
 
   async getQueue(floorId?: string) {
@@ -25,7 +27,7 @@ export class AssessmentService {
         selectedRoom: { include: { floor: true } },
         selectedFloor: true,
         journeySessions: {
-          where: { unitType: 'ASSESSMENT', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+          where: { unitType: 'ASSESSMENT', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -50,7 +52,7 @@ export class AssessmentService {
     return { message: 'Pengkajian dimulai' };
   }
 
-  async finishService(visitId: string, userId: string) {
+  async finishService(visitId: string, userId: string, nextUnitType?: string) {
     const visit = await this.prisma.visit.findUnique({
       where: { id: visitId },
       include: { selectedRoom: true },
@@ -62,22 +64,36 @@ export class AssessmentService {
 
     await this.journeyService.finishService(session.id, { createdBy: userId });
 
-    // Route to BDR
-    await this.prisma.visit.update({
-      where: { id: visitId },
-      data: { currentUnitType: 'BDR', currentStatus: 'WAITING' },
-    });
+    // Dynamic routing — use provided nextUnitType or default (BDR)
+    const nextUnit = nextUnitType || this.routingService.getDefaultNextUnit('ASSESSMENT') || 'BDR';
 
-    await this.journeyService.createSession({
+    await this.routingService.routeToNextUnit(
       visitId,
-      unitType: 'BDR',
-      roomId: visit.selectedRoomId || undefined,
-      floorId: visit.selectedFloorId || undefined,
-      doctorId: visit.selectedDoctorId || undefined,
-      queueTicketId: visit.queueTicketId,
-      createdBy: userId,
-    });
+      nextUnit,
+      {
+        roomId: visit.selectedRoomId,
+        floorId: visit.selectedFloorId,
+        doctorId: visit.selectedDoctorId,
+        queueTicketId: visit.queueTicketId,
+      },
+      userId,
+    );
 
-    return { message: 'Pengkajian selesai, pasien diarahkan ke BDR' };
+    const destLabel = nextUnit === 'BDR' ? 'BDR' : nextUnit.toLowerCase();
+    return { message: `Pengkajian selesai, pasien diarahkan ke ${destLabel}` };
+  }
+
+  /**
+   * Transfer patient from assessment to another unit
+   */
+  async transferPatient(visitId: string, data: { targetUnitType: string; reason: string; userId: string }) {
+    return this.routingService.transferPatient(visitId, data.targetUnitType, data.reason, data.userId);
+  }
+
+  /**
+   * Get available destinations from assessment
+   */
+  getDestinations() {
+    return this.routingService.getAvailableDestinations('ASSESSMENT');
   }
 }

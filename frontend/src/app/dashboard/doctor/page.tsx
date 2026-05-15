@@ -10,6 +10,9 @@ export default function DoctorQueuePage() {
   const [selectedRoom, setSelectedRoom] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [destModal, setDestModal] = useState<string | null>(null);
+  const [destinations, setDestinations] = useState<any[]>([]);
+  const [transferModal, setTransferModal] = useState<string | null>(null);
+  const [transferReason, setTransferReason] = useState('');
 
   const loadQueue = useCallback(async () => {
     try {
@@ -24,6 +27,7 @@ export default function DoctorQueuePage() {
       const doctorRooms = res.data.filter((r: any) => ['DOCTOR', 'DOCTOR_CHILD'].includes(r.roomType));
       setRooms(doctorRooms);
     }).catch(() => {});
+    api.get('/doctor-queue/destinations').then(res => setDestinations(res.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -46,6 +50,17 @@ export default function DoctorQueuePage() {
     setActionLoading(visitId);
     try {
       await api.post(`/doctor-queue/${visitId}/next-destination`, { destination });
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
+  };
+
+  const confirmTransfer = async (visitId: string, targetUnitType: string) => {
+    if (!transferReason.trim()) { alert('Masukkan alasan transfer'); return; }
+    setTransferModal(null);
+    setActionLoading(visitId);
+    try {
+      await api.post(`/doctor-queue/${visitId}/transfer`, { targetUnitType, reason: transferReason });
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
@@ -80,7 +95,10 @@ export default function DoctorQueuePage() {
                   <span>👨‍⚕️ {v.selectedDoctor?.doctorName}</span>
                   <span>🚪 {v.selectedRoom?.name}</span>
                 </div>
-                <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>
+                <div className={styles.actionBtns}>
+                  <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                </div>
               </div>
             ))}
           </div>
@@ -106,7 +124,10 @@ export default function DoctorQueuePage() {
                             <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai</button>
                           </div>
                         )}
-                        {s?.status === 'SERVING' && <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>}
+                        {s?.status === 'SERVING' && (
+                          <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                       </div>
                     </div>
                   );
@@ -132,28 +153,36 @@ export default function DoctorQueuePage() {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>Pilih Tujuan Selanjutnya</h3>
             <div className={styles.destGrid}>
-              <button className={styles.destBtn} onClick={() => setDestination(destModal, 'CDC')}>
-                <div className={styles.destIcon}>🔬</div>
-                <div className={styles.destLabel}>CDC</div>
-              </button>
-              <button className={styles.destBtn} onClick={() => setDestination(destModal, 'CASHIER')}>
-                <div className={styles.destIcon}>💳</div>
-                <div className={styles.destLabel}>Kasir</div>
-              </button>
-              <button className={styles.destBtn} onClick={() => setDestination(destModal, 'PHARMACY')}>
-                <div className={styles.destIcon}>💊</div>
-                <div className={styles.destLabel}>Farmasi</div>
-              </button>
-              <button className={styles.destBtn} onClick={() => setDestination(destModal, 'OPTIC')}>
-                <div className={styles.destIcon}>👓</div>
-                <div className={styles.destLabel}>Optik</div>
-              </button>
-              <button className={styles.destBtn} style={{ gridColumn: '1 / -1' }} onClick={() => setDestination(destModal, 'FINISHED')}>
-                <div className={styles.destIcon}>🏠</div>
-                <div className={styles.destLabel}>Selesai (Pulang)</div>
-              </button>
+              {destinations.map((dest: any) => (
+                <button key={dest.unitType} className={styles.destBtn} onClick={() => setDestination(destModal, dest.unitType)} style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}>
+                  <div className={styles.destIcon}>{dest.icon}</div>
+                  <div className={styles.destLabel}>{dest.label}</div>
+                </button>
+              ))}
             </div>
             <button className={styles.modalClose} onClick={() => setDestModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {transferModal && (
+        <div className={styles.modalOverlay} onClick={() => setTransferModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🔄 Transfer Pasien</h3>
+            <div className="form-group">
+              <label className="form-label">Alasan Transfer *</label>
+              <input className="form-input" value={transferReason} onChange={e => setTransferReason(e.target.value)} placeholder="Contoh: Pindah poli, ganti dokter" />
+            </div>
+            <div className={styles.destGrid}>
+              {destinations.filter((d: any) => d.unitType !== 'DOCTOR').map((dest: any) => (
+                <button key={dest.unitType} className={styles.destBtn} onClick={() => confirmTransfer(transferModal, dest.unitType)} style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}>
+                  <div className={styles.destIcon}>{dest.icon}</div>
+                  <div className={styles.destLabel}>{dest.label}</div>
+                </button>
+              ))}
+            </div>
+            <button className={styles.modalClose} onClick={() => setTransferModal(null)}>Batal</button>
           </div>
         </div>
       )}

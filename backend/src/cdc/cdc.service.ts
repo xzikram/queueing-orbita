@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
+import { RoutingService } from '../routing/routing.service';
 
 @Injectable()
 export class CdcService {
   constructor(
     private prisma: PrismaService,
     private journeyService: JourneyService,
+    private routingService: RoutingService,
   ) {}
 
   async getQueue() {
@@ -21,7 +23,7 @@ export class CdcService {
         selectedDoctor: true,
         selectedRoom: { include: { floor: true } },
         journeySessions: {
-          where: { unitType: 'CDC', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+          where: { unitType: 'CDC', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -38,7 +40,7 @@ export class CdcService {
     return { message: 'Layanan CDC dimulai' };
   }
 
-  async finishService(visitId: string, userId: string) {
+  async finishService(visitId: string, userId: string, nextUnitType?: string) {
     const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
@@ -47,21 +49,36 @@ export class CdcService {
 
     await this.journeyService.finishService(session.id, { createdBy: userId });
 
-    // Route to Cashier
-    await this.prisma.visit.update({
-      where: { id: visitId },
-      data: { currentUnitType: 'CASHIER', currentStatus: 'WAITING' },
-    });
+    // Dynamic routing — use provided nextUnitType or default (CASHIER)
+    const nextUnit = nextUnitType || this.routingService.getDefaultNextUnit('CDC') || 'CASHIER';
 
-    const kasirRoom = await this.prisma.room.findFirst({ where: { roomType: 'CASHIER' } });
-    await this.journeyService.createSession({
+    await this.routingService.routeToNextUnit(
       visitId,
-      unitType: 'CASHIER',
-      roomId: kasirRoom?.id,
-      queueTicketId: visit.queueTicketId,
-      createdBy: userId,
-    });
+      nextUnit,
+      {
+        roomId: visit.selectedRoomId,
+        floorId: visit.selectedFloorId,
+        doctorId: visit.selectedDoctorId,
+        queueTicketId: visit.queueTicketId,
+      },
+      userId,
+    );
 
-    return { message: 'CDC selesai, pasien diarahkan ke Kasir' };
+    const destLabel = nextUnit === 'CASHIER' ? 'Kasir' : nextUnit.toLowerCase();
+    return { message: `CDC selesai, pasien diarahkan ke ${destLabel}` };
+  }
+
+  /**
+   * Transfer patient from CDC to another unit
+   */
+  async transferPatient(visitId: string, data: { targetUnitType: string; reason: string; userId: string }) {
+    return this.routingService.transferPatient(visitId, data.targetUnitType, data.reason, data.userId);
+  }
+
+  /**
+   * Get available destinations from CDC
+   */
+  getDestinations() {
+    return this.routingService.getAvailableDestinations('CDC');
   }
 }

@@ -6,6 +6,7 @@ import { MasterModule } from './master/master.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { QueueModule } from './queue/queue.module';
 import { JourneyModule } from './journey/journey.module';
+import { RoutingModule } from './routing/routing.module';
 import { AdmissionModule } from './admission/admission.module';
 import { AssessmentModule } from './assessment/assessment.module';
 import { BdrModule } from './bdr/bdr.module';
@@ -37,6 +38,7 @@ import { VideoModule } from './video/video.module';
     ScheduleModule,
     QueueModule,
     JourneyModule,
+    RoutingModule,
     AdmissionModule,
     AssessmentModule,
     BdrModule,

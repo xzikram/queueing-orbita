@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
+import { RoutingService } from '../routing/routing.service';
 import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
@@ -8,13 +9,14 @@ export class DoctorQueueService {
   constructor(
     private prisma: PrismaService,
     private journeyService: JourneyService,
+    private routingService: RoutingService,
     private displayGateway: DisplayGateway,
   ) {}
 
   async getQueue(roomId?: string, floorId?: string) {
     const where: any = {
       currentUnitType: 'DOCTOR',
-      currentStatus: { in: ['WAITING', 'CALLED', 'SERVING'] },
+      currentStatus: { in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'] },
       finishedAt: null,
     };
     if (roomId) where.selectedRoomId = roomId;
@@ -28,7 +30,7 @@ export class DoctorQueueService {
         selectedRoom: { include: { floor: true } },
         selectedFloor: true,
         journeySessions: {
-          where: { unitType: 'DOCTOR', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+          where: { unitType: 'DOCTOR', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -108,53 +110,31 @@ export class DoctorQueueService {
     const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
-    const validDestinations = ['CDC', 'CASHIER', 'PHARMACY', 'OPTIC', 'FINISHED'];
-    if (!validDestinations.includes(destination)) {
-      throw new BadRequestException('Tujuan tidak valid');
-    }
-
-    if (destination === 'FINISHED') {
-      await this.prisma.visit.update({
-        where: { id: visitId },
-        data: {
-          currentUnitType: null,
-          currentStatus: 'FINISHED',
-          finishedAt: new Date(),
-        },
-      });
-      return { message: 'Kunjungan selesai' };
-    }
-
-    const unitType = destination as any;
-    await this.prisma.visit.update({
-      where: { id: visitId },
-      data: { currentUnitType: unitType, currentStatus: 'WAITING' },
-    });
-
-    // Find destination room
-    let roomId: string | undefined;
-    if (destination === 'CDC') {
-      const cdcRoom = await this.prisma.room.findFirst({ where: { roomType: 'CDC' } });
-      roomId = cdcRoom?.id;
-    } else if (destination === 'CASHIER') {
-      const kasirRoom = await this.prisma.room.findFirst({ where: { roomType: 'CASHIER' } });
-      roomId = kasirRoom?.id;
-    } else if (destination === 'PHARMACY') {
-      const farmasiRoom = await this.prisma.room.findFirst({ where: { roomType: 'PHARMACY' } });
-      roomId = farmasiRoom?.id;
-    } else if (destination === 'OPTIC') {
-      const optikRoom = await this.prisma.room.findFirst({ where: { roomType: 'OPTIC' } });
-      roomId = optikRoom?.id;
-    }
-
-    await this.journeyService.createSession({
+    // Delegate to routing service
+    return this.routingService.routeToNextUnit(
       visitId,
-      unitType,
-      roomId,
-      queueTicketId: visit.queueTicketId,
-      createdBy: userId,
-    });
+      destination,
+      {
+        roomId: visit.selectedRoomId,
+        floorId: visit.selectedFloorId,
+        doctorId: visit.selectedDoctorId,
+        queueTicketId: visit.queueTicketId,
+      },
+      userId,
+    );
+  }
 
-    return { message: `Pasien diarahkan ke ${destination}` };
+  /**
+   * Transfer patient from doctor to another unit
+   */
+  async transferPatient(visitId: string, data: { targetUnitType: string; reason: string; userId: string }) {
+    return this.routingService.transferPatient(visitId, data.targetUnitType, data.reason, data.userId);
+  }
+
+  /**
+   * Get available destinations from doctor
+   */
+  getDestinations() {
+    return this.routingService.getAvailableDestinations('DOCTOR');
   }
 }

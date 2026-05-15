@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
+import { RoutingService } from '../routing/routing.service';
 import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class AdmissionService {
   constructor(
     private prisma: PrismaService,
     private journeyService: JourneyService,
+    private routingService: RoutingService,
     private displayGateway: DisplayGateway,
   ) {}
 
@@ -200,7 +202,7 @@ export class AdmissionService {
   }
 
   /**
-   * Finish admission and route patient to next unit
+   * Finish admission and route patient to next unit (dynamic)
    */
   async finishService(
     ticketId: string,
@@ -209,6 +211,7 @@ export class AdmissionService {
       patientRmNo?: string;
       patientName?: string;
       patientDob?: string;
+      nextUnitType?: string;
     },
   ) {
     const ticket = await this.prisma.queueTicket.findUnique({
@@ -274,8 +277,6 @@ export class AdmissionService {
     }
 
     const updateData: any = {
-      currentUnitType: 'ASSESSMENT',
-      currentStatus: 'WAITING',
       currentRoomId: finalRoomId,
       doctorTicketNo: currentDoctorTicketNo,
     };
@@ -288,18 +289,48 @@ export class AdmissionService {
       data: updateData,
     });
 
-    // Create next journey session: ASSESSMENT
-    await this.journeyService.createSession({
-      visitId: ticket.visit.id,
-      unitType: 'ASSESSMENT',
-      roomId: finalRoomId || undefined,
-      floorId: finalFloorId || undefined,
-      doctorId: finalDoctorId || undefined,
-      queueTicketId: ticket.id,
-      createdBy: data.userId,
-    });
+    // Dynamic routing — use provided nextUnitType or default (ASSESSMENT)
+    const nextUnit = data.nextUnitType || this.routingService.getDefaultNextUnit('ADMISSION') || 'ASSESSMENT';
 
-    return { message: 'Admisi selesai, pasien diarahkan ke pengkajian' };
+    await this.routingService.routeToNextUnit(
+      ticket.visit.id,
+      nextUnit,
+      {
+        roomId: finalRoomId,
+        floorId: finalFloorId,
+        doctorId: finalDoctorId,
+        queueTicketId: ticket.id,
+      },
+      data.userId,
+    );
+
+    const destLabel = nextUnit === 'ASSESSMENT' ? 'pengkajian' : nextUnit.toLowerCase();
+    return { message: `Admisi selesai, pasien diarahkan ke ${destLabel}` };
+  }
+
+  /**
+   * Transfer patient from admission to another unit
+   */
+  async transferPatient(ticketId: string, data: { targetUnitType: string; reason: string; userId: string }) {
+    const ticket = await this.prisma.queueTicket.findUnique({
+      where: { id: ticketId },
+      include: { visit: true },
+    });
+    if (!ticket?.visit) throw new BadRequestException('Visit belum dibuat');
+
+    return this.routingService.transferPatient(
+      ticket.visit.id,
+      data.targetUnitType,
+      data.reason,
+      data.userId,
+    );
+  }
+
+  /**
+   * Get available destinations from admission
+   */
+  getDestinations() {
+    return this.routingService.getAvailableDestinations('ADMISSION');
   }
 
   /**

@@ -4,6 +4,13 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import styles from './admission.module.css';
 
+interface Destination {
+  unitType: string;
+  label: string;
+  icon: string;
+  isDefault: boolean;
+}
+
 export default function AdmissionPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [counters, setCounters] = useState<any[]>([]);
@@ -16,6 +23,13 @@ export default function AdmissionPage() {
   // Time correction modal
   const [timeModal, setTimeModal] = useState<any>(null);
   const [timeForm, setTimeForm] = useState({ field: 'calledAt', correctedTime: '', reason: '' });
+  // Destination modal (for finish service)
+  const [destModal, setDestModal] = useState<any>(null);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
+  // Transfer modal
+  const [transferModal, setTransferModal] = useState<any>(null);
+  const [transferReason, setTransferReason] = useState('');
+  const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/admission/queue'); setQueue(res.data); }
@@ -31,6 +45,12 @@ export default function AdmissionPage() {
     }).catch(() => {});
     api.get('/schedules/active-today').then(res => {
       setSchedules(res.data);
+    }).catch(() => {});
+    // Load destinations for this unit
+    api.get('/admission/destinations').then(res => {
+      setDestinations(res.data);
+      // All destinations for transfer (includes all units)
+      setAllDestinations(res.data);
     }).catch(() => {});
     const interval = setInterval(loadQueue, 5000);
     return () => clearInterval(interval);
@@ -57,10 +77,15 @@ export default function AdmissionPage() {
       openPatientModal(ticket);
       return;
     }
+    // Open destination modal to choose next unit
+    setDestModal(ticket);
+  };
 
+  const confirmFinish = async (ticket: any, nextUnitType: string) => {
+    setDestModal(null);
     setActionLoading(ticket.id);
     try {
-      await api.post(`/admission/${ticket.id}/finish`, {});
+      await api.post(`/admission/${ticket.id}/finish`, { nextUnitType });
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
@@ -97,6 +122,25 @@ export default function AdmissionPage() {
       setTimeModal(null);
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+  };
+
+  const openTransferModal = (ticket: any) => {
+    setTransferReason('');
+    setTransferModal(ticket);
+  };
+
+  const confirmTransfer = async (ticket: any, targetUnitType: string) => {
+    if (!transferReason.trim()) { alert('Masukkan alasan transfer'); return; }
+    setTransferModal(null);
+    setActionLoading(ticket.id);
+    try {
+      await api.post(`/admission/${ticket.id}/transfer`, {
+        targetUnitType,
+        reason: transferReason,
+      });
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); }
   };
 
   const waitingTickets = queue.filter(t => t.status === 'WAITING');
@@ -173,6 +217,7 @@ export default function AdmissionPage() {
                     )}
                     <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien">👤</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => openTimeModal(ticket)} title="Koreksi Waktu">⏱️</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => openTransferModal(ticket)} title="Transfer Pasien" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                   </div>
                 </div>
               );
@@ -225,6 +270,59 @@ export default function AdmissionPage() {
               <button className="btn btn-secondary" onClick={() => setTimeModal(null)}>Batal</button>
               <button className="btn btn-warning" onClick={saveTimeCorrection}>⏱️ Koreksi</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Destination Modal — Choose next unit after finishing admission */}
+      {destModal && (
+        <div className={styles.modalOverlay} onClick={() => setDestModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🗺️ Tujuan Selanjutnya — {destModal.ticketNo}</h3>
+            <p style={{ color: 'var(--gray-400)', fontSize: '0.8125rem', marginBottom: 16 }}>Pilih unit tujuan pasien setelah admisi selesai.</p>
+            <div className={styles.destGrid}>
+              {destinations.map(dest => (
+                <button
+                  key={dest.unitType}
+                  className={`${styles.destBtn} ${dest.isDefault ? styles.destDefault : ''}`}
+                  onClick={() => confirmFinish(destModal, dest.unitType)}
+                  style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}
+                >
+                  <div className={styles.destIcon}>{dest.icon}</div>
+                  <div className={styles.destLabel}>{dest.label}</div>
+                  {dest.isDefault && <div className={styles.destBadge}>Default</div>}
+                </button>
+              ))}
+            </div>
+            <button className={styles.modalClose} onClick={() => setDestModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {transferModal && (
+        <div className={styles.modalOverlay} onClick={() => setTransferModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🔄 Transfer Pasien — {transferModal.ticketNo}</h3>
+            <p style={{ color: 'var(--gray-400)', fontSize: '0.8125rem', marginBottom: 16 }}>Pindahkan pasien ke unit lain. Sesi saat ini akan ditandai sebagai TRANSFERRED.</p>
+            <div className="form-group">
+              <label className="form-label">Alasan Transfer *</label>
+              <input className="form-input" value={transferReason} onChange={e => setTransferReason(e.target.value)} placeholder="Contoh: Pasien langsung ke dokter, skip pengkajian" />
+            </div>
+            <div className={styles.destGrid}>
+              {destinations.filter(d => d.unitType !== 'ADMISSION').map(dest => (
+                <button
+                  key={dest.unitType}
+                  className={styles.destBtn}
+                  onClick={() => confirmTransfer(transferModal, dest.unitType)}
+                  style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}
+                >
+                  <div className={styles.destIcon}>{dest.icon}</div>
+                  <div className={styles.destLabel}>{dest.label}</div>
+                </button>
+              ))}
+            </div>
+            <button className={styles.modalClose} onClick={() => setTransferModal(null)}>Batal</button>
           </div>
         </div>
       )}
