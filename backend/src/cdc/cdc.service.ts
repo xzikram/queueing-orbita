@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
+import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
 export class CdcService {
@@ -9,6 +10,7 @@ export class CdcService {
     private prisma: PrismaService,
     private journeyService: JourneyService,
     private routingService: RoutingService,
+    private displayGateway: DisplayGateway,
   ) {}
 
   async getQueue() {
@@ -37,6 +39,7 @@ export class CdcService {
     if (!session) throw new BadRequestException('Sesi CDC tidak ditemukan');
     await this.journeyService.startService(session.id, { createdBy: userId });
     await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Layanan CDC dimulai' };
   }
 
@@ -64,6 +67,7 @@ export class CdcService {
       userId,
     );
 
+    this.displayGateway.triggerDashboardRefresh();
     const destLabel = nextUnit === 'CASHIER' ? 'Kasir' : nextUnit.toLowerCase();
     return { message: `CDC selesai, pasien diarahkan ke ${destLabel}` };
   }

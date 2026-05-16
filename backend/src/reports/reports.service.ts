@@ -216,9 +216,10 @@ export class ReportsService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [totalTickets, totalVisits, activeSessions] = await Promise.all([
+    const [totalTickets, totalVisits, finishedVisits, activeSessions] = await Promise.all([
       this.prisma.queueTicket.count({ where: { queueDate: { gte: today } } }),
       this.prisma.visit.count({ where: { visitDate: { gte: today } } }),
+      this.prisma.visit.count({ where: { visitDate: { gte: today }, finishedAt: { not: null } } }),
       this.prisma.journeyUnitSession.findMany({
         where: {
           createdAt: { gte: today },
@@ -227,7 +228,7 @@ export class ReportsService {
       }),
     ]);
 
-    const unitCounts = {
+    const unitCounts: Record<string, number> = {
       ADMISSION: 0,
       ASSESSMENT: 0,
       BDR: 0,
@@ -238,17 +239,95 @@ export class ReportsService {
       OPTIC: 0,
     };
 
+    const waitingPerUnit: Record<string, number> = { ...unitCounts };
+    const servingPerUnit: Record<string, number> = { ...unitCounts };
+
     activeSessions.forEach(session => {
-      if (unitCounts[session.unitType as keyof typeof unitCounts] !== undefined) {
-        unitCounts[session.unitType as keyof typeof unitCounts]++;
+      const key = session.unitType as string;
+      if (unitCounts[key] !== undefined) {
+        unitCounts[key]++;
+        if (session.status === 'WAITING') {
+          waitingPerUnit[key]++;
+        } else if (session.status === 'SERVING' || session.status === 'CALLED') {
+          servingPerUnit[key]++;
+        }
       }
     });
 
     return {
       todayTickets: totalTickets,
       todayVisits: totalVisits,
+      finishedVisits,
       activePatients: activeSessions.length,
       unitCounts,
+      waitingPerUnit,
+      servingPerUnit,
+    };
+  }
+
+  async getUnitDetailedReport(unitType: string, query: any) {
+    const where: Prisma.JourneyUnitSessionWhereInput = {
+      unitType,
+      status: 'FINISHED',
+      waitingDurationSeconds: { not: null },
+      serviceDurationSeconds: { not: null },
+    };
+
+    if (query.startDate && query.endDate) {
+      where.createdAt = {
+        gte: new Date(query.startDate),
+        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+      };
+    }
+
+    const sessions = await this.prisma.journeyUnitSession.findMany({
+      where,
+      select: {
+        waitingDurationSeconds: true,
+        serviceDurationSeconds: true,
+        createdAt: true,
+      },
+    });
+
+    const totalPatients = sessions.length;
+    let totalWait = 0, totalServe = 0;
+    let minWait = Infinity, maxWait = 0;
+    let minServe = Infinity, maxServe = 0;
+
+    const hourlyDistribution: Record<number, number> = {};
+    for (let i = 0; i < 24; i++) hourlyDistribution[i] = 0;
+
+    sessions.forEach(s => {
+      const wait = s.waitingDurationSeconds || 0;
+      const serve = s.serviceDurationSeconds || 0;
+
+      totalWait += wait;
+      totalServe += serve;
+
+      if (wait < minWait) minWait = wait;
+      if (wait > maxWait) maxWait = wait;
+
+      if (serve < minServe) minServe = serve;
+      if (serve > maxServe) maxServe = serve;
+
+      const hour = s.createdAt.getHours();
+      hourlyDistribution[hour]++;
+    });
+
+    if (totalPatients === 0) {
+      minWait = 0;
+      minServe = 0;
+    }
+
+    return {
+      totalPatients,
+      avgWaitSeconds: totalPatients ? Math.round(totalWait / totalPatients) : 0,
+      minWaitSeconds: minWait,
+      maxWaitSeconds: maxWait,
+      avgServeSeconds: totalPatients ? Math.round(totalServe / totalPatients) : 0,
+      minServeSeconds: minServe,
+      maxServeSeconds: maxServe,
+      hourlyDistribution,
     };
   }
 }

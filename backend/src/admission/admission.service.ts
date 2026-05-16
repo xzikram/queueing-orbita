@@ -171,6 +171,9 @@ export class AdmissionService {
       });
     }
 
+    // Trigger dashboard refresh
+    this.displayGateway.triggerDashboardRefresh();
+
     return { ticket, visit, counter };
   }
 
@@ -198,6 +201,7 @@ export class AdmissionService {
       data: { currentStatus: 'SERVING' },
     });
 
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Layanan dimulai' };
   }
 
@@ -304,6 +308,7 @@ export class AdmissionService {
       data.userId,
     );
 
+    this.displayGateway.triggerDashboardRefresh();
     const destLabel = nextUnit === 'ASSESSMENT' ? 'pengkajian' : nextUnit.toLowerCase();
     return { message: `Admisi selesai, pasien diarahkan ke ${destLabel}` };
   }

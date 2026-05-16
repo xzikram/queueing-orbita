@@ -75,6 +75,7 @@ export class CashierService {
       });
     }
 
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pasien dipanggil ke kasir' };
   }
 
@@ -83,6 +84,7 @@ export class CashierService {
     if (!session) throw new BadRequestException('Sesi Kasir tidak ditemukan');
     await this.journeyService.startService(session.id, { createdBy: userId });
     await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pembayaran dimulai' };
   }
 
@@ -94,6 +96,7 @@ export class CashierService {
       where: { id: visitId },
       data: { currentStatus: 'WAITING_DESTINATION' },
     });
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pembayaran selesai, pilih tujuan selanjutnya' };
   }
 

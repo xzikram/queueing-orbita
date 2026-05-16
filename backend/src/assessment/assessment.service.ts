@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
+import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
 export class AssessmentService {
@@ -9,6 +10,7 @@ export class AssessmentService {
     private prisma: PrismaService,
     private journeyService: JourneyService,
     private routingService: RoutingService,
+    private displayGateway: DisplayGateway,
   ) {}
 
   async getQueue(floorId?: string) {
@@ -49,6 +51,7 @@ export class AssessmentService {
       data: { currentStatus: 'SERVING' },
     });
 
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pengkajian dimulai' };
   }
 
@@ -79,6 +82,7 @@ export class AssessmentService {
       userId,
     );
 
+    this.displayGateway.triggerDashboardRefresh();
     const destLabel = nextUnit === 'BDR' ? 'BDR' : nextUnit.toLowerCase();
     return { message: `Pengkajian selesai, pasien diarahkan ke ${destLabel}` };
   }

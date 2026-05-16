@@ -23,14 +23,48 @@ export class AuditInterceptor implements NestInterceptor {
       tap({
         next: async (resBody) => {
           try {
+            // Extract contextual info
+            let ticketNo = resBody?.ticketNo || resBody?.queueTicket?.ticketNo || body?.ticketNo;
+            let patientName = resBody?.patientName || resBody?.visit?.patientName || body?.patientName;
+            const entity = this.extractEntityFromUrl(url);
+            
+            // Build human description
+            let humanDesc = `Melakukan aksi ${method} pada ${entity}`;
+            let unitType = null;
+
+            if (url.includes('/call')) {
+              humanDesc = `Memanggil pasien ke counter`;
+              unitType = entity.toUpperCase();
+            } else if (url.includes('/start')) {
+              humanDesc = `Mulai melayani pasien`;
+              unitType = entity.toUpperCase();
+            } else if (url.includes('/finish')) {
+              humanDesc = `Selesai melayani pasien`;
+              unitType = entity.toUpperCase();
+            } else if (url.includes('/queue-tickets') && method === 'POST') {
+              humanDesc = `Mengambil tiket antrian baru`;
+            } else if (url.includes('/transfer')) {
+              humanDesc = `Mentransfer pasien ke unit lain`;
+              unitType = entity.toUpperCase();
+            } else if (url.includes('/login')) {
+              humanDesc = `Login ke sistem`;
+            }
+
+            if (ticketNo) humanDesc += ` (Tiket: ${ticketNo})`;
+
             await this.prisma.auditLog.create({
               data: {
                 userId: user?.userId || 'SYSTEM',
+                userName: user?.name || 'System',
                 action: method,
-                entity: this.extractEntityFromUrl(url),
-                oldValue: null, // Hard to capture old value without complex pre-hooks in simple interceptor
+                entity,
+                humanDescription: humanDesc,
+                ticketNo,
+                patientName,
+                unitType,
+                oldValue: null,
                 newValue: JSON.stringify(body || {}),
-                reason: body?.reason || 'Automated via API',
+                reason: body?.reason || null,
               },
             });
           } catch (err) {
@@ -45,7 +79,6 @@ export class AuditInterceptor implements NestInterceptor {
   }
 
   private extractEntityFromUrl(url: string): string {
-    // Basic extraction e.g., /api/users/123 -> users
     const parts = url.split('/').filter(Boolean);
     if (parts.length > 0) {
       return parts[0] === 'api' && parts.length > 1 ? parts[1] : parts[0];

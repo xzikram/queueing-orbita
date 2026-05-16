@@ -82,6 +82,7 @@ export class DoctorQueueService {
       }
     }
 
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pasien dipanggil ke ruang dokter' };
   }
 
@@ -91,6 +92,7 @@ export class DoctorQueueService {
 
     await this.journeyService.startService(session.id, { createdBy: userId });
     await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pemeriksaan dokter dimulai' };
   }
 
@@ -103,6 +105,7 @@ export class DoctorQueueService {
       where: { id: visitId },
       data: { currentStatus: 'WAITING_DESTINATION' },
     });
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pemeriksaan selesai, pilih tujuan selanjutnya' };
   }
 

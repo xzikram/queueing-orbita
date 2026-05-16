@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  async getLogs(query: { page?: number; limit?: number; action?: string; entity?: string }) {
+  async getLogs(query: { page?: number; limit?: number; action?: string; entity?: string; search?: string; unitType?: string; startDate?: string; endDate?: string }) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 50;
     const skip = (page - 1) * limit;
@@ -13,6 +13,21 @@ export class AuditService {
     const where: any = {};
     if (query.action) where.action = query.action;
     if (query.entity) where.entity = query.entity;
+    if (query.unitType) where.unitType = query.unitType;
+    if (query.search) {
+      where.OR = [
+        { userName: { contains: query.search } },
+        { ticketNo: { contains: query.search } },
+        { patientName: { contains: query.search } },
+        { humanDescription: { contains: query.search } },
+      ];
+    }
+    if (query.startDate && query.endDate) {
+      where.timestamp = {
+        gte: new Date(query.startDate),
+        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+      };
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.auditLog.findMany({

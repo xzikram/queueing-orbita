@@ -99,7 +99,7 @@ export default function DisplayAdmisiKasirPage() {
         api.get('/admission/recent-calls?limit=2').catch(() => ({ data: [] })),
         api.get('/cashier/recent-calls?limit=2').catch(() => ({ data: [] })),
         api.get('/displays/code/display_admisi').catch(() => ({ data: null })),
-        api.get('/video/active').catch(() => ({ data: [] }))
+        api.get('/video/active/display_admisi').catch(() => ({ data: [] }))
       ]);
 
       // Combine calls from both admisi and kasir, sort by calledAt
@@ -179,6 +179,13 @@ export default function DisplayAdmisiKasirPage() {
       } else {
         setPlaylist([]);
       }
+    });
+
+    socket.on('playlistChanged', async () => {
+      const videosRes = await api.get('/video/active/display_admisi').catch(() => ({ data: [] }));
+      const activeVideos = videosRes.data || [];
+      setPlaylist(activeVideos);
+      setCurrentVideoIdx(0);
     });
 
     const clockInterval = setInterval(() => setTime(new Date()), 1000);

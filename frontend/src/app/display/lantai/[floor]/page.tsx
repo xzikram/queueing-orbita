@@ -26,24 +26,60 @@ export default function FloorDisplayPage() {
   const [waitingList, setWaitingList] = useState<any[]>([]);
   const [time, setTime] = useState(new Date());
   const [connected, setConnected] = useState(false);
+  const [isAudioInit, setIsAudioInit] = useState(false);
   // Video & Ticker state
   const [playlist, setPlaylist] = useState<any[]>([]);
   const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
   const [runningText, setRunningText] = useState(`Selamat datang di RS JEC ORBITA — Lantai ${floorNumber}. Mohon menunggu nomor antrian Anda dipanggil. • Selalu patuhi protokol kesehatan.`);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const playBell = useCallback((data: CallData) => {
+  const initAudio = () => {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioContextClass) {
+      const ctx = new AudioContextClass();
+      ctx.resume();
+    }
+    const utterance = new SpeechSynthesisUtterance('');
+    window.speechSynthesis.speak(utterance);
+    setIsAudioInit(true);
+  };
+
+  const playDingDong = async () => {
     try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContextClass();
+      const playTone = (freq: number, startTime: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.5, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + dur);
+      };
+      playTone(523.25, ctx.currentTime, 0.5);
+      playTone(440.00, ctx.currentTime + 0.4, 0.8);
+      return new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (e) {
+      console.error('DingDong error', e);
+    }
+  };
+
+  const playBell = useCallback(async (data: CallData) => {
+    try {
+      if (videoRef.current) videoRef.current.volume = 0.1;
+
+      await playDingDong();
+
       const dest = data.roomName || data.unitType;
       const msg = `Nomor antrian. ${data.ticketNo.split('').join(' ')}. silakan menuju ke. ${dest}.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
       utterance.rate = 0.85;
 
-      // Lower video volume during speech
-      if (videoRef.current) {
-        videoRef.current.volume = 0.2;
-      }
       utterance.onend = () => {
         if (videoRef.current) videoRef.current.volume = 1;
       };
@@ -53,6 +89,12 @@ export default function FloorDisplayPage() {
       console.error('Speech error', e);
     }
   }, []);
+
+  const getVideoUrl = (fileUrl: string) => {
+    if (!fileUrl) return '';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `http://${window.location.hostname}:3001/api` : '/api');
+    return apiBase + fileUrl;
+  };
 
   const handleVideoEnded = () => {
     if (playlist.length > 0) {
@@ -67,8 +109,7 @@ export default function FloorDisplayPage() {
       setRecentPoli(res.data.recentPoli);
       setWaitingList(res.data.waitingList);
       if (res.data.recentPoli.length > 0 && res.data.recentBdr.length > 0) {
-        // pick the latest across both
-        const all = [...res.data.recentBdr, ...res.data.recentPoli].sort((a,b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime());
+        const all = [...res.data.recentBdr, ...res.data.recentPoli].sort((a: any,b: any) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime());
         setCurrentCall(all[0]);
       } else if (res.data.recentPoli.length > 0) {
         setCurrentCall(res.data.recentPoli[0]);
@@ -77,14 +118,15 @@ export default function FloorDisplayPage() {
       }
 
       // Load Display Config (Video + Ticker)
-      const dRes = await api.get(`/displays/code/${displayCode}`);
-      if (dRes.data?.videoPlaylist) {
-        try {
-          setPlaylist(JSON.parse(dRes.data.videoPlaylist));
-        } catch {}
-      }
+      const dRes = await api.get(`/displays/code/${displayCode}`).catch(() => ({ data: null }));
       if (dRes.data?.runningText) setRunningText(dRes.data.runningText);
 
+      // Load active videos for this specific display
+      const videosRes = await api.get(`/video/active/${displayCode}`).catch(() => ({ data: [] }));
+      const activeVideos = videosRes.data || [];
+      if (activeVideos.length > 0) {
+        setPlaylist(activeVideos);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -101,12 +143,24 @@ export default function FloorDisplayPage() {
 
     socket.on('disconnect', () => setConnected(false));
 
-    socket.on('settingUpdate', (data) => {
+    socket.on('settingUpdate', (data: any) => {
       if (data.type === 'TICKER' && data.text) setRunningText(data.text);
     });
 
-    socket.on('playlistUpdate', (data) => {
-      if (data.playlist) setPlaylist(data.playlist);
+    socket.on('playlistUpdate', (data: any) => {
+      if (data && data.items) {
+        setPlaylist(data.items);
+        setCurrentVideoIdx(0);
+      } else if (data && data.playlist) {
+        setPlaylist(data.playlist);
+        setCurrentVideoIdx(0);
+      }
+    });
+
+    socket.on('playlistChanged', async () => {
+      const videosRes = await api.get(`/video/active/${displayCode}`).catch(() => ({ data: [] }));
+      const activeVideos = videosRes.data || [];
+      setPlaylist(activeVideos);
       setCurrentVideoIdx(0);
     });
 
@@ -124,7 +178,6 @@ export default function FloorDisplayPage() {
         });
       }
       playBell(data);
-      // Refresh waiting list slightly after call
       setTimeout(loadData, 2000);
     };
 
@@ -141,6 +194,15 @@ export default function FloorDisplayPage() {
       clearInterval(clockInterval);
     };
   }, [displayCode, loadData, playBell]);
+
+  if (!isAudioInit) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'linear-gradient(135deg, #1e40af, #7c3aed)', color: 'white', cursor: 'pointer' }} onClick={initAudio}>
+        <h1 style={{ fontSize: '3rem', marginBottom: '20px' }}>📺 TV Lantai {floorNumber} Siap</h1>
+        <p style={{ fontSize: '1.5rem', opacity: 0.8 }}>Klik / Tap di mana saja untuk memulai (Aktivasi Suara)</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -180,14 +242,14 @@ export default function FloorDisplayPage() {
             </div>
           )}
 
-          {/* Bottom Section: Waiting List (Pengkajian / BDR) */}
+          {/* Bottom Section: Waiting List */}
           <div className={styles.waitingSection}>
             <div className={styles.sectionTitle}>Menunggu Dilayani di Lantai {floorNumber}</div>
             <div className={styles.waitingGrid}>
               {waitingList.length === 0 ? (
                 <div className={styles.emptySection}>Tidak ada antrian</div>
               ) : (
-                waitingList.map((w, idx) => (
+                waitingList.map((w: any, idx: number) => (
                   <div key={idx} className={styles.waitingItem}>
                     <div className={styles.waitingNo}>{w.ticketNo}</div>
                     <div className={styles.waitingInfo}>
@@ -207,10 +269,15 @@ export default function FloorDisplayPage() {
             {playlist.length > 0 ? (
               <video 
                 ref={videoRef}
-                src={process.env.NEXT_PUBLIC_API_URL + playlist[currentVideoIdx]?.fileUrl}
+                src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
                 autoPlay
                 muted={false}
                 onEnded={handleVideoEnded}
+                onError={() => {
+                  if (playlist.length > 1) {
+                    setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
+                  }
+                }}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px' }}
               />
             ) : (

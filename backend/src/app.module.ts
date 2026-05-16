@@ -21,6 +21,7 @@ import { join } from 'path';
 import { ReportsModule } from './reports/reports.module';
 import { AuditModule } from './audit/audit.module';
 import { VideoModule } from './video/video.module';
+import { CounterAssignmentModule } from './counter-assignment/counter-assignment.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { VideoModule } from './video/video.module';
     ReportsModule,
     AuditModule,
     VideoModule,
+    CounterAssignmentModule,
   ],
   providers: [
     {

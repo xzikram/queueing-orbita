@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import styles from '../unit-queue.module.css';
 
 export default function CashierPage() {
@@ -19,17 +20,40 @@ export default function CashierPage() {
     catch (err) { console.error(err); }
   }, []);
 
-  useEffect(() => {
-    loadQueue();
-    const i = setInterval(loadQueue, 5000);
-    api.get('/counters').then(res => {
+  const loadCounters = useCallback(async () => {
+    try {
+      const res = await api.get('/counter-assignment/cashier-counters');
+      const c = res.data.filter((c: any) => c.isActive);
+      if (c.length > 0) {
+        setCounters(c);
+        setSelectedCounter(prev => c.find((x: any) => x.id === prev) ? prev : c[0].id);
+        return;
+      }
+    } catch {}
+    try {
+      const res = await api.get('/counters');
       const cashierCounters = res.data.filter((c: any) => c.canHandleCashier && c.isActive);
       setCounters(cashierCounters);
       if (cashierCounters.length > 0) setSelectedCounter(cashierCounters[0].id);
-    }).catch(() => {});
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadQueue();
+    loadCounters();
+    const i = setInterval(loadQueue, 5000);
     api.get('/cashier/destinations').then(res => setDestinations(res.data)).catch(() => {});
-    return () => clearInterval(i);
-  }, [loadQueue]);
+
+    const socket = getSocket();
+    socket.on('counterAssignmentUpdate', () => {
+      loadCounters();
+    });
+
+    return () => {
+      clearInterval(i);
+      socket.off('counterAssignmentUpdate');
+    };
+  }, [loadQueue, loadCounters]);
 
   const action = async (visitId: string, endpoint: string, body?: any) => {
     setActionLoading(visitId);

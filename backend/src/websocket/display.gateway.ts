@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+import { ReportsService } from '../reports/reports.service';
 
 @WebSocketGateway({
   cors: {
@@ -23,6 +24,8 @@ export class DisplayGateway
   server: Server;
 
   private logger = new Logger('DisplayGateway');
+
+  constructor(private reportsService: ReportsService) {}
 
   afterInit() {
     this.logger.log('WebSocket Gateway initialized');
@@ -49,6 +52,19 @@ export class DisplayGateway
     this.logger.log(`Client ${client.id} left display: ${displayCode}`);
   }
 
+  @SubscribeMessage('joinDashboard')
+  handleJoinDashboard(client: Socket) {
+    client.join('dashboard');
+    this.logger.log(`Client ${client.id} joined dashboard room`);
+    return { event: 'joinedDashboard', data: 'dashboard' };
+  }
+
+  @SubscribeMessage('leaveDashboard')
+  handleLeaveDashboard(client: Socket) {
+    client.leave('dashboard');
+    this.logger.log(`Client ${client.id} left dashboard room`);
+  }
+
   /**
    * Broadcast a queue call to a specific display channel
    */
@@ -71,5 +87,34 @@ export class DisplayGateway
    */
   broadcastQueueUpdate(displayCode: string, payload: any) {
     this.server.to(displayCode).emit('queueUpdate', payload);
+  }
+
+  /**
+   * Fetch live stats and broadcast to all connected dashboard clients.
+   * Called by unit services whenever patient state changes.
+   */
+  async triggerDashboardRefresh() {
+    try {
+      const stats = await this.reportsService.getLiveStats();
+      this.server.to('dashboard').emit('dashboardUpdate', stats);
+    } catch (err) {
+      this.logger.error('Failed to broadcast dashboard update', err);
+    }
+  }
+
+  /**
+   * Broadcast counter assignment changes to all connected clients
+   */
+  broadcastCounterUpdate(payload: any) {
+    this.server.emit('counterAssignmentUpdate', payload);
+    this.logger.log('Broadcast counter assignment update');
+  }
+
+  /**
+   * Broadcast playlist update to a specific display
+   */
+  broadcastPlaylistToDisplay(displayCode: string, payload: any) {
+    this.server.to(displayCode).emit('playlistUpdate', payload);
+    this.logger.log(`Broadcast playlist update to ${displayCode}`);
   }
 }

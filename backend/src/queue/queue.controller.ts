@@ -15,6 +15,11 @@ export class QueueController {
     return this.queueService.generateAdmissionTicket(body);
   }
 
+  @Post('cashier')
+  generateCashierTicket(@Body() body: { patientType: 'UMUM' | 'ASURANSI' }) {
+    return this.queueService.generateCashierTicket(body);
+  }
+
   @Get('today')
   findTodayTickets() {
     return this.queueService.findTodayTickets();

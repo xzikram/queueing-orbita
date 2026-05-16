@@ -25,10 +25,11 @@ export default function PharmacyPage() {
   const waiting = queue.filter(v => v.currentStatus === 'WAITING');
   const processing = queue.filter(v => v.currentStatus === 'SERVING');
   const ready = queue.filter(v => v.currentStatus === 'READY' || v.currentStatus === 'CALLED');
+  const pharmacyDone = queue.filter(v => v.currentStatus === 'PHARMACY_DONE');
 
   return (
     <div className={styles.unitPage}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 20 }}>
         {/* Column: Waiting to Process */}
         <div className={`glass-card ${styles.column}`}>
           <div className={styles.columnHeader}><h3>⏳ Antrian Obat ({waiting.length})</h3></div>
@@ -36,6 +37,7 @@ export default function PharmacyPage() {
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
                 <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <button className="btn btn-success btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'start-process')} disabled={actionLoading === v.id}>🧪 Siapkan Obat</button>
               </div>
             ))}
@@ -49,6 +51,7 @@ export default function PharmacyPage() {
             {processing.length === 0 ? <div className={styles.empty}>Tidak ada</div> : processing.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-primary">PROCESSING</span></div>
+                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'ready')} disabled={actionLoading === v.id}>✅ Obat Siap</button>
               </div>
             ))}
@@ -62,10 +65,32 @@ export default function PharmacyPage() {
             {ready.length === 0 ? <div className={styles.empty}>Tidak ada</div> : ready.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>{v.currentStatus}</span></div>
+                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <div className={styles.actionBtns}>
                   {v.currentStatus === 'READY' && <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>}
-                  <button className="btn btn-primary btn-sm" onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>
+                  <button className="btn btn-primary btn-sm" onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>💊 Serahkan Obat</button>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Column: Pharmacy Done — Pasien Pulang */}
+        <div className={`glass-card ${styles.column}`}>
+          <div className={styles.columnHeader}><h3>🏠 Pasien Pulang ({pharmacyDone.length})</h3></div>
+          <div className={styles.queueList}>
+            {pharmacyDone.length === 0 ? <div className={styles.empty}>Tidak ada pasien menunggu pulang</div> : pharmacyDone.map((v: any) => (
+              <div key={v.id} className={`${styles.queueCard}`} style={{ borderLeft: '4px solid #10b981' }}>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-success">OBAT DISERAHKAN</span></div>
+                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
+                <button 
+                  className="btn btn-sm" 
+                  style={{ width: '100%', marginTop: 8, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', fontWeight: 600 }} 
+                  onClick={() => action(v.id, 'finish-visit')} 
+                  disabled={actionLoading === v.id}
+                >
+                  🏠 Pasien Pulang — Selesai Visit
+                </button>
               </div>
             ))}
           </div>

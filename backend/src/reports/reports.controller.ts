@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Query, Param, UseGuards, Res, BadRequestException } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -38,6 +38,12 @@ export class ReportsController {
   @Roles('ADMIN', 'MANAGEMENT')
   async getLiveStats() {
     return this.reportsService.getLiveStats();
+  }
+
+  @Get('unit-detailed/:unitType')
+  @Roles('ADMIN', 'MANAGEMENT')
+  async getUnitDetailedReport(@Param('unitType') unitType: string, @Query() query: any) {
+    return this.reportsService.getUnitDetailedReport(unitType, query);
   }
 
   @Get('export-excel')

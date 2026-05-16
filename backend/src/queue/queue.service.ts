@@ -164,6 +164,65 @@ export class QueueService {
     return ticket;
   }
 
+  async generateCashierTicket(data: { patientType: 'UMUM' | 'ASURANSI' }) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const prefix = data.patientType === 'UMUM' ? 'G' : 'H';
+
+    const lastTicket = await this.prisma.queueTicket.findFirst({
+      where: {
+        queueDate: { gte: today, lt: tomorrow },
+        ticketNo: { startsWith: prefix },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let nextNumber = 1;
+    if (lastTicket) {
+      const numberPart = lastTicket.ticketNo.replace(prefix, '');
+      const lastNum = parseInt(numberPart) || 0;
+      nextNumber = lastNum + 1;
+    }
+
+    const ticketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+
+    // Create ticket AND a visit starting at CASHIER directly
+    const [ticket, visit] = await this.prisma.$transaction(async (prisma) => {
+      const t = await prisma.queueTicket.create({
+        data: {
+          ticketNo,
+          queueDate: today,
+          patientType: data.patientType,
+          status: 'WAITING',
+        },
+      });
+
+      const v = await prisma.visit.create({
+        data: {
+          queueTicketId: t.id,
+          currentUnitType: 'CASHIER',
+          currentStatus: 'WAITING',
+        },
+      });
+
+      // Create cashier session immediately
+      await prisma.journeyUnitSession.create({
+        data: {
+          visitId: v.id,
+          unitType: 'CASHIER',
+          status: 'WAITING',
+        },
+      });
+
+      return [t, v];
+    });
+
+    return ticket;
+  }
+
   async findTodayTickets() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

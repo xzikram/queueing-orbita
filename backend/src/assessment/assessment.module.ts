@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { AssessmentService } from './assessment.service';
 import { AssessmentController } from './assessment.controller';
 import { JourneyModule } from '../journey/journey.module';
+import { WebsocketModule } from '../websocket/websocket.module';
 
 @Module({
-  imports: [JourneyModule],
+  imports: [JourneyModule, WebsocketModule],
   controllers: [AssessmentController],
   providers: [AssessmentService],
 })

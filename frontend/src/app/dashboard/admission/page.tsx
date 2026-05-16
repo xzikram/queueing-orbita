@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import styles from './admission.module.css';
 
 interface Destination {
@@ -36,13 +37,29 @@ export default function AdmissionPage() {
     catch (err) { console.error(err); }
   }, []);
 
-  useEffect(() => {
-    loadQueue();
-    api.get('/counters').then(res => {
+  const loadCounters = useCallback(async () => {
+    try {
+      // Try to load assignment-based counters first
+      const res = await api.get('/counter-assignment/admission-counters');
+      const c = res.data.filter((c: any) => c.isActive);
+      if (c.length > 0) {
+        setCounters(c);
+        setSelectedCounter(prev => c.find((x: any) => x.id === prev) ? prev : c[0].id);
+        return;
+      }
+    } catch {}
+    // Fallback: load all counters that can handle admission
+    try {
+      const res = await api.get('/counters');
       const c = res.data.filter((c: any) => c.canHandleAdmission && c.isActive);
       setCounters(c);
       if (c.length > 0) setSelectedCounter(c[0].id);
-    }).catch(() => {});
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadQueue();
+    loadCounters();
     api.get('/schedules/active-today').then(res => {
       setSchedules(res.data);
     }).catch(() => {});
@@ -52,9 +69,18 @@ export default function AdmissionPage() {
       // All destinations for transfer (includes all units)
       setAllDestinations(res.data);
     }).catch(() => {});
+
+    const socket = getSocket();
+    socket.on('counterAssignmentUpdate', () => {
+      loadCounters();
+    });
+
     const interval = setInterval(loadQueue, 5000);
-    return () => clearInterval(interval);
-  }, [loadQueue]);
+    return () => {
+      clearInterval(interval);
+      socket.off('counterAssignmentUpdate');
+    };
+  }, [loadQueue, loadCounters]);
 
   const callPatient = async (ticketId: string) => {
     if (!selectedCounter) { alert('Pilih counter'); return; }

@@ -10,6 +10,16 @@ export default function VideoManagementPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [displays, setDisplays] = useState<any[]>([]);
+  const [targetModal, setTargetModal] = useState<any>(null);
+
+  const fetchDisplays = async () => {
+    try {
+      const res = await api.get('/displays');
+      setDisplays(res.data);
+    } catch (err) {}
+  };
+
   const fetchVideos = async () => {
     setLoading(true);
     try {
@@ -24,6 +34,7 @@ export default function VideoManagementPage() {
 
   useEffect(() => {
     fetchVideos();
+    fetchDisplays();
   }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,6 +77,32 @@ export default function VideoManagementPage() {
     }
   };
 
+  const openTargetModal = (video: any) => {
+    const currentTargets = video.targets?.map((t: any) => t.displayId) || [];
+    setTargetModal({ ...video, selectedDisplays: currentTargets });
+  };
+
+  const toggleTarget = (displayId: string) => {
+    setTargetModal((prev: any) => {
+      const sel = prev.selectedDisplays.includes(displayId)
+        ? prev.selectedDisplays.filter((id: string) => id !== displayId)
+        : [...prev.selectedDisplays, displayId];
+      return { ...prev, selectedDisplays: sel };
+    });
+  };
+
+  const saveTargets = async () => {
+    try {
+      await api.put(`/video/items/${targetModal.id}/targets`, {
+        displayIds: targetModal.selectedDisplays
+      });
+      setTargetModal(null);
+      fetchVideos();
+    } catch (err) {
+      alert('Gagal menyimpan target display');
+    }
+  };
+
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   return (
@@ -74,7 +111,7 @@ export default function VideoManagementPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: 'var(--gray-900)' }}>Manajemen Video</h1>
-            <p style={{ margin: '4px 0 0', color: 'var(--gray-600)', fontSize: '0.9rem' }}>Upload video promosi untuk layar TV. Video yang aktif akan diputar otomatis.</p>
+            <p style={{ margin: '4px 0 0', color: 'var(--gray-600)', fontSize: '0.9rem' }}>Upload video promosi dan atur di TV mana video akan diputar.</p>
           </div>
           <div>
             <input
@@ -115,6 +152,7 @@ export default function VideoManagementPage() {
                 <tr>
                   <th style={{ width: '60px', textAlign: 'center' }}>No</th>
                   <th>Nama File</th>
+                  <th>Target Display</th>
                   <th style={{ width: '120px', textAlign: 'center' }}>Preview</th>
                   <th style={{ width: '120px', textAlign: 'center' }}>Status</th>
                   <th style={{ width: '120px', textAlign: 'center' }}>Aksi</th>
@@ -126,6 +164,25 @@ export default function VideoManagementPage() {
                     <td style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--gray-500)' }}>{index + 1}</td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{video.title}</div>
+                    </td>
+                    <td>
+                      {video.targets?.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                          {video.targets.map((t: any) => (
+                            <span key={t.displayId} style={{ background: '#e0f2fe', color: '#0284c7', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
+                              {t.display?.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '12px', fontStyle: 'italic' }}>Semua Display (Global)</span>
+                      )}
+                      <button 
+                        onClick={() => openTargetModal(video)}
+                        style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', padding: 0 }}
+                      >
+                        ✏️ Atur Target
+                      </button>
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <a
@@ -163,6 +220,39 @@ export default function VideoManagementPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {targetModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '400px', maxWidth: '90%' }}>
+            <h3 style={{ margin: '0 0 16px', color: '#1e293b' }}>📺 Atur Target Display</h3>
+            <p style={{ color: '#64748b', fontSize: '13px', marginBottom: '16px' }}>
+              Pilih di TV mana saja video <strong>{targetModal.title}</strong> akan diputar. Kosongkan jika ingin video ini diputar di SEMUA TV (Global).
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto', marginBottom: '24px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              {displays.map(disp => (
+                <label key={disp.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '8px', background: 'white', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={targetModal.selectedDisplays.includes(disp.id)}
+                    onChange={() => toggleTarget(disp.id)}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>{disp.name}</div>
+                    <div style={{ color: '#94a3b8', fontSize: '12px' }}>{disp.code}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button className="btn btn-secondary" onClick={() => setTargetModal(null)}>Batal</button>
+              <button className="btn btn-primary" onClick={saveTargets}>💾 Simpan Target</button>
+            </div>
           </div>
         </div>
       )}

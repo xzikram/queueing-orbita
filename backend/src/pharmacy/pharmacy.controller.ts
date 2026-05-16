@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { PharmacyService } from './pharmacy.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -12,6 +12,11 @@ export class PharmacyController {
 
   @Get('queue')
   getQueue() { return this.service.getQueue(); }
+
+  @Get('recent-calls')
+  getRecentCalls(@Query('limit') limit?: string) {
+    return this.service.getRecentCalls(limit ? parseInt(limit) : 10);
+  }
 
   @Post(':visitId/start-process')
   startProcess(@Param('visitId') visitId: string, @Request() req: any) {
@@ -31,5 +36,10 @@ export class PharmacyController {
   @Post(':visitId/finish')
   finish(@Param('visitId') visitId: string, @Request() req: any) {
     return this.service.finishService(visitId, req.user.id);
+  }
+
+  @Post(':visitId/finish-visit')
+  finishVisit(@Param('visitId') visitId: string, @Request() req: any) {
+    return this.service.finishVisit(visitId, req.user.id);
   }
 }

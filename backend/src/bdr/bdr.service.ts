@@ -82,6 +82,7 @@ export class BdrService {
       }
     }
 
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pasien dipanggil ke BDR' };
   }
 
@@ -91,6 +92,7 @@ export class BdrService {
 
     await this.journeyService.startService(session.id, { createdBy: userId });
     await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    this.displayGateway.triggerDashboardRefresh();
     return { message: 'Layanan BDR dimulai' };
   }
 
@@ -118,6 +120,7 @@ export class BdrService {
       userId,
     );
 
+    this.displayGateway.triggerDashboardRefresh();
     const destLabel = nextUnit === 'DOCTOR' ? 'Dokter/Poli' : nextUnit.toLowerCase();
     return { message: `BDR selesai, pasien diarahkan ke ${destLabel}` };
   }

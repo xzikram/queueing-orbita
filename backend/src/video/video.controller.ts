@@ -32,6 +32,19 @@ export class VideoController {
     return this.videoService.getActiveVideos();
   }
 
+  @Get('active/:displayCode')
+  async getActiveVideosForDisplay(@Param('displayCode') displayCode: string) {
+    return this.videoService.getActiveVideos(displayCode);
+  }
+
+  // Set video targets
+  @Put('items/:id/targets')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  async setVideoTargets(@Param('id') id: string, @Body() body: { displayIds: string[] }) {
+    return this.videoService.setVideoTargets(id, body.displayIds);
+  }
+
   // Keep old endpoints for compatibility
   @Get('playlists')
   async getPlaylists() {

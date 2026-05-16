@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import styles from './live.module.css';
 import Link from 'next/link';
 
 export default function LiveDashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await api.get('/reports/live-stats');
       setStats(res.data);
@@ -18,14 +20,40 @@ export default function LiveDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchStats();
-    // Poll every 10 seconds for live updates
-    const interval = setInterval(fetchStats, 10000);
-    return () => clearInterval(interval);
-  }, []);
+
+    const socket = getSocket();
+
+    socket.on('connect', () => {
+      setConnected(true);
+      socket.emit('joinDashboard');
+    });
+
+    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('dashboardUpdate', (data: any) => {
+      setStats(data);
+      setLoading(false);
+    });
+
+    // Fallback polling every 30s in case WS disconnects
+    const fallback = setInterval(() => {
+      if (!socket.connected) {
+        fetchStats();
+      }
+    }, 30000);
+
+    return () => {
+      socket.off('dashboardUpdate');
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.emit('leaveDashboard');
+      clearInterval(fallback);
+    };
+  }, [fetchStats]);
 
   if (loading && !stats) {
     return <div className={styles.loading}>Memuat Live Dashboard...</div>;
@@ -47,8 +75,8 @@ export default function LiveDashboardPage() {
       <div className={styles.header}>
         <h1>Live Queue Dashboard</h1>
         <div className={styles.pulseIndicator}>
-          <span className={styles.pulseDot}></span>
-          Live (Auto-refresh 10s)
+          <span className={`${styles.pulseDot} ${connected ? styles.pulseDotConnected : styles.pulseDotDisconnected}`}></span>
+          {connected ? 'Realtime via WebSocket' : 'Offline — Fallback Polling'}
         </div>
       </div>
 
@@ -62,8 +90,12 @@ export default function LiveDashboardPage() {
           <div className={styles.topStatValue}>{stats?.todayVisits || 0}</div>
         </div>
         <div className={styles.topStatCard}>
-          <h3>Pasien Aktif (Menunggu/Dilayani)</h3>
+          <h3>Pasien Aktif</h3>
           <div className={styles.topStatValue}>{stats?.activePatients || 0}</div>
+        </div>
+        <div className={`${styles.topStatCard} ${styles.topStatFinished}`}>
+          <h3>Pasien Selesai</h3>
+          <div className={styles.topStatValue}>{stats?.finishedVisits || 0}</div>
         </div>
       </div>
 
@@ -81,6 +113,10 @@ export default function LiveDashboardPage() {
                 {stats?.unitCounts[unit.key] || 0}
               </div>
               <span className={styles.activeLabel}>Pasien Aktif</span>
+            </div>
+            <div className={styles.unitBreakdown}>
+              <span className={styles.breakdownWaiting}>⏳ {stats?.waitingPerUnit?.[unit.key] || 0} menunggu</span>
+              <span className={styles.breakdownServing}>🔄 {stats?.servingPerUnit?.[unit.key] || 0} dilayani</span>
             </div>
             <div className={styles.unitFooter}>
               Buka Antrian →

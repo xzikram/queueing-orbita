@@ -168,6 +168,7 @@ async function main() {
     { name: 'Petugas Farmasi', email: 'farmasi@orbita.com', role: 'PHARMACY' as const },
     { name: 'Petugas Optik', email: 'optik@orbita.com', role: 'OPTIC' as const },
     { name: 'Manajemen', email: 'manajemen@orbita.com', role: 'MANAGEMENT' as const },
+    { name: 'Kepala Admisi', email: 'kepala@orbita.com', role: 'KEPALA_ADMISI' as const },
   ];
 
   for (const r of roles) {

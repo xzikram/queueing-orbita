@@ -3,18 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
-  LineChart, Line
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
 } from 'recharts';
 import styles from './reports.module.css';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
+const UNITS = [
+  { id: 'ADMISSION', label: 'Admisi', icon: '🏥' },
+  { id: 'CASHIER', label: 'Kasir', icon: '💳' },
+  { id: 'PHARMACY', label: 'Farmasi', icon: '💊' },
+  { id: 'DOCTOR', label: 'Poli/Dokter', icon: '👨‍⚕️' },
+  { id: 'ASSESSMENT', label: 'Pengkajian', icon: '📋' },
+  { id: 'BDR', label: 'BDR', icon: '💉' },
+  { id: 'CDC', label: 'CDC', icon: '🔬' },
+  { id: 'OPTIC', label: 'Optik', icon: '👓' },
+];
 
 export default function ReportsPage() {
-  const [summary, setSummary] = useState<any>(null);
-  const [unitData, setUnitData] = useState<any[]>([]);
-  const [doctorData, setDoctorData] = useState<any[]>([]);
-  const [detailData, setDetailData] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('ADMISSION');
+  const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   // Filters
@@ -24,27 +30,16 @@ export default function ReportsPage() {
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [unitType, setUnitType] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const params = { startDate, endDate, unitType: unitType || undefined };
-      
-      const [sumRes, unitRes, docRes, detailRes] = await Promise.all([
-        api.get('/reports/journey-summary', { params }),
-        api.get('/reports/unit-summary', { params }),
-        api.get('/reports/doctor-summary', { params }),
-        api.get('/reports/journey-detail', { params: { ...params, limit: 100 } })
-      ]);
-
-      setSummary(sumRes.data);
-      setUnitData(unitRes.data);
-      setDoctorData(docRes.data);
-      setDetailData(detailRes.data.data);
+      const res = await api.get(`/reports/unit-detailed/${activeTab}`, {
+        params: { startDate, endDate },
+      });
+      setReportData(res.data);
     } catch (error) {
       console.error('Failed to fetch reports', error);
-      alert('Gagal memuat data laporan');
     } finally {
       setLoading(false);
     }
@@ -52,201 +47,111 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate, unitType]);
+  }, [startDate, endDate, activeTab]);
 
   const handleExportExcel = async () => {
     try {
       const res = await api.get('/reports/export-excel', {
-        params: { startDate, endDate, unitType: unitType || undefined },
+        params: { startDate, endDate, unitType: activeTab },
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Laporan_Perjalanan_Pasien_${startDate}_${endDate}.xlsx`);
+      link.setAttribute('download', `Laporan_${activeTab}_${startDate}_${endDate}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
-    } catch (error) {
-      alert('Gagal export Excel');
+    } catch (err) {
+      alert('Gagal export data');
     }
   };
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF('landscape');
-    
-    doc.setFontSize(16);
-    doc.text('Laporan Perjalanan Pasien (Orbita)', 14, 15);
-    doc.setFontSize(11);
-    doc.text(`Periode: ${startDate} s/d ${endDate}`, 14, 22);
+  // Prepare chart data
+  const chartData = reportData ? Object.keys(reportData.hourlyDistribution).map(hour => ({
+    hour: `${hour}:00`,
+    pasien: reportData.hourlyDistribution[Number(hour)]
+  })) : [];
 
-    const tableColumn = ["No. Tiket", "Tipe", "Unit", "Lantai", "Ruangan", "Dokter", "Tunggu (Mnt)", "Layanan (Mnt)"];
-    const tableRows: any[] = [];
-
-    detailData.forEach(item => {
-      const rowData = [
-        item.visit?.queueTicket?.ticketNo || '-',
-        item.visit?.patientType || '-',
-        item.unitType,
-        item.floor?.name || '-',
-        item.room?.name || '-',
-        item.doctor?.doctorName || '-',
-        item.waitingDurationSeconds ? Math.round(item.waitingDurationSeconds / 60) : 0,
-        item.serviceDurationSeconds ? Math.round(item.serviceDurationSeconds / 60) : 0,
-      ];
-      tableRows.push(rowData);
-    });
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 30,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [40, 167, 69] }
-    });
-
-    doc.save(`Laporan_Orbita_${startDate}_${endDate}.pdf`);
-  };
-
-  const formatMinutes = (seconds: number) => Math.round((seconds || 0) / 60);
+  const formatMins = (sec: number) => Math.round(sec / 60);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.page}>
       <div className={styles.header}>
-        <h1>Historical Analytics & Reports</h1>
-        <div className={styles.exportButtons}>
-          <button onClick={handleExportExcel} className={styles.btnExportExcel}>
-            Download Excel
+        <div className={styles.headerTitle}>
+          <h1>📉 Analytics Reports</h1>
+          <p>Laporan detail kinerja per unit layanan</p>
+        </div>
+        <div className={styles.filters}>
+          <div className="form-group mb-0">
+            <label className="form-label" style={{ fontSize: '12px' }}>Dari Tanggal</label>
+            <input type="date" className="form-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div className="form-group mb-0">
+            <label className="form-label" style={{ fontSize: '12px' }}>Sampai Tanggal</label>
+            <input type="date" className="form-input" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+          <button className="btn btn-primary" onClick={handleExportExcel} style={{ alignSelf: 'flex-end', height: '42px' }}>
+            📥 Export Excel
           </button>
-          <button onClick={handleExportPDF} className={styles.btnExportPdf}>
-            Download PDF
+        </div>
+      </div>
+
+      <div className={styles.tabs}>
+        {UNITS.map(unit => (
+          <button
+            key={unit.id}
+            className={`${styles.tabBtn} ${activeTab === unit.id ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab(unit.id)}
+          >
+            {unit.icon} {unit.label}
           </button>
-        </div>
+        ))}
       </div>
 
-      <div className={styles.filterCard}>
-        <div className={styles.filterGroup}>
-          <label>Tanggal Mulai</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-        </div>
-        <div className={styles.filterGroup}>
-          <label>Tanggal Akhir</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-        </div>
-        <div className={styles.filterGroup}>
-          <label>Unit Pelayanan</label>
-          <select value={unitType} onChange={e => setUnitType(e.target.value)}>
-            <option value="">Semua Unit</option>
-            <option value="ADMISSION">Admisi</option>
-            <option value="ASSESSMENT">Pengkajian</option>
-            <option value="BDR">BDR</option>
-            <option value="DOCTOR">Dokter/Poli</option>
-            <option value="CDC">CDC</option>
-            <option value="CASHIER">Kasir</option>
-            <option value="PHARMACY">Farmasi</option>
-            <option value="OPTIC">Optik</option>
-          </select>
-        </div>
-        <button onClick={fetchData} className={styles.btnFilter} disabled={loading}>
-          {loading ? 'Memuat...' : 'Terapkan Filter'}
-        </button>
-      </div>
+      <div className={styles.content}>
+        {loading ? (
+          <div className={styles.loading}>Memuat data laporan...</div>
+        ) : reportData ? (
+          <div className={styles.reportContainer}>
+            {/* KPI Cards */}
+            <div className={styles.kpiGrid}>
+              <div className={`${styles.kpiCard} ${styles.kpiPrimary}`}>
+                <h3>Total Pasien Selesai</h3>
+                <div className={styles.kpiValue}>{reportData.totalPatients} <span className={styles.kpiUnit}>pasien</span></div>
+              </div>
+              <div className={`${styles.kpiCard} ${styles.kpiWarning}`}>
+                <h3>Waktu Tunggu (Rata-rata)</h3>
+                <div className={styles.kpiValue}>{formatMins(reportData.avgWaitSeconds)} <span className={styles.kpiUnit}>menit</span></div>
+                <div className={styles.kpiSub}>Tercepat: {formatMins(reportData.minWaitSeconds)}m | Terlama: {formatMins(reportData.maxWaitSeconds)}m</div>
+              </div>
+              <div className={`${styles.kpiCard} ${styles.kpiSuccess}`}>
+                <h3>Waktu Layanan (Rata-rata)</h3>
+                <div className={styles.kpiValue}>{formatMins(reportData.avgServeSeconds)} <span className={styles.kpiUnit}>menit</span></div>
+                <div className={styles.kpiSub}>Tercepat: {formatMins(reportData.minServeSeconds)}m | Terlama: {formatMins(reportData.maxServeSeconds)}m</div>
+              </div>
+            </div>
 
-      {summary && (
-        <div className={styles.kpiGrid}>
-          <div className={styles.kpiCard}>
-            <h3>Total Sesi Selesai</h3>
-            <p className={styles.kpiValue}>{summary.totalPatients}</p>
+            {/* Chart */}
+            <div className={`glass-card ${styles.chartCard}`}>
+              <h3>📊 Distribusi Pasien Per Jam</h3>
+              <p className={styles.chartSub}>Menunjukkan jam sibuk di unit {UNITS.find(u => u.id === activeTab)?.label}</p>
+              <div className={styles.chartWrapper}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                    <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="pasien" name="Jumlah Pasien" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
-          <div className={styles.kpiCard}>
-            <h3>Rata-rata Waktu Tunggu</h3>
-            <p className={styles.kpiValue}>{formatMinutes(summary.avgWaitSeconds)} Menit</p>
-          </div>
-          <div className={styles.kpiCard}>
-            <h3>Rata-rata Durasi Layanan</h3>
-            <p className={styles.kpiValue}>{formatMinutes(summary.avgServeSeconds)} Menit</p>
-          </div>
-          <div className={styles.kpiCard}>
-            <h3>Max Waktu Tunggu</h3>
-            <p className={styles.kpiValue}>{formatMinutes(summary.maxWaitSeconds)} Menit</p>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.chartsGrid}>
-        <div className={styles.chartCard}>
-          <h3>Rata-rata Waktu (Menit) per Unit</h3>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <BarChart data={unitData.map(d => ({
-                name: d.unitType,
-                Tunggu: formatMinutes(d.avgWaitSeconds),
-                Layanan: formatMinutes(d.avgServeSeconds)
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip />
-                <Legend />
-                <Bar dataKey="Tunggu" fill="#ffc107" />
-                <Bar dataKey="Layanan" fill="#28a745" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className={styles.chartCard}>
-          <h3>Performa Dokter (Top Wait & Serve Time)</h3>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <BarChart data={doctorData.map(d => ({
-                name: d.doctorName.substring(0, 10) + '...',
-                Tunggu: formatMinutes(d.avgWaitSeconds),
-                Layanan: formatMinutes(d.avgServeSeconds)
-              }))}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <RechartsTooltip />
-                <Legend />
-                <Bar dataKey="Tunggu" fill="#dc3545" />
-                <Bar dataKey="Layanan" fill="#17a2b8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.tableCard}>
-        <h3>Data Detail Perjalanan (Terbaru 100 Data)</h3>
-        <table className={styles.dataTable}>
-          <thead>
-            <tr>
-              <th>Waktu Daftar</th>
-              <th>Tiket</th>
-              <th>Tipe</th>
-              <th>Unit</th>
-              <th>Dokter</th>
-              <th>Loket/Ruang</th>
-              <th>Waktu Tunggu</th>
-              <th>Durasi Layanan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {detailData.map((item, idx) => (
-              <tr key={item.id || idx}>
-                <td>{item.createdAt ? new Date(item.createdAt).toLocaleString('id-ID') : '-'}</td>
-                <td>{item.visit?.queueTicket?.ticketNo || '-'}</td>
-                <td>{item.visit?.patientType || '-'}</td>
-                <td>{item.unitType}</td>
-                <td>{item.doctor?.doctorName || '-'}</td>
-                <td>{item.counter?.name || item.room?.name || '-'}</td>
-                <td>{formatMinutes(item.waitingDurationSeconds)} mnt</td>
-                <td>{formatMinutes(item.serviceDurationSeconds)} mnt</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        ) : (
+          <div className={styles.empty}>Tidak ada data laporan.</div>
+        )}
       </div>
     </div>
   );

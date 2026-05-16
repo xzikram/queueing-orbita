@@ -16,6 +16,8 @@ const menuItems = [
   { label: 'Farmasi', path: '/dashboard/pharmacy', icon: '💊', roles: ['ADMIN', 'PHARMACY'] },
   { label: 'Optik', path: '/dashboard/optic', icon: '👓', roles: ['ADMIN', 'OPTIC'] },
   { type: 'divider' },
+  { label: 'Counter Management', path: '/dashboard/counter-management', icon: '🔧', roles: ['ADMIN', 'KEPALA_ADMISI'] },
+  { type: 'divider' },
   { label: 'Master Data', icon: '⚙️', roles: ['ADMIN'], children: [
     { label: 'Users', path: '/dashboard/master/users', icon: '👤' },
     { label: 'Dokter', path: '/dashboard/master/doctors', icon: '🩺' },
@@ -36,8 +38,10 @@ const menuItems = [
     { label: 'TV Lantai 5', path: '/display/lantai/5', icon: '📺', external: true },
     { label: 'TV Lantai 6', path: '/display/lantai/6', icon: '📺', external: true },
     { label: 'TV Lantai 7', path: '/display/lantai/7', icon: '📺', external: true },
+    { label: 'TV Farmasi', path: '/display/farmasi', icon: '💊', external: true },
   ]},
-  { label: 'Kiosk', path: '/kiosk', icon: '🎫', roles: ['ADMIN', 'QUEUE_OFFICER'], external: true },
+  { label: 'Kiosk Admisi', path: '/kiosk', icon: '🎫', roles: ['ADMIN', 'QUEUE_OFFICER'], external: true },
+  { label: 'Kiosk Kasir', path: '/kiosk/kasir', icon: '🧾', roles: ['ADMIN', 'QUEUE_OFFICER', 'KEPALA_ADMISI'], external: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

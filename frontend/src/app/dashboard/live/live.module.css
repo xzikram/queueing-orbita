@@ -55,14 +55,14 @@
 
 .topStatsGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 24px;
   margin-bottom: 40px;
 }
 
 @media (max-width: 768px) {
   .topStatsGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -73,6 +73,10 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   text-align: center;
   border-bottom: 4px solid #2563eb;
+}
+
+.topStatFinished {
+  border-bottom-color: #10b981;
 }
 
 .topStatCard h3 {
@@ -88,6 +92,34 @@
   font-weight: 800;
   color: #0f172a;
 }
+
+.pulseDotConnected {
+  background-color: #10b981;
+}
+
+.pulseDotDisconnected {
+  background-color: #ef4444;
+  animation: none !important;
+}
+
+.unitBreakdown {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 20px 16px;
+  font-size: 12px;
+}
+
+.breakdownWaiting {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.breakdownServing {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
 
 .sectionTitle {
   font-size: 20px;

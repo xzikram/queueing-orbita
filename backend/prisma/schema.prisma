@@ -23,6 +23,7 @@ enum UserRole {
   OPTIC
   MANAGEMENT
   QUEUE_OFFICER
+  KEPALA_ADMISI
 }
 
 enum PatientType {
@@ -122,22 +123,26 @@ model User {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  importBatches ScheduleImportBatch[]
+  importBatches    ScheduleImportBatch[]
+  assignedCounters Counter[]
 
   @@map("users")
 }
 
 model Counter {
-  id               String  @id @default(uuid())
-  code             String  @unique
-  name             String
-  canHandleAdmission Boolean @default(true) @map("can_handle_admission")
-  canHandleCashier   Boolean @default(true) @map("can_handle_cashier")
-  isActive         Boolean @default(true) @map("is_active")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  canHandleAdmission Boolean  @default(true) @map("can_handle_admission")
+  canHandleCashier   Boolean  @default(true) @map("can_handle_cashier")
+  assignedRole       String?  @map("assigned_role")
+  assignedUserId     String?  @map("assigned_user_id")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   // Relations
+  assignedUser    User?                @relation(fields: [assignedUserId], references: [id])
   journeySessions JourneyUnitSession[]
 
   @@map("counters")
@@ -395,6 +400,7 @@ model Display {
   videoPlaylist VideoPlaylist? @relation(fields: [videoPlaylistId], references: [id])
   rooms         Room[]
   callLogs      DisplayCallLog[]
+  videoTargets  VideoDisplayTarget[]
 
   @@map("displays")
 }
@@ -442,21 +448,40 @@ model VideoPlaylistItem {
   isActive        Boolean @default(true) @map("is_active")
 
   // Relations
-  playlist VideoPlaylist @relation(fields: [playlistId], references: [id])
+  playlist VideoPlaylist        @relation(fields: [playlistId], references: [id])
+  targets  VideoDisplayTarget[]
 
   @@map("video_playlist_items")
 }
 
+model VideoDisplayTarget {
+  id          String @id @default(uuid())
+  videoItemId String @map("video_item_id")
+  displayId   String @map("display_id")
+
+  videoItem VideoPlaylistItem @relation(fields: [videoItemId], references: [id], onDelete: Cascade)
+  display   Display           @relation(fields: [displayId], references: [id], onDelete: Cascade)
+
+  @@unique([videoItemId, displayId])
+  @@map("video_display_targets")
+}
+
 model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String?  @map("user_id")
-  action    String
-  entity    String
-  entityId  String?  @map("entity_id")
-  oldValue  String?  @map("old_value")
-  newValue  String?  @map("new_value")
-  reason    String?
-  timestamp DateTime @default(now())
+  id               String   @id @default(uuid())
+  userId           String?  @map("user_id")
+  userName         String?  @map("user_name")
+  action           String
+  entity           String
+  entityId         String?  @map("entity_id")
+  humanDescription String?  @map("human_description")
+  ticketNo         String?  @map("ticket_no")
+  patientName      String?  @map("patient_name")
+  unitType         String?  @map("unit_type")
+  counterName      String?  @map("counter_name")
+  oldValue         String?  @map("old_value")
+  newValue         String?  @map("new_value")
+  reason           String?
+  timestamp        DateTime @default(now())
 
   // Relations (optional, user might be deleted so we don't strict enforce)
   
