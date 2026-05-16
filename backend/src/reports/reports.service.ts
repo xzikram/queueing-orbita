@@ -267,7 +267,7 @@ export class ReportsService {
 
   async getUnitDetailedReport(unitType: string, query: any) {
     const where: Prisma.JourneyUnitSessionWhereInput = {
-      unitType,
+      unitType: unitType as any,
       status: 'FINISHED',
       waitingDurationSeconds: { not: null },
       serviceDurationSeconds: { not: null },

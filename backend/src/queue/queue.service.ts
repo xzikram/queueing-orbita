@@ -202,6 +202,9 @@ export class QueueService {
 
       const v = await prisma.visit.create({
         data: {
+          visitCode: `V-${ticketNo}-${Date.now()}`,
+          visitDate: today,
+          patientType: data.patientType,
           queueTicketId: t.id,
           currentUnitType: 'CASHIER',
           currentStatus: 'WAITING',

@@ -30,7 +30,7 @@ export class AuditInterceptor implements NestInterceptor {
             
             // Build human description
             let humanDesc = `Melakukan aksi ${method} pada ${entity}`;
-            let unitType = null;
+            let unitType: string | null = null;
 
             if (url.includes('/call')) {
               humanDesc = `Memanggil pasien ke counter`;
