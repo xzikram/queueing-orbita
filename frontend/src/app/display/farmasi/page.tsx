@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getSocket, joinDisplay } from '@/lib/socket';
 import api from '@/lib/api';
-import styles from '../admisi/display.module.css';
+import styles from './farmasi.module.css';
 
 interface CallData {
   ticketNo: string;
