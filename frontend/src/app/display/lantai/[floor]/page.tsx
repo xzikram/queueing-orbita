@@ -349,7 +349,7 @@ export default function FloorDisplayPage() {
               <div className={styles.currentCallCard} style={{ padding: '16px', borderRadius: '16px', minHeight: 'auto', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
                 <div className={styles.currentLabel} style={{ fontSize: '0.8rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
                 <div className={styles.currentNo} style={{ fontSize: '3rem' }}>{recentPoli[0].ticketNo}</div>
-                <div className={styles.currentDest} style={{ fontSize: '1.2rem', marginTop: '4px' }}>{recentPoli[0].roomName}</div>
+                <div className={styles.currentDest} style={{ fontSize: '1.2rem', marginTop: '4px' }}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
               </div>
             ) : (
               <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '16px', borderRadius: '16px', minHeight: 'auto', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
@@ -362,10 +362,10 @@ export default function FloorDisplayPage() {
                 {recentPoli.length === 0 ? (
                   <div className={styles.emptySection}>Kosong</div>
                 ) : (
-                  recentPoli.slice(1).map((call, idx) => (
+                  recentPoli.slice(1).map((call: any, idx) => (
                     <div key={idx} className={styles.callItem}>
                       <span className={styles.callNo}>{call.ticketNo}</span>
-                      <span className={styles.callRoom}>{call.roomName}</span>
+                      <span className={styles.callRoom}>{call.roomName || call.targetRoom}</span>
                     </div>
                   ))
                 )}
