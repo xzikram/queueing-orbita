@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import styles from './login.module.css';
-import Logo from '@/components/Logo';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,9 +40,9 @@ export default function LoginPage() {
       <div className={styles.card}>
         <div className={styles.logo}>
           <div className={styles.logoIcon}>
-            <Logo size={40} />
+            <img src="/Logo RS JEC ORBITA.png" alt="JEC ORBITA Logo" className={styles.logoImage} />
           </div>
-          <h1 className={styles.title}>Orbita Queue</h1>
+          <h1 className={styles.title}>Sistem Antrian Terpadu</h1>
           <p className={styles.subtitle}>Queue Journey Management System</p>
         </div>
 
@@ -55,7 +54,7 @@ export default function LoginPage() {
             <input
               type="email"
               className="form-input"
-              placeholder="admin@orbita.com"
+              placeholder="admin@jec-orbita.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -79,10 +78,6 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <div className={styles.footer}>
-          <span>Default: admin@orbita.com / admin123</span>
-        </div>
       </div>
     </div>
   );
