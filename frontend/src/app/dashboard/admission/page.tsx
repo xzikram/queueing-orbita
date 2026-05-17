@@ -16,6 +16,8 @@ export default function AdmissionPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [counters, setCounters] = useState<any[]>([]);
   const [selectedCounter, setSelectedCounter] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [tempCounter, setTempCounter] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   // Patient data modal
   const [patientModal, setPatientModal] = useState<any>(null);
@@ -53,9 +55,21 @@ export default function AdmissionPage() {
       const res = await api.get('/counters');
       const c = res.data.filter((c: any) => c.canHandleAdmission && c.isActive);
       setCounters(c);
-      if (c.length > 0) setSelectedCounter(c[0].id);
+      
+      const saved = localStorage.getItem('activeAdmissionCounter');
+      if (saved) {
+        setSelectedCounter(saved);
+        setIsLocked(true);
+      }
     } catch {}
   }, []);
+
+  const saveCounterLock = () => {
+    if (!tempCounter) return alert('Silakan pilih counter');
+    localStorage.setItem('activeAdmissionCounter', tempCounter);
+    setSelectedCounter(tempCounter);
+    setIsLocked(true);
+  };
 
   useEffect(() => {
     loadQueue();
@@ -176,15 +190,32 @@ export default function AdmissionPage() {
 
   return (
     <div className={styles.page}>
-      {/* Counter Selector */}
-      <div className={`glass-card ${styles.counterBar}`}>
-        <label className={styles.counterLabel}>Counter Aktif:</label>
-        <div className={styles.counterSelect}>
-          {counters.map(c => (
-            <button key={c.id} className={`${styles.counterBtn} ${selectedCounter === c.id ? styles.counterActive : ''}`} onClick={() => setSelectedCounter(c.id)}>{c.name}</button>
-          ))}
+      {!isLocked && counters.length > 0 && (
+        <div className={styles.modalOverlay} style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', zIndex: 9999 }}>
+          <div className={styles.modal} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 className={styles.modalTitle} style={{ fontSize: '1.5rem', marginBottom: '20px' }}>🔒 Kunci Sesi Counter</h3>
+            <p style={{ marginBottom: '20px', color: '#475569' }}>Silakan pilih counter tempat Anda bertugas saat ini.</p>
+            <div className="form-group">
+              <select className="form-input" value={tempCounter} onChange={e => setTempCounter(e.target.value)} style={{ padding: '12px', fontSize: '1rem' }}>
+                <option value="">-- Pilih Counter Admisi --</option>
+                {counters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: '10px', padding: '12px', fontSize: '1rem' }} onClick={saveCounterLock}>Mulai Sesi Jaga</button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {isLocked && (
+        <div className={`glass-card ${styles.counterBar}`} style={{ background: '#ecfdf5', borderColor: '#10b981' }}>
+          <span className={styles.counterLabel} style={{ color: '#047857' }}>
+            📍 Counter Aktif: <strong>{counters.find(c => c.id === selectedCounter)?.name}</strong>
+          </span>
+          <span style={{ fontSize: '0.85rem', color: '#059669', marginLeft: 'auto' }}>
+            (Untuk pindah counter, silakan Logout lalu Login kembali)
+          </span>
+        </div>
+      )}
 
       <div className={styles.columns}>
         {/* Waiting Queue */}

@@ -24,6 +24,15 @@ export default function SchedulesPage() {
     catch(err) { console.error(err); }
   };
 
+  const formatTime = (t: string) => {
+    if (!t) return '';
+    if (t.includes('GMT')) {
+      const d = new Date(t);
+      if (!isNaN(d.getTime())) return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    return t;
+  };
+
   useEffect(() => { load(); }, [load]);
 
   const doImport = async () => {
@@ -108,7 +117,7 @@ export default function SchedulesPage() {
             <td><strong>{s.doctor?.doctorName}</strong></td>
             <td>{s.room?.name}</td>
             <td>{s.floor?.name}</td>
-            <td>{s.startTime} - {s.endTime}</td>
+            <td>{formatTime(s.startTime)} - {formatTime(s.endTime)}</td>
             <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':'badge-danger'}`}>{s.status}</span></td>
           </tr>
         ))}</tbody></table>

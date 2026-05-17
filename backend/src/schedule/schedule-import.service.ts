@@ -2,6 +2,22 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
 
+function parseExcelTime(value: any): string {
+  if (!value) return '';
+  if (value instanceof Date) {
+    return value.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+  if (typeof value === 'object' && value.result) {
+    return parseExcelTime(value.result);
+  }
+  const str = String(value).trim();
+  if (str.includes('GMT')) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+  return str;
+}
+
 @Injectable()
 export class ScheduleImportService {
   constructor(private prisma: PrismaService) {}
@@ -39,8 +55,8 @@ export class ScheduleImportService {
         rowNum,
         scheduleDate: row.getCell(1).value,
         doctorName: String(row.getCell(2).value || '').trim(),
-        startTime: String(row.getCell(3).value || '').trim(),
-        endTime: String(row.getCell(4).value || '').trim(),
+        startTime: parseExcelTime(row.getCell(3).value),
+        endTime: parseExcelTime(row.getCell(4).value),
         roomQuery: String(row.getCell(5).value || '').trim(),
         quota: 999, // Hardcoded since quota is no longer managed by users
       });
