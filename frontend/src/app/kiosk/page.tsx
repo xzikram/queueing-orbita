@@ -261,37 +261,18 @@ export default function KioskPage() {
               ) : (
                 <div className={styles.doctorGrid}>
                   {schedules.map(s => {
-                    const isFull = s.bookedCount >= s.quota;
-                    const pctUsed = Math.min((s.bookedCount / s.quota) * 100, 100);
                     return (
                       <button
                         key={s.id}
-                        className={`${styles.doctorCard} ${isFull ? styles.doctorFull : ''}`}
-                        onClick={() => !isFull && generateTicket(s.id)}
-                        disabled={isFull || loading}
+                        className={styles.doctorCard}
+                        onClick={() => generateTicket(s.id)}
+                        disabled={loading}
                       >
                         <div className={styles.doctorName}>{s.doctor.doctorName}</div>
                         <div className={styles.doctorMeta}>
                           <span>🚪 {s.room?.name}</span>
                           <span>🕐 {formatTime(s.startTime)} - {formatTime(s.endTime)}</span>
                         </div>
-                        <div className={styles.doctorQuota}>
-                          <div className={styles.quotaBar}>
-                            <div
-                              className={styles.quotaFill}
-                              style={{
-                                width: `${pctUsed}%`,
-                                background: pctUsed > 80
-                                  ? 'linear-gradient(90deg, #f59e0b, #ef4444)'
-                                  : 'linear-gradient(90deg, var(--primary-400), var(--primary-600))',
-                              }}
-                            />
-                          </div>
-                          <span className={styles.quotaText}>
-                            {s.bookedCount}/{s.quota}
-                          </span>
-                        </div>
-                        {isFull && <div className={styles.fullLabel}>PENUH</div>}
                       </button>
                     );
                   })}

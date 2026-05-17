@@ -42,7 +42,7 @@ export class ScheduleImportService {
         startTime: String(row.getCell(3).value || '').trim(),
         endTime: String(row.getCell(4).value || '').trim(),
         roomQuery: String(row.getCell(5).value || '').trim(),
-        quota: Number(row.getCell(6).value) || 40,
+        quota: 999, // Hardcoded since quota is no longer managed by users
       });
     });
 
@@ -132,7 +132,6 @@ export class ScheduleImportService {
       { header: 'Mulai Poli (HH:mm)', key: 'startTime', width: 20 },
       { header: 'Selesai Poli (HH:mm)', key: 'endTime', width: 20 },
       { header: 'Ruangan', key: 'room', width: 15 },
-      { header: 'Kuota', key: 'quota', width: 10 },
     ];
     // Sample row
     const tomorrow = new Date();
@@ -143,7 +142,6 @@ export class ScheduleImportService {
       startTime: '08:00',
       endTime: '12:00',
       room: '5A',
-      quota: 40,
     });
 
     return workbook.xlsx.writeBuffer();

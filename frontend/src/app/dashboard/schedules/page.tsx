@@ -100,7 +100,7 @@ export default function SchedulesPage() {
 
       {/* Schedule Table */}
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
-        <table className="data-table"><thead><tr><th>Tanggal</th><th>Hari</th><th>Dokter</th><th>Ruangan</th><th>Lantai</th><th>Jam</th><th>Kuota</th><th>Terisi</th><th>Status</th></tr></thead>
+        <table className="data-table"><thead><tr><th>Tanggal</th><th>Hari</th><th>Dokter</th><th>Ruangan</th><th>Lantai</th><th>Jam</th><th>Status</th></tr></thead>
         <tbody>{schedules.map((s:any)=>(
           <tr key={s.id}>
             <td>{new Date(s.scheduleDate).toLocaleDateString('id-ID')}</td>
@@ -109,8 +109,6 @@ export default function SchedulesPage() {
             <td>{s.room?.name}</td>
             <td>{s.floor?.name}</td>
             <td>{s.startTime} - {s.endTime}</td>
-            <td>{s.quota}</td>
-            <td>{s.bookedCount}</td>
             <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':'badge-danger'}`}>{s.status}</span></td>
           </tr>
         ))}</tbody></table>
