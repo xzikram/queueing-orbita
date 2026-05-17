@@ -41,6 +41,23 @@ export default function KioskPage() {
     }
   };
 
+  const isTimePassed = (endTimeStr: string) => {
+    if (!endTimeStr) return false;
+    // Extract HH:mm from formatTime
+    const timeStr = formatTime(endTimeStr);
+    const match = timeStr.match(/(\d+):(\d+)/);
+    if (!match) return false;
+    
+    const endHours = parseInt(match[1], 10);
+    const endMinutes = parseInt(match[2], 10);
+    const endTotal = endHours * 60 + endMinutes;
+    
+    const now = new Date();
+    const currentTotal = now.getHours() * 60 + now.getMinutes();
+    
+    return currentTotal > endTotal;
+  };
+
   const loadSchedules = useCallback(async () => {
     setLoadingSchedules(true);
     try {
@@ -261,18 +278,21 @@ export default function KioskPage() {
               ) : (
                 <div className={styles.doctorGrid}>
                   {schedules.map(s => {
+                    const passed = isTimePassed(s.endTime);
                     return (
                       <button
                         key={s.id}
-                        className={styles.doctorCard}
-                        onClick={() => generateTicket(s.id)}
-                        disabled={loading}
+                        className={`${styles.doctorCard} ${passed ? styles.doctorFull : ''}`}
+                        onClick={() => !passed && generateTicket(s.id)}
+                        disabled={loading || passed}
+                        style={passed ? { opacity: 0.6 } : undefined}
                       >
                         <div className={styles.doctorName}>{s.doctor.doctorName}</div>
                         <div className={styles.doctorMeta}>
                           <span>🚪 {s.room?.name}</span>
                           <span>🕐 {formatTime(s.startTime)} - {formatTime(s.endTime)}</span>
                         </div>
+                        {passed && <div className={styles.fullLabel}>JADWAL BERAKHIR</div>}
                       </button>
                     );
                   })}
