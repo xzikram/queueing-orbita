@@ -116,7 +116,7 @@ export class JourneyService {
   /**
    * Finish service
    */
-  async finishService(sessionId: string, data: { createdBy?: string }) {
+  async finishService(sessionId: string, data: { createdBy?: string; serviceName?: string }) {
     const now = new Date();
     const session = await this.prisma.journeyUnitSession.findUnique({ where: { id: sessionId } });
 
@@ -129,6 +129,7 @@ export class JourneyService {
       data: {
         serviceFinishedAt: now,
         serviceDurationSeconds: serviceDuration,
+        serviceName: data.serviceName,
         status: 'FINISHED',
         updatedBy: data.createdBy,
       },

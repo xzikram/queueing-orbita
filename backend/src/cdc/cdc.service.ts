@@ -43,14 +43,14 @@ export class CdcService {
     return { message: 'Layanan CDC dimulai' };
   }
 
-  async finishService(visitId: string, userId: string, nextUnitType?: string) {
+  async finishService(visitId: string, userId: string, nextUnitType?: string, serviceName?: string) {
     const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
     const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'CDC');
     if (!session) throw new BadRequestException('Sesi CDC tidak ditemukan');
 
-    await this.journeyService.finishService(session.id, { createdBy: userId });
+    await this.journeyService.finishService(session.id, { createdBy: userId, serviceName });
 
     // Dynamic routing — use provided nextUnitType or default (CASHIER)
     const nextUnit = nextUnitType || this.routingService.getDefaultNextUnit('CDC') || 'CASHIER';

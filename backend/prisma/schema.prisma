@@ -335,6 +335,7 @@ model JourneyUnitSession {
   serviceFinishedAt     DateTime?     @map("service_finished_at")
   waitingDurationSeconds Int?         @map("waiting_duration_seconds")
   serviceDurationSeconds Int?         @map("service_duration_seconds")
+  serviceName           String?       @map("service_name")
   status                SessionStatus @default(WAITING)
   isTimeEdited          Boolean       @default(false) @map("is_time_edited")
   editedReason          String?       @map("edited_reason")

@@ -18,6 +18,7 @@ export default function CdcPage() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [transferModal, setTransferModal] = useState<string | null>(null);
   const [transferReason, setTransferReason] = useState('');
+  const [serviceName, setServiceName] = useState('');
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/cdc/queue'); setQueue(res.data); }
@@ -39,10 +40,14 @@ export default function CdcPage() {
   };
 
   const finishWithDest = async (visitId: string, nextUnitType: string) => {
+    if (!serviceName) {
+      alert('Mohon pilih Jenis Pemeriksaan terlebih dahulu!');
+      return;
+    }
     setDestModal(null);
     setActionLoading(visitId);
     try {
-      await api.post(`/cdc/${visitId}/finish`, { nextUnitType });
+      await api.post(`/cdc/${visitId}/finish`, { nextUnitType, serviceName });
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
@@ -87,7 +92,7 @@ export default function CdcPage() {
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-success">SERVING</span></div>
                 <div className={styles.actionBtns}>
-                  <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setDestModal(v.id)} disabled={actionLoading === v.id}>✅ Selesai</button>
+                  <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setServiceName(''); setDestModal(v.id); }} disabled={actionLoading === v.id}>✅ Selesai</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                 </div>
               </div>
@@ -100,7 +105,29 @@ export default function CdcPage() {
       {destModal && (
         <div className={styles.modalOverlay} onClick={() => setDestModal(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>🗺️ Tujuan Setelah CDC</h3>
+            <h3 className={styles.modalTitle}>✅ Selesai Layanan CDC</h3>
+            
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label" style={{ fontWeight: 'bold' }}>Jenis Pemeriksaan *</label>
+              <select 
+                className="form-input" 
+                value={serviceName} 
+                onChange={(e) => setServiceName(e.target.value)}
+              >
+                <option value="">-- Pilih Jenis Pemeriksaan --</option>
+                <option value="OCT">OCT</option>
+                <option value="Foto Fundus">Foto Fundus</option>
+                <option value="Foto Fundus Non Midriaticum">Foto Fundus Non Midriaticum</option>
+                <option value="BIOMETRI">BIOMETRI</option>
+                <option value="Humphrey Visual Field">Humphrey Visual Field</option>
+                <option value="USG">USG</option>
+                <option value="Pentacam">Pentacam</option>
+                <option value="Robo Pachymetry">Robo Pachymetry</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+
+            <h4 style={{ marginBottom: '10px', color: '#1e293b' }}>Pilih Tujuan Selanjutnya:</h4>
             <div className={styles.destGrid}>
               {destinations.map(dest => (
                 <button key={dest.unitType} className={`${styles.destBtn} ${dest.isDefault ? styles.destDefault : ''}`} onClick={() => finishWithDest(destModal, dest.unitType)} style={dest.unitType === 'FINISHED' ? { gridColumn: '1 / -1' } : undefined}>

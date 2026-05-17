@@ -24,10 +24,10 @@ export class CdcController {
   @Post(':visitId/finish')
   finish(
     @Param('visitId') visitId: string,
-    @Body() body: { nextUnitType?: string },
+    @Body() body: { nextUnitType?: string; serviceName?: string },
     @Request() req: any,
   ) {
-    return this.service.finishService(visitId, req.user.id, body?.nextUnitType);
+    return this.service.finishService(visitId, req.user.id, body?.nextUnitType, body?.serviceName);
   }
 
   @Post(':visitId/transfer')
