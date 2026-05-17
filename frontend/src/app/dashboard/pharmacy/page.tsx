@@ -36,7 +36,7 @@ export default function PharmacyPage() {
           <div className={styles.queueList}>
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
                 {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <button className="btn btn-success btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'start-process')} disabled={actionLoading === v.id}>🧪 Siapkan Obat</button>
               </div>
@@ -50,7 +50,7 @@ export default function PharmacyPage() {
           <div className={styles.queueList}>
             {processing.length === 0 ? <div className={styles.empty}>Tidak ada</div> : processing.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-primary">PROCESSING</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-primary">PROCESSING</span></div>
                 {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'ready')} disabled={actionLoading === v.id}>✅ Obat Siap</button>
               </div>
@@ -64,7 +64,7 @@ export default function PharmacyPage() {
           <div className={styles.queueList}>
             {ready.length === 0 ? <div className={styles.empty}>Tidak ada</div> : ready.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>{v.currentStatus}</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>{v.currentStatus}</span></div>
                 {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <div className={styles.actionBtns}>
                   {v.currentStatus === 'READY' && <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>}
@@ -81,7 +81,7 @@ export default function PharmacyPage() {
           <div className={styles.queueList}>
             {pharmacyDone.length === 0 ? <div className={styles.empty}>Tidak ada pasien menunggu pulang</div> : pharmacyDone.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard}`} style={{ borderLeft: '4px solid #10b981' }}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-success">OBAT DISERAHKAN</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-success">OBAT DISERAHKAN</span></div>
                 {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <button 
                   className="btn btn-sm" 

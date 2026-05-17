@@ -88,7 +88,7 @@ export default function DoctorQueuePage() {
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
                 <div className={styles.ticketHeader}>
-                  <span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span>
+                  <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                   <span className="badge badge-warning">WAITING</span>
                 </div>
                 <div className={styles.ticketInfo}>
@@ -113,7 +113,7 @@ export default function DoctorQueuePage() {
                   return (
                     <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                       <div className={styles.ticketHeader}>
-                        <span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span>
+                        <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                         <span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span>
                       </div>
                       <div className={styles.ticketInfo}><span>🚪 {v.selectedRoom?.name}</span></div>
@@ -135,7 +135,7 @@ export default function DoctorQueuePage() {
                 {needDest.map((v: any) => (
                   <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                     <div className={styles.ticketHeader}>
-                      <span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span>
+                      <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                       <span className="badge badge-info">PILIH TUJUAN</span>
                     </div>
                     <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => setDestModal(v.id)}>🗺️ Pilih Tujuan</button>

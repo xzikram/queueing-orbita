@@ -70,7 +70,7 @@ export default function CdcPage() {
           <div className={styles.queueList}>
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
                 <div className={styles.ticketInfo}><span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span></div>
                 <div className={styles.actionBtns}>
                   <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai CDC</button>
@@ -85,7 +85,7 @@ export default function CdcPage() {
           <div className={styles.queueList}>
             {serving.length === 0 ? <div className={styles.empty}>Tidak ada</div> : serving.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-success">SERVING</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-success">SERVING</span></div>
                 <div className={styles.actionBtns}>
                   <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setDestModal(v.id)} disabled={actionLoading === v.id}>✅ Selesai</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>

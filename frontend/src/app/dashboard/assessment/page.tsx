@@ -94,7 +94,7 @@ export default function AssessmentPage() {
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada pasien menunggu</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
                 <div className={styles.ticketHeader}>
-                  <span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span>
+                  <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                   <span className="badge badge-warning">WAITING</span>
                 </div>
                 <div className={styles.ticketInfo}>
@@ -117,7 +117,7 @@ export default function AssessmentPage() {
             {serving.length === 0 ? <div className={styles.empty}>Tidak ada</div> : serving.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}>
-                  <span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span>
+                  <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                   <span className="badge badge-success">SERVING</span>
                 </div>
                 <div className={styles.ticketInfo}>

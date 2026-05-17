@@ -33,7 +33,7 @@ export default function OpticPage() {
           <div className={styles.queueList}>
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
                 <button className="btn btn-success btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai Optik</button>
               </div>
             ))}
@@ -44,7 +44,7 @@ export default function OpticPage() {
           <div className={styles.queueList}>
             {serving.length === 0 ? <div className={styles.empty}>Tidak ada</div> : serving.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.queueTicket?.ticketNo}</span><span className="badge badge-success">SERVING</span></div>
+                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-success">SERVING</span></div>
                 <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai (Pulang)</button>
               </div>
             ))}
