@@ -47,7 +47,9 @@ export default function VideoManagementPage() {
 
     try {
       await api.post('/video/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 'Content-Type': undefined },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
       });
       fetchVideos();
     } catch (err: any) {

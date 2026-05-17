@@ -10,10 +10,18 @@ export default function CountersPage() {
   const [selected, setSelected] = useState<any>(null);
   const [form, setForm] = useState({ name: '', code: '', canHandleAdmission: true, canHandleCashier: false, isActive: true });
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    try { const res = await api.get('/counters'); setCounters(res.data); }
-    catch (err) { console.error(err); }
+    try { 
+      setFetchError(null);
+      const res = await api.get('/counters'); 
+      setCounters(res.data); 
+    }
+    catch (err: any) { 
+      console.error('Failed to load counters:', err);
+      setFetchError(err.response?.data?.message || err.message || 'Gagal memuat data counter');
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -45,6 +53,12 @@ export default function CountersPage() {
         <div className={styles.toolbarLeft}><h3 style={{ color: 'var(--gray-200)', fontWeight: 600 }}>Counter ({counters.length})</h3></div>
         <button className="btn btn-primary" onClick={openCreate}>+ Tambah Counter</button>
       </div>
+      {fetchError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', margin: '0 0 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ color: '#dc2626', fontSize: '0.9rem' }}>⚠️ {fetchError}</span>
+          <button className="btn btn-secondary btn-sm" onClick={load} style={{ marginLeft: 12 }}>🔄 Retry</button>
+        </div>
+      )}
       <div className={`glass-card ${styles.tableCard}`}>
         <div className={styles.tableWrap}>
           <table className="data-table">

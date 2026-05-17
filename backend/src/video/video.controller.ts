@@ -77,8 +77,9 @@ export class VideoController {
         cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
       },
     }),
+    limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB max
     fileFilter: (req, file, cb) => {
-      if (file.mimetype.match(/\/(mp4|webm|ogg)$/)) {
+      if (file.mimetype.startsWith('video/')) {
         cb(null, true);
       } else {
         cb(new BadRequestException('Only video files are allowed!'), false);

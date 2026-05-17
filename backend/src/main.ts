@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,11 +11,16 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // CORS
+  // CORS - allow all origins for LAN access
+  const corsOrigin = configService.get<string>('CORS_ORIGIN', '*');
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(o => o.trim()),
     credentials: true,
   });
+
+  // Increase body size limit for video uploads
+  app.use(json({ limit: '200mb' }));
+  app.use(urlencoded({ extended: true, limit: '200mb' }));
 
   // Validation pipe
   app.useGlobalPipes(
