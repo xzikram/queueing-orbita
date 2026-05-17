@@ -37,6 +37,7 @@ export default function DisplayFarmasiPage() {
     if (videoRef.current) {
       videoRef.current.volume = videoVolumeRef.current;
       videoRef.current.muted = videoVolumeRef.current === 0;
+      videoRef.current.play().catch(e => console.error("Autoplay blocked:", e));
     }
   };
 
@@ -137,6 +138,7 @@ export default function DisplayFarmasiPage() {
 
   useEffect(() => {
     loadInitialData();
+    const dataInterval = setInterval(loadInitialData, 5000);
     const socket = getSocket();
 
     socket.on('connect', () => {
@@ -196,6 +198,7 @@ export default function DisplayFarmasiPage() {
       socket.off('connect');
       socket.off('disconnect');
       clearInterval(clockInterval);
+      clearInterval(dataInterval);
     };
   }, [loadInitialData, playBell]);
 

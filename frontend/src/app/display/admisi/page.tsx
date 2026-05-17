@@ -38,6 +38,7 @@ export default function DisplayAdmisiKasirPage() {
     if (videoRef.current) {
       videoRef.current.volume = videoVolumeRef.current;
       videoRef.current.muted = videoVolumeRef.current === 0;
+      videoRef.current.play().catch(e => console.error("Autoplay blocked:", e));
     }
   };
 
@@ -159,6 +160,7 @@ export default function DisplayAdmisiKasirPage() {
 
   useEffect(() => {
     loadInitialData();
+    const dataInterval = setInterval(loadInitialData, 5000);
 
     const socket = getSocket();
 
@@ -221,6 +223,7 @@ export default function DisplayAdmisiKasirPage() {
       socket.off('connect');
       socket.off('disconnect');
       clearInterval(clockInterval);
+      clearInterval(dataInterval);
     };
   }, [loadInitialData, playBell]);
 
