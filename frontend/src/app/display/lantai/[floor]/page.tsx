@@ -286,7 +286,7 @@ export default function FloorDisplayPage() {
                   <div key={idx} className={styles.waitingItem}>
                     <div className={styles.waitingNo}>{w.ticketNo}</div>
                     <div className={styles.waitingInfo}>
-                      <div className={styles.waitingName}>{w.patientName || 'Anonim'}</div>
+                      {w.patientName && <div className={styles.waitingName}>{w.patientName}</div>}
                       <div className={styles.waitingDest}>{w.unitType === 'BDR' ? 'BDR' : w.doctorName || w.roomName || 'Pengkajian'}</div>
                     </div>
                   </div>

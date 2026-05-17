@@ -257,7 +257,6 @@ export default function AdmissionPage() {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>👤 Data Pasien — {patientModal.ticketNo}</h3>
             <div className="form-group"><label className="form-label">No. Rekam Medis *</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Wajib diisi (Contoh: 000123)" /></div>
-            <div className="form-group"><label className="form-label">Nama Pasien (Opsional)</label><input className="form-input" value={patientForm.patientName} onChange={e => setPatientForm({ ...patientForm, patientName: e.target.value })} placeholder="Nama lengkap" /></div>
             <div className="form-group">
               <label className="form-label">Dokter Tujuan</label>
               <select className="form-select" value={patientForm.scheduleId} onChange={e => setPatientForm({ ...patientForm, scheduleId: e.target.value })}>
