@@ -19,7 +19,7 @@ export default function AdmissionPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   // Patient data modal
   const [patientModal, setPatientModal] = useState<any>(null);
-  const [patientForm, setPatientForm] = useState({ patientRmNo: '', patientName: '', patientDob: '', scheduleId: '' });
+  const [patientForm, setPatientForm] = useState({ patientRmNo: '', patientName: '', scheduleId: '' });
   const [schedules, setSchedules] = useState<any[]>([]);
   // Time correction modal
   const [timeModal, setTimeModal] = useState<any>(null);
@@ -98,8 +98,8 @@ export default function AdmissionPage() {
   };
 
   const finishService = async (ticket: any) => {
-    if (!ticket.visit?.patientName || !ticket.visit?.patientRmNo || !ticket.visit?.selectedScheduleId) {
-      alert('⚠️ Anda harus mengisi No. RM, Nama Pasien, dan memilih Dokter Tujuan sebelum menyelesaikan layanan.');
+    if (!ticket.visit?.patientRmNo || !ticket.visit?.selectedScheduleId) {
+      alert('⚠️ Anda harus mengisi No. RM dan memilih Dokter Tujuan sebelum menyelesaikan layanan.');
       openPatientModal(ticket);
       return;
     }
@@ -122,8 +122,7 @@ export default function AdmissionPage() {
     setPatientForm({
       patientRmNo: v?.patientRmNo || '',
       patientName: v?.patientName || '',
-      patientDob: v?.patientDob ? new Date(v.patientDob).toISOString().slice(0, 10) : '',
-      scheduleId: v?.selectedScheduleId || '',
+      scheduleId: v?.selectedScheduleId || ticket.selectedScheduleId || '',
     });
     setPatientModal(ticket);
   };
@@ -257,9 +256,8 @@ export default function AdmissionPage() {
         <div className={styles.modalOverlay} onClick={() => setPatientModal(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>👤 Data Pasien — {patientModal.ticketNo}</h3>
-            <div className="form-group"><label className="form-label">No. Rekam Medis</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Contoh: 000123" /></div>
-            <div className="form-group"><label className="form-label">Nama Pasien</label><input className="form-input" value={patientForm.patientName} onChange={e => setPatientForm({ ...patientForm, patientName: e.target.value })} placeholder="Nama lengkap" /></div>
-            <div className="form-group"><label className="form-label">Tanggal Lahir</label><input className="form-input" type="date" value={patientForm.patientDob} onChange={e => setPatientForm({ ...patientForm, patientDob: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">No. Rekam Medis *</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Wajib diisi (Contoh: 000123)" /></div>
+            <div className="form-group"><label className="form-label">Nama Pasien (Opsional)</label><input className="form-input" value={patientForm.patientName} onChange={e => setPatientForm({ ...patientForm, patientName: e.target.value })} placeholder="Nama lengkap" /></div>
             <div className="form-group">
               <label className="form-label">Dokter Tujuan</label>
               <select className="form-select" value={patientForm.scheduleId} onChange={e => setPatientForm({ ...patientForm, scheduleId: e.target.value })}>
