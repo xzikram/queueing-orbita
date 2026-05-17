@@ -47,6 +47,7 @@ export default function FloorDisplayPage() {
     if (videoRef.current) {
       videoRef.current.volume = videoVolumeRef.current;
       videoRef.current.muted = videoVolumeRef.current === 0;
+      videoRef.current.play().catch(e => console.error("Autoplay blocked:", e));
     }
   };
 
@@ -158,6 +159,7 @@ export default function FloorDisplayPage() {
 
   useEffect(() => {
     loadData();
+    const dataInterval = setInterval(loadData, 5000);
     const socket = getSocket();
 
     socket.on('connect', () => {
@@ -222,6 +224,7 @@ export default function FloorDisplayPage() {
       socket.off('connect');
       socket.off('disconnect');
       clearInterval(clockInterval);
+      clearInterval(dataInterval);
     };
   }, [displayCode, loadData, playBell]);
 
