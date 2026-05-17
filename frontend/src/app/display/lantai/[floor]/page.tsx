@@ -32,6 +32,15 @@ export default function FloorDisplayPage() {
   const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
   const [runningText, setRunningText] = useState(`Selamat datang di RS JEC ORBITA — Lantai ${floorNumber}. Mohon menunggu nomor antrian Anda dipanggil. • Selalu patuhi protokol kesehatan.`);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoVolume, setVideoVolume] = useState(0.3);
+  const videoVolumeRef = useRef(0.3);
+
+  useEffect(() => {
+    videoVolumeRef.current = videoVolume;
+    if (videoRef.current && !window.speechSynthesis.speaking) {
+      videoRef.current.volume = videoVolume;
+    }
+  }, [videoVolume]);
 
   const initAudio = () => {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -81,7 +90,7 @@ export default function FloorDisplayPage() {
       utterance.rate = 0.85;
 
       utterance.onend = () => {
-        if (videoRef.current) videoRef.current.volume = 1;
+        if (videoRef.current) videoRef.current.volume = videoVolumeRef.current;
       };
 
       window.speechSynthesis.speak(utterance);
@@ -126,6 +135,7 @@ export default function FloorDisplayPage() {
       // Load Display Config (Video + Ticker)
       const dRes = await api.get(`/displays/code/${displayCode}`).catch(() => ({ data: null }));
       if (dRes.data?.runningText) setRunningText(dRes.data.runningText);
+      if (dRes.data?.videoVolume !== undefined) setVideoVolume(dRes.data.videoVolume);
 
       // Load active videos for this specific display
       const videosRes = await api.get(`/video/active/${displayCode}`).catch(() => ({ data: [] }));
@@ -170,6 +180,10 @@ export default function FloorDisplayPage() {
       setCurrentVideoIdx(0);
     });
 
+    socket.on('videoVolumeUpdate', (vol: number) => {
+      setVideoVolume(vol);
+    });
+
     const handleQueueCall = (data: CallData) => {
       setCurrentCall(data);
       if (data.unitType === 'BDR') {
@@ -195,6 +209,8 @@ export default function FloorDisplayPage() {
       socket.off('queueCall', handleQueueCall);
       socket.off('settingUpdate');
       socket.off('playlistUpdate');
+      socket.off('playlistChanged');
+      socket.off('videoVolumeUpdate');
       socket.off('connect');
       socket.off('disconnect');
       clearInterval(clockInterval);

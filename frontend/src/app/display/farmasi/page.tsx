@@ -22,6 +22,15 @@ export default function DisplayFarmasiPage() {
   const [connected, setConnected] = useState(false);
   const [isAudioInit, setIsAudioInit] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoVolume, setVideoVolume] = useState(0.3);
+  const videoVolumeRef = useRef(0.3);
+
+  useEffect(() => {
+    videoVolumeRef.current = videoVolume;
+    if (videoRef.current && !window.speechSynthesis.speaking) {
+      videoRef.current.volume = videoVolume;
+    }
+  }, [videoVolume]);
 
   const initAudio = () => {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -70,7 +79,7 @@ export default function DisplayFarmasiPage() {
       utterance.rate = 0.85;
 
       utterance.onend = () => {
-        if (videoRef.current) videoRef.current.volume = 1.0;
+        if (videoRef.current) videoRef.current.volume = videoVolumeRef.current;
       };
 
       window.speechSynthesis.speak(utterance);
@@ -106,6 +115,7 @@ export default function DisplayFarmasiPage() {
 
       if (displayRes.data) {
         if (displayRes.data.runningText) setRunningText(displayRes.data.runningText);
+        if (displayRes.data.videoVolume !== undefined) setVideoVolume(displayRes.data.videoVolume);
       }
 
       const activeVideos = videosRes.data || [];
@@ -163,12 +173,18 @@ export default function DisplayFarmasiPage() {
       setCurrentVideoIdx(0);
     });
 
+    socket.on('videoVolumeUpdate', (vol: number) => {
+      setVideoVolume(vol);
+    });
+
     const clockInterval = setInterval(() => setTime(new Date()), 1000);
 
     return () => {
       socket.off('queueCall', handleQueueCall);
       socket.off('runningTextUpdate');
       socket.off('playlistUpdate');
+      socket.off('playlistChanged');
+      socket.off('videoVolumeUpdate');
       socket.off('connect');
       socket.off('disconnect');
       clearInterval(clockInterval);
@@ -176,7 +192,12 @@ export default function DisplayFarmasiPage() {
   }, [loadInitialData, playBell]);
 
   const handleVideoEnded = () => {
-    if (playlist.length > 0) {
+    if (playlist.length === 1) {
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      }
+    } else if (playlist.length > 1) {
       setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
     }
   };

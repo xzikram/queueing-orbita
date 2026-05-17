@@ -171,6 +171,11 @@ export class MasterService {
       this.displayGateway.server.to(updated.code).emit('playlistUpdate', playlistData.videoPlaylist);
     }
 
+    // Broadcast if video volume changed
+    if (data.videoVolume !== undefined && data.videoVolume !== old.videoVolume) {
+      this.displayGateway.server.to(updated.code).emit('videoVolumeUpdate', updated.videoVolume);
+    }
+
     return updated;
   }
 }

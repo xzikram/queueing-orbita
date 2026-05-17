@@ -12,6 +12,7 @@ export default function VideoManagementPage() {
 
   const [displays, setDisplays] = useState<any[]>([]);
   const [targetModal, setTargetModal] = useState<any>(null);
+  const [volumeSaving, setVolumeSaving] = useState<string | null>(null);
 
   const fetchDisplays = async () => {
     try {
@@ -105,6 +106,28 @@ export default function VideoManagementPage() {
     }
   };
 
+  const handleVolumeChange = (displayId: string, volume: number) => {
+    setDisplays(prev => prev.map(d => d.id === displayId ? { ...d, videoVolume: volume } : d));
+  };
+
+  const handleVolumeSave = async (displayId: string, volume: number) => {
+    setVolumeSaving(displayId);
+    try {
+      await api.put(`/displays/${displayId}`, { videoVolume: volume });
+    } catch (err) {
+      console.error('Failed to save volume');
+    } finally {
+      setTimeout(() => setVolumeSaving(null), 500);
+    }
+  };
+
+  const getVolumeIcon = (vol: number) => {
+    if (vol === 0) return '🔇';
+    if (vol < 0.3) return '🔈';
+    if (vol < 0.7) return '🔉';
+    return '🔊';
+  };
+
   const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   return (
@@ -133,6 +156,52 @@ export default function VideoManagementPage() {
               {uploading ? '⏳ Mengupload...' : '📤 Upload Video'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Volume Control Section */}
+      <div className="glass-card" style={{ padding: '20px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <span style={{ fontSize: '1.2rem' }}>🔊</span>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--gray-800)' }}>Kontrol Volume Video per Display</h3>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', marginLeft: '4px' }}>
+            Atur volume rendah agar suara panggilan antrian tetap terdengar jelas
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '10px' }}>
+          {displays.map(disp => {
+            const vol = disp.videoVolume ?? 0.3;
+            const color = vol > 0.7 ? '#ef4444' : vol > 0.4 ? '#f59e0b' : '#22c55e';
+            return (
+              <div key={disp.id} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '12px 16px', background: '#f8fafc', borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+              }}>
+                <span style={{ fontSize: '1.3rem', flexShrink: 0 }}>{getVolumeIcon(vol)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {disp.name}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={Math.round(vol * 100)}
+                      onChange={(e) => handleVolumeChange(disp.id, parseInt(e.target.value) / 100)}
+                      onMouseUp={(e) => handleVolumeSave(disp.id, parseInt((e.target as HTMLInputElement).value) / 100)}
+                      onTouchEnd={(e) => handleVolumeSave(disp.id, parseInt((e.target as HTMLInputElement).value) / 100)}
+                      style={{ flex: 1, height: '6px', cursor: 'pointer', accentColor: color }}
+                    />
+                    <span style={{ minWidth: '38px', textAlign: 'right', fontSize: '0.8rem', fontWeight: 700, color }}>
+                      {volumeSaving === disp.id ? '✅' : `${Math.round(vol * 100)}%`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

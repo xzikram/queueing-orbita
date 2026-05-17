@@ -393,6 +393,7 @@ model Display {
   orientation     Orientation @default(LANDSCAPE)
   videoPlaylistId String?     @map("video_playlist_id")
   runningText     String?     @map("running_text")
+  videoVolume     Float       @default(0.3) @map("video_volume")
   isActive        Boolean     @default(true) @map("is_active")
 
   // Relations
