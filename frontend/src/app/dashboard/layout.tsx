@@ -62,6 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const handleLogout = () => {
     localStorage.removeItem('orbita_token');
     localStorage.removeItem('orbita_user');
+    localStorage.removeItem('activeDoctorRoom');
     router.push('/login');
   };
 

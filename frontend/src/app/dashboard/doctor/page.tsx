@@ -8,6 +8,8 @@ export default function DoctorQueuePage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedRoom, setSelectedRoom] = useState('');
+  const [isLocked, setIsLocked] = useState(false);
+  const [tempRoom, setTempRoom] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [destModal, setDestModal] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<any[]>([]);
@@ -26,9 +28,22 @@ export default function DoctorQueuePage() {
     api.get('/rooms').then(res => {
       const doctorRooms = res.data.filter((r: any) => ['DOCTOR', 'DOCTOR_CHILD'].includes(r.roomType));
       setRooms(doctorRooms);
+      
+      const savedRoom = localStorage.getItem('activeDoctorRoom');
+      if (savedRoom) {
+        setSelectedRoom(savedRoom);
+        setIsLocked(true);
+      }
     }).catch(() => {});
     api.get('/doctor-queue/destinations').then(res => setDestinations(res.data)).catch(() => {});
   }, []);
+
+  const saveRoomLock = () => {
+    if (!tempRoom) return alert('Silakan pilih ruangan');
+    localStorage.setItem('activeDoctorRoom', tempRoom);
+    setSelectedRoom(tempRoom);
+    setIsLocked(true);
+  };
 
   useEffect(() => {
     loadQueue();
@@ -72,15 +87,32 @@ export default function DoctorQueuePage() {
 
   return (
     <div className={styles.unitPage}>
-      <div className={`glass-card ${styles.filterBar}`}>
-        <span className={styles.filterLabel}>Filter Ruangan:</span>
-        <div className={styles.filterSelect}>
-          <button className={`${styles.filterBtn} ${!selectedRoom ? styles.filterActive : ''}`} onClick={() => setSelectedRoom('')}>Semua</button>
-          {rooms.map((r: any) => (
-            <button key={r.id} className={`${styles.filterBtn} ${selectedRoom === r.id ? styles.filterActive : ''}`} onClick={() => setSelectedRoom(r.id)}>{r.name}</button>
-          ))}
+      {!isLocked && rooms.length > 0 && (
+        <div className={styles.modalOverlay} style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', zIndex: 9999 }}>
+          <div className={styles.modal} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 className={styles.modalTitle} style={{ fontSize: '1.5rem', marginBottom: '20px' }}>🔒 Kunci Sesi Ruangan</h3>
+            <p style={{ marginBottom: '20px', color: '#475569' }}>Silakan pilih ruangan tempat Anda bertugas saat ini. Anda hanya bisa melihat dan memanggil antrian dari ruangan ini.</p>
+            <div className="form-group">
+              <select className="form-input" value={tempRoom} onChange={e => setTempRoom(e.target.value)} style={{ padding: '12px', fontSize: '1rem' }}>
+                <option value="">-- Pilih Ruangan / Poli --</option>
+                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%', marginTop: '10px', padding: '12px', fontSize: '1rem' }} onClick={saveRoomLock}>Mulai Sesi Jaga</button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {isLocked && (
+        <div className={`glass-card ${styles.filterBar}`} style={{ background: '#ecfdf5', borderColor: '#10b981' }}>
+          <span className={styles.filterLabel} style={{ color: '#047857' }}>
+            📍 Ruangan Aktif: <strong>{rooms.find(r => r.id === selectedRoom)?.name}</strong>
+          </span>
+          <span style={{ fontSize: '0.85rem', color: '#059669', marginLeft: 'auto' }}>
+            (Untuk pindah ruangan, silakan Logout lalu Login kembali)
+          </span>
+        </div>
+      )}
       <div className={styles.columns}>
         <div className={`glass-card ${styles.column}`}>
           <div className={styles.columnHeader}><h3>⏳ Menunggu ({waiting.length})</h3></div>
