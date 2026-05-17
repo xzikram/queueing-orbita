@@ -33,8 +33,7 @@ const menuItems = [
   { label: 'Audit Logs', path: '/dashboard/audit', icon: '🛡️', roles: ['ADMIN', 'MANAGEMENT'] },
   { type: 'divider' },
   { label: 'TV Display', icon: '📺', roles: ['ADMIN'], children: [
-    { label: 'TV Admisi', path: '/display/admisi', icon: '📺', external: true },
-    { label: 'TV Kasir', path: '/display/kasir', icon: '📺', external: true },
+    { label: 'TV Admisi & Kasir', path: '/display/admisi', icon: '📺', external: true },
     { label: 'TV Lantai 5', path: '/display/lantai/5', icon: '📺', external: true },
     { label: 'TV Lantai 6', path: '/display/lantai/6', icon: '📺', external: true },
     { label: 'TV Lantai 7', path: '/display/lantai/7', icon: '📺', external: true },

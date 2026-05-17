@@ -97,7 +97,13 @@ export default function FloorDisplayPage() {
   };
 
   const handleVideoEnded = () => {
-    if (playlist.length > 0) {
+    if (playlist.length === 1) {
+      // Single video: restart it manually
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      }
+    } else if (playlist.length > 1) {
       setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
     }
   };
@@ -272,13 +278,14 @@ export default function FloorDisplayPage() {
                 src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
                 autoPlay
                 muted={false}
+                loop={playlist.length === 1}
                 onEnded={handleVideoEnded}
                 onError={() => {
                   if (playlist.length > 1) {
                     setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
                   }
                 }}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '24px' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '24px', backgroundColor: '#000' }}
               />
             ) : (
               <div className={styles.videoPlaceholder}>

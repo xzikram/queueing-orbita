@@ -201,7 +201,13 @@ export default function DisplayAdmisiKasirPage() {
   }, [loadInitialData, playBell]);
 
   const handleVideoEnded = () => {
-    if (playlist.length > 0) {
+    if (playlist.length === 1) {
+      // Single video: restart it manually
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      }
+    } else if (playlist.length > 1) {
       setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
     }
   };
