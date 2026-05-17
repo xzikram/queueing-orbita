@@ -57,7 +57,7 @@ export class DoctorQueueService {
     if (floorNum) {
       const displayCode = `display_lantai_${floorNum}`;
       this.displayGateway.broadcastCall(displayCode, {
-        ticketNo: visit.queueTicket.ticketNo,
+        ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
         patientType: visit.queueTicket.patientType,
         roomName: visit.selectedRoom?.name,
         doctorName: visit.selectedDoctor?.doctorName,
@@ -73,7 +73,7 @@ export class DoctorQueueService {
             displayId: display.id,
             visitId: visit.id,
             queueTicketId: visit.queueTicketId,
-            ticketNo: visit.queueTicket.ticketNo,
+            ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
             targetRoom: visit.selectedRoom?.name || '',
             unitType: 'DOCTOR',
             calledAt: new Date(),

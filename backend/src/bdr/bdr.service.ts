@@ -56,7 +56,7 @@ export class BdrService {
     if (floorNum) {
       const displayCode = `display_lantai_${floorNum}`;
       this.displayGateway.broadcastCall(displayCode, {
-        ticketNo: visit.queueTicket.ticketNo,
+        ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
         patientType: visit.queueTicket.patientType,
         roomName: `BDR Lt.${floorNum}`,
         doctorName: visit.selectedDoctor?.doctorName,
@@ -73,7 +73,7 @@ export class BdrService {
             displayId: display.id,
             visitId: visit.id,
             queueTicketId: visit.queueTicketId,
-            ticketNo: visit.queueTicket.ticketNo,
+            ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
             targetRoom: `BDR Lt.${floorNum}`,
             unitType: 'BDR',
             calledAt: new Date(),

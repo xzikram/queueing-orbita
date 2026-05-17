@@ -55,7 +55,7 @@ export class CashierService {
     const kasirDisplay = await this.prisma.display.findFirst({ where: { code: 'display_kasir' } });
     if (kasirDisplay) {
       this.displayGateway.broadcastCall('display_kasir', {
-        ticketNo: visit.queueTicket.ticketNo,
+        ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
         patientType: visit.queueTicket.patientType,
         counterName: counter.name,
         unitType: 'CASHIER',
@@ -67,7 +67,7 @@ export class CashierService {
           displayId: kasirDisplay.id,
           visitId: visit.id,
           queueTicketId: visit.queueTicketId,
-          ticketNo: visit.queueTicket.ticketNo,
+          ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
           targetCounter: counter.name,
           unitType: 'CASHIER',
           calledAt: new Date(),

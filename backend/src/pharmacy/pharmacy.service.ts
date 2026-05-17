@@ -97,7 +97,7 @@ export class PharmacyService {
     const farmasiDisplay = await this.prisma.display.findFirst({ where: { code: 'display_farmasi' } });
     if (farmasiDisplay) {
       this.displayGateway.broadcastCall('display_farmasi', {
-        ticketNo: visit.queueTicket.ticketNo,
+        ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
         patientType: visit.queueTicket.patientType,
         roomName: 'Farmasi',
         unitType: 'PHARMACY',
@@ -109,7 +109,7 @@ export class PharmacyService {
           displayId: farmasiDisplay.id,
           visitId: visit.id,
           queueTicketId: visit.queueTicketId,
-          ticketNo: visit.queueTicket.ticketNo,
+          ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
           targetRoom: 'Farmasi',
           unitType: 'PHARMACY',
           calledAt: new Date(),
