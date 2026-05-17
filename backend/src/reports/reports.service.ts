@@ -286,7 +286,15 @@ export class ReportsService {
       sheet.getRow(1).font = { bold: true };
     };
 
-    Object.entries(sheetsData).forEach(([name, rows]) => addStandardSheet(name, rows));
+    Object.entries(sheetsData).forEach(([name, rows]) => {
+      if (rows.length > 0) {
+        addStandardSheet(name, rows);
+      }
+    });
+
+    if (workbook.worksheets.length === 0) {
+      addStandardSheet('Data Kosong', []);
+    }
 
     return workbook.xlsx.writeBuffer();
   }
