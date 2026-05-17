@@ -77,13 +77,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: auto;
-  margin-bottom: 16px;
+  width: auto;
+  padding: 12px 24px;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
 .logoImage {
-  height: 60px;
+  height: 45px;
   width: auto;
   object-fit: contain;
 }
