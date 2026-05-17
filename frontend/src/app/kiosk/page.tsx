@@ -31,6 +31,16 @@ export default function KioskPage() {
   const [loading, setLoading] = useState(false);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
 
+  const formatTime = (timeStr: string) => {
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return timeStr;
+    }
+  };
+
   const loadSchedules = useCallback(async () => {
     setLoadingSchedules(true);
     try {
@@ -263,7 +273,7 @@ export default function KioskPage() {
                         <div className={styles.doctorName}>{s.doctor.doctorName}</div>
                         <div className={styles.doctorMeta}>
                           <span>🚪 {s.room?.name}</span>
-                          <span>🕐 {s.startTime} - {s.endTime}</span>
+                          <span>🕐 {formatTime(s.startTime)} - {formatTime(s.endTime)}</span>
                         </div>
                         <div className={styles.doctorQuota}>
                           <div className={styles.quotaBar}>
