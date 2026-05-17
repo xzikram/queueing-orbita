@@ -45,7 +45,7 @@ export default function KioskPage() {
     if (!endTimeStr) return false;
     // Extract HH:mm from formatTime
     const timeStr = formatTime(endTimeStr);
-    const match = timeStr.match(/(\d+):(\d+)/);
+    const match = timeStr.match(/(\d+)[:.](\d+)/);
     if (!match) return false;
     
     const endHours = parseInt(match[1], 10);
