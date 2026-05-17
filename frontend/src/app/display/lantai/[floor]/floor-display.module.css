@@ -190,7 +190,7 @@
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-  max-height: 300px;
+  flex: 1;
   padding-right: 8px;
 }
 

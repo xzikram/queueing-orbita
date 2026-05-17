@@ -260,22 +260,9 @@ export default function FloorDisplayPage() {
       </div>
 
       <div className={styles.mainGrid}>
-        {/* Left Column: Current Call & Waiting List */}
+        {/* Left Column: Waiting List Only */}
         <div className={styles.leftColumn}>
-          {currentCall ? (
-            <div className={styles.currentCallCard}>
-              <div className={styles.currentLabel}>NOMOR ANTRIAN</div>
-              <div className={styles.currentNo}>{currentCall.ticketNo}</div>
-              <div className={styles.currentArrow}>→</div>
-              <div className={styles.currentDest}>{currentCall.roomName || currentCall.unitType}</div>
-            </div>
-          ) : (
-            <div className={styles.currentCallCard} style={{ opacity: 0.5 }}>
-              <div className={styles.currentDest}>Menunggu Panggilan...</div>
-            </div>
-          )}
-
-          {/* Bottom Section: Waiting List */}
+          {/* Waiting List */}
           <div className={styles.waitingSection}>
             <div className={styles.sectionTitle}>Menunggu Dilayani di Lantai {floorNumber}</div>
             <div className={styles.waitingGrid}>
@@ -325,37 +312,64 @@ export default function FloorDisplayPage() {
           </div>
         </div>
 
-        {/* Right Column: History */}
+        {/* Right Column: History & Active Calls */}
         <div className={styles.rightColumn}>
-          <div className={styles.historyBox}>
-            <div className={styles.sectionTitle}>Riwayat BDR</div>
-            <div className={styles.callList}>
-              {recentBdr.length === 0 ? (
-                <div className={styles.emptySection}>Kosong</div>
-              ) : (
-                recentBdr.map((call, idx) => (
-                  <div key={idx} className={`${styles.callItem} ${idx === 0 ? styles.callLatest : ''}`}>
-                    <span className={styles.callNo}>{call.ticketNo}</span>
-                    <span className={styles.callRoom}>BDR</span>
-                  </div>
-                ))
-              )}
+          {/* BDR Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
+            {recentBdr[0] ? (
+              <div className={styles.currentCallCard} style={{ padding: '16px', borderRadius: '16px', minHeight: 'auto' }}>
+                <div className={styles.currentLabel} style={{ fontSize: '0.8rem', marginBottom: '8px' }}>PANGGILAN BDR</div>
+                <div className={styles.currentNo} style={{ fontSize: '3rem' }}>{recentBdr[0].ticketNo}</div>
+              </div>
+            ) : (
+              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '16px', borderRadius: '16px', minHeight: 'auto' }}>
+                <div className={styles.currentDest} style={{ fontSize: '1rem' }}>Menunggu BDR...</div>
+              </div>
+            )}
+            <div className={styles.historyBox} style={{ flex: 1, minHeight: 0 }}>
+              <div className={styles.sectionTitle}>Riwayat BDR</div>
+              <div className={styles.callList}>
+                {recentBdr.length === 0 ? (
+                  <div className={styles.emptySection}>Kosong</div>
+                ) : (
+                  recentBdr.slice(1).map((call, idx) => (
+                    <div key={idx} className={styles.callItem}>
+                      <span className={styles.callNo}>{call.ticketNo}</span>
+                      <span className={styles.callRoom}>BDR</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          <div className={styles.historyBox}>
-            <div className={styles.sectionTitle}>Riwayat POLI</div>
-            <div className={styles.callList}>
-              {recentPoli.length === 0 ? (
-                <div className={styles.emptySection}>Kosong</div>
-              ) : (
-                recentPoli.map((call, idx) => (
-                  <div key={idx} className={`${styles.callItem} ${idx === 0 ? styles.callLatest : ''}`}>
-                    <span className={styles.callNo}>{call.ticketNo}</span>
-                    <span className={styles.callRoom}>{call.roomName}</span>
-                  </div>
-                ))
-              )}
+          {/* POLI Section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
+            {recentPoli[0] ? (
+              <div className={styles.currentCallCard} style={{ padding: '16px', borderRadius: '16px', minHeight: 'auto', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
+                <div className={styles.currentLabel} style={{ fontSize: '0.8rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
+                <div className={styles.currentNo} style={{ fontSize: '3rem' }}>{recentPoli[0].ticketNo}</div>
+                <div className={styles.currentDest} style={{ fontSize: '1.2rem', marginTop: '4px' }}>{recentPoli[0].roomName}</div>
+              </div>
+            ) : (
+              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '16px', borderRadius: '16px', minHeight: 'auto', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
+                <div className={styles.currentDest} style={{ fontSize: '1rem' }}>Menunggu POLI...</div>
+              </div>
+            )}
+            <div className={styles.historyBox} style={{ flex: 1, minHeight: 0 }}>
+              <div className={styles.sectionTitle}>Riwayat POLI</div>
+              <div className={styles.callList}>
+                {recentPoli.length === 0 ? (
+                  <div className={styles.emptySection}>Kosong</div>
+                ) : (
+                  recentPoli.slice(1).map((call, idx) => (
+                    <div key={idx} className={styles.callItem}>
+                      <span className={styles.callNo}>{call.ticketNo}</span>
+                      <span className={styles.callRoom}>{call.roomName}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
