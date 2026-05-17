@@ -17,7 +17,14 @@ export default function VideoManagementPage() {
   const fetchDisplays = async () => {
     try {
       const res = await api.get('/displays');
-      setDisplays(res.data);
+      // Hide deprecated display_kasir since it's merged with admisi
+      let fetchedDisplays = res.data.filter((d: any) => d.code !== 'display_kasir');
+      // Rename display_admisi to Admisi & Kasir for clarity
+      fetchedDisplays = fetchedDisplays.map((d: any) => {
+        if (d.code === 'display_admisi') return { ...d, name: 'TV Admisi & Kasir' };
+        return d;
+      });
+      setDisplays(fetchedDisplays);
     } catch (err) {}
   };
 

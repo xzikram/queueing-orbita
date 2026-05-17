@@ -29,8 +29,16 @@ export default function DisplayFarmasiPage() {
     videoVolumeRef.current = videoVolume;
     if (videoRef.current && !window.speechSynthesis.speaking) {
       videoRef.current.volume = videoVolume;
+      videoRef.current.muted = videoVolume === 0;
     }
   }, [videoVolume]);
+
+  const handleVideoLoad = () => {
+    if (videoRef.current) {
+      videoRef.current.volume = videoVolumeRef.current;
+      videoRef.current.muted = videoVolumeRef.current === 0;
+    }
+  };
 
   const initAudio = () => {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -276,7 +284,8 @@ export default function DisplayFarmasiPage() {
             ref={videoRef}
             src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
             autoPlay
-            muted
+            muted={videoVolume === 0}
+            onLoadedData={handleVideoLoad}
             loop={playlist.length === 1}
             onEnded={handleVideoEnded}
             onError={() => {

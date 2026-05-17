@@ -30,8 +30,16 @@ export default function DisplayAdmisiKasirPage() {
     videoVolumeRef.current = videoVolume;
     if (videoRef.current && !window.speechSynthesis.speaking) {
       videoRef.current.volume = videoVolume;
+      videoRef.current.muted = videoVolume === 0;
     }
   }, [videoVolume]);
+
+  const handleVideoLoad = () => {
+    if (videoRef.current) {
+      videoRef.current.volume = videoVolumeRef.current;
+      videoRef.current.muted = videoVolumeRef.current === 0;
+    }
+  };
 
   const [isAudioInit, setIsAudioInit] = useState(false);
 
@@ -302,7 +310,8 @@ export default function DisplayAdmisiKasirPage() {
             ref={videoRef}
             src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
             autoPlay
-            muted
+            muted={videoVolume === 0}
+            onLoadedData={handleVideoLoad}
             loop={playlist.length === 1}
             onEnded={handleVideoEnded}
             onError={(e) => {
