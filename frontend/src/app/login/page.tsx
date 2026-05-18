@@ -50,11 +50,11 @@ export default function LoginPage() {
           {error && <div className={styles.error}>{error}</div>}
 
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Email / NIK</label>
             <input
-              type="email"
+              type="text"
               className="form-input"
-              placeholder="admin@jec-orbita.com"
+              placeholder="Masukkan Email atau NIK"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
