@@ -28,6 +28,7 @@ JWT_SECRET=orbita-queue-jwt-secret-key-2026
 JWT_EXPIRATION=24h
 BACKEND_PORT=3001
 CORS_ORIGIN=*
+TZ="Asia/Makassar"
 EOF
   echo "✅ File .env berhasil dibuat"
 fi
@@ -62,7 +63,7 @@ echo "✅ Folder upload siap"
 
 echo ""
 echo "[5/5] Me-restart PM2 Services..."
-pm2 restart all
+pm2 restart all --update-env
 
 echo ""
 echo "======================================"
