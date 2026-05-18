@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 const users = [
+  { nik: '21378', name: 'Muhammad Irfansyah', role: 'KEPALA_ADMISI' },
   { nik: '21967', name: 'Andi Nurul Fazirah, S. E' },
   { nik: '21972', name: 'Apriliyani Hartono, S. Psi' },
   { nik: '21940', name: 'Andi Syarif Hidayatullah, S. S' },
@@ -22,18 +23,21 @@ async function main() {
   console.log('Adding users to database...');
   for (const u of users) {
     const passwordHash = await bcrypt.hash(u.nik, 10);
+    const userRole: any = (u as any).role || 'ADMISSION';
+    
     try {
       await prisma.user.upsert({
         where: { email: u.nik },
         update: {
           name: u.name,
           passwordHash,
+          role: userRole,
         },
         create: {
           email: u.nik,
           name: u.name,
           passwordHash,
-          role: 'ADMISSION', // Default role
+          role: userRole,
         }
       });
       console.log(`✅ Added user ${u.name} (NIK: ${u.nik})`);

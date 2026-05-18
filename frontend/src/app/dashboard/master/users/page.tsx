@@ -12,7 +12,7 @@ export default function UsersPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'ADMISSION' });
   const [loading, setLoading] = useState(false);
 
-  const roles = ['ADMIN', 'ADMISSION', 'CASHIER', 'ASSESSMENT', 'BDR', 'DOCTOR', 'CDC', 'PHARMACY', 'OPTIC', 'MANAGEMENT', 'QUEUE_OFFICER'];
+  const roles = ['ADMIN', 'ADMISSION', 'KEPALA_ADMISI', 'CASHIER', 'ASSESSMENT', 'BDR', 'DOCTOR', 'CDC', 'PHARMACY', 'OPTIC', 'MANAGEMENT', 'QUEUE_OFFICER'];
 
   const load = useCallback(async () => {
     try { const res = await api.get('/users'); setUsers(res.data); }
