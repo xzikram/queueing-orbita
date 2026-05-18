@@ -276,26 +276,49 @@ export default function KioskPage() {
                   </button>
                 </div>
               ) : (
-                <div className={styles.doctorGrid}>
-                  {schedules.map(s => {
-                    const passed = isTimePassed(s.endTime);
-                    return (
-                      <button
-                        key={s.id}
-                        className={`${styles.doctorCard} ${passed ? styles.doctorFull : ''}`}
-                        onClick={() => !passed && generateTicket(s.id)}
-                        disabled={loading || passed}
-                        style={passed ? { opacity: 0.6 } : undefined}
-                      >
-                        <div className={styles.doctorName}>{s.doctor.doctorName}</div>
-                        <div className={styles.doctorMeta}>
-                          <span>🚪 {s.room?.name}</span>
-                          <span>🕐 {formatTime(s.startTime)} - {formatTime(s.endTime)}</span>
-                        </div>
-                        {passed && <div className={styles.fullLabel}>JADWAL BERAKHIR</div>}
-                      </button>
-                    );
-                  })}
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                  <button
+                    className={styles.doctorCard}
+                    onClick={() => generateTicket()}
+                    disabled={loading}
+                    style={{ 
+                      marginBottom: '16px', 
+                      background: '#f1f5f9', 
+                      border: '2px dashed #94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px'
+                    }}
+                  >
+                    <div style={{ fontSize: '2.5rem' }}>🤷</div>
+                    <div>
+                      <div className={styles.doctorName}>Belum Tahu / Tidak Pilih Dokter</div>
+                      <div className={styles.doctorMeta} style={{ marginBottom: 0 }}>
+                        Ambil antrian langsung ke Admisi, penentuan dokter nanti dibantu oleh petugas loket.
+                      </div>
+                    </div>
+                  </button>
+                  <div className={styles.doctorGrid}>
+                    {schedules.map(s => {
+                      const passed = isTimePassed(s.endTime);
+                      return (
+                        <button
+                          key={s.id}
+                          className={`${styles.doctorCard} ${passed ? styles.doctorFull : ''}`}
+                          onClick={() => !passed && generateTicket(s.id)}
+                          disabled={loading || passed}
+                          style={passed ? { opacity: 0.6 } : undefined}
+                        >
+                          <div className={styles.doctorName}>{s.doctor.doctorName}</div>
+                          <div className={styles.doctorMeta}>
+                            <span>🚪 {s.room?.name}</span>
+                            <span>🕐 {formatTime(s.startTime)} - {formatTime(s.endTime)}</span>
+                          </div>
+                          {passed && <div className={styles.fullLabel}>JADWAL BERAKHIR</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </>
