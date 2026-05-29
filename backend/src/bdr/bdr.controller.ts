@@ -2,11 +2,14 @@ import { Controller, Get, Post, Param, Query, Body, UseGuards, Request } from '@
 import { BdrService } from './bdr.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('bdr')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'BDR')
+@Permission('bdr')
 export class BdrController {
   constructor(private service: BdrService) {}
 

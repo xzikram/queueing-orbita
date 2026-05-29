@@ -4,11 +4,14 @@ import { MasterService } from './master.service';
 import { DoctorImportService } from './doctor-import.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 import type { Response } from 'express';
 
 @Controller()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@Permission('master')
 export class MasterController {
   constructor(
     private masterService: MasterService,

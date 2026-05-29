@@ -245,6 +245,44 @@ async function main() {
   }
   console.log('✅ Schedules created for today');
 
+  // ========================
+  // 8. ACCESS GROUPS
+  // ========================
+  const allPermissions = [
+    'dashboard', 'admission', 'assessment', 'bdr', 'doctor', 'cdc',
+    'cashier', 'pharmacy', 'optic', 'counter-management', 'master',
+    'schedules', 'live', 'reports', 'audit',
+  ];
+
+  const accessGroups = [
+    { role: 'ADMIN' as const, name: 'Super Admin', permissions: allPermissions },
+    { role: 'ADMISSION' as const, name: 'Admisi', permissions: ['dashboard', 'admission'] },
+    { role: 'CASHIER' as const, name: 'Kasir', permissions: ['dashboard', 'cashier'] },
+    { role: 'ASSESSMENT' as const, name: 'Pengkajian', permissions: ['dashboard', 'assessment'] },
+    { role: 'BDR' as const, name: 'BDR', permissions: ['dashboard', 'bdr'] },
+    { role: 'DOCTOR' as const, name: 'Dokter', permissions: ['dashboard', 'doctor'] },
+    { role: 'CDC' as const, name: 'CDC', permissions: ['dashboard', 'cdc'] },
+    { role: 'PHARMACY' as const, name: 'Farmasi', permissions: ['dashboard', 'pharmacy'] },
+    { role: 'OPTIC' as const, name: 'Optik', permissions: ['dashboard', 'optic'] },
+    { role: 'MANAGEMENT' as const, name: 'Manajemen', permissions: ['dashboard', 'live', 'reports'] },
+    { role: 'QUEUE_OFFICER' as const, name: 'Petugas Antrian', permissions: ['dashboard'] },
+    { role: 'KEPALA_ADMISI' as const, name: 'Kepala Admisi', permissions: ['dashboard', 'admission', 'counter-management'] },
+  ];
+
+  for (const ag of accessGroups) {
+    await prisma.accessGroup.upsert({
+      where: { role: ag.role },
+      update: {},
+      create: {
+        role: ag.role,
+        name: ag.name,
+        description: `Default access group untuk role ${ag.name}`,
+        permissions: JSON.stringify(ag.permissions),
+      },
+    });
+  }
+  console.log('✅ Access Groups created');
+
   console.log('\n🎉 Seed completed successfully!');
   console.log('📧 Login: admin@orbita.com / admin123');
 }
@@ -257,3 +295,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

@@ -2,11 +2,14 @@ import { Controller, Get, Post, Param, Query, UseGuards, Request } from '@nestjs
 import { PharmacyService } from './pharmacy.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('pharmacy')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'PHARMACY')
+@Permission('pharmacy')
 export class PharmacyController {
   constructor(private service: PharmacyService) {}
 

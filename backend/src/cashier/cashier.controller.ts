@@ -2,11 +2,14 @@ import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@
 import { CashierService } from './cashier.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('cashier')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'CASHIER')
+@Permission('cashier')
 export class CashierController {
   constructor(private service: CashierService) {}
 

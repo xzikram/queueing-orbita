@@ -2,11 +2,14 @@ import { Controller, Get, Post, Put, Param, Body, UseGuards, Request, Query } fr
 import { AdmissionService } from './admission.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('admission')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'ADMISSION')
+@Permission('admission')
 export class AdmissionController {
   constructor(private admissionService: AdmissionService) {}
 

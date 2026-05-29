@@ -2,11 +2,14 @@ import { Controller, Get, Post, Param, Query, Body, UseGuards, Request } from '@
 import { AssessmentService } from './assessment.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('assessment')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'ASSESSMENT')
+@Permission('assessment')
 export class AssessmentController {
   constructor(private service: AssessmentService) {}
 

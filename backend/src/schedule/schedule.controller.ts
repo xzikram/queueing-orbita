@@ -5,7 +5,9 @@ import { ScheduleService } from './schedule.service';
 import { ScheduleImportService } from './schedule-import.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('schedules')
 export class ScheduleController {
@@ -52,8 +54,9 @@ export class ScheduleController {
   }
 
   @Post('import')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('ADMIN')
+  @Permission('schedules')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Request() req: any) {
     if (!file) throw new Error('File tidak ditemukan');
@@ -61,29 +64,33 @@ export class ScheduleController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('ADMIN')
+  @Permission('schedules')
   create(@Body() body: any) {
     return this.scheduleService.create(body);
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('ADMIN')
+  @Permission('schedules')
   update(@Param('id') id: string, @Body() body: any) {
     return this.scheduleService.update(id, body);
   }
 
   @Delete('all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('ADMIN')
+  @Permission('schedules')
   deleteAll() {
     return this.scheduleService.deleteAll();
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles('ADMIN')
+  @Permission('schedules')
   delete(@Param('id') id: string) {
     return this.scheduleService.delete(id);
   }

@@ -6,41 +6,42 @@ import styles from './dashboard.module.css';
 import Logo from '@/components/Logo';
 
 const menuItems = [
-  { label: 'Dashboard', path: '/dashboard', icon: '📊', roles: ['ADMIN', 'MANAGEMENT'] },
-  { label: 'Admisi', path: '/dashboard/admission', icon: '🏥', roles: ['ADMIN', 'ADMISSION'] },
-  { label: 'Pengkajian', path: '/dashboard/assessment', icon: '📋', roles: ['ADMIN', 'ASSESSMENT'] },
-  { label: 'BDR', path: '/dashboard/bdr', icon: '💉', roles: ['ADMIN', 'BDR'] },
-  { label: 'Dokter/Poli', path: '/dashboard/doctor', icon: '👨‍⚕️', roles: ['ADMIN', 'DOCTOR'] },
-  { label: 'CDC', path: '/dashboard/cdc', icon: '🔬', roles: ['ADMIN', 'CDC'] },
-  { label: 'Kasir', path: '/dashboard/cashier', icon: '💳', roles: ['ADMIN', 'CASHIER'] },
-  { label: 'Farmasi', path: '/dashboard/pharmacy', icon: '💊', roles: ['ADMIN', 'PHARMACY'] },
-  { label: 'Optik', path: '/dashboard/optic', icon: '👓', roles: ['ADMIN', 'OPTIC'] },
+  { label: 'Dashboard', path: '/dashboard', icon: '📊', permissionKey: 'dashboard' },
+  { label: 'Admisi', path: '/dashboard/admission', icon: '🏥', permissionKey: 'admission' },
+  { label: 'Pengkajian', path: '/dashboard/assessment', icon: '📋', permissionKey: 'assessment' },
+  { label: 'BDR', path: '/dashboard/bdr', icon: '💉', permissionKey: 'bdr' },
+  { label: 'Dokter/Poli', path: '/dashboard/doctor', icon: '👨‍⚕️', permissionKey: 'doctor' },
+  { label: 'CDC', path: '/dashboard/cdc', icon: '🔬', permissionKey: 'cdc' },
+  { label: 'Kasir', path: '/dashboard/cashier', icon: '💳', permissionKey: 'cashier' },
+  { label: 'Farmasi', path: '/dashboard/pharmacy', icon: '💊', permissionKey: 'pharmacy' },
+  { label: 'Optik', path: '/dashboard/optic', icon: '👓', permissionKey: 'optic' },
   { type: 'divider' },
-  { label: 'Counter Management', path: '/dashboard/counter-management', icon: '🔧', roles: ['ADMIN', 'KEPALA_ADMISI'] },
+  { label: 'Counter Management', path: '/dashboard/counter-management', icon: '🔧', permissionKey: 'counter-management' },
   { type: 'divider' },
-  { label: 'Master Data', icon: '⚙️', roles: ['ADMIN'], children: [
+  { label: 'Master Data', icon: '⚙️', permissionKey: 'master', children: [
     { label: 'Users', path: '/dashboard/master/users', icon: '👤' },
+    { label: 'Akses Group', path: '/dashboard/master/access-groups', icon: '🔐' },
     { label: 'Dokter', path: '/dashboard/master/doctors', icon: '🩺' },
     { label: 'Ruangan', path: '/dashboard/master/rooms', icon: '🚪' },
     { label: 'Counter', path: '/dashboard/master/counters', icon: '🖥️' },
     { label: 'Display', path: '/dashboard/master/displays', icon: '📺' },
     { label: 'Video Playlists', path: '/dashboard/master/videos', icon: '🎬' },
   ]},
-  { label: 'Jadwal Dokter', path: '/dashboard/schedules', icon: '📅', roles: ['ADMIN'] },
+  { label: 'Jadwal Dokter', path: '/dashboard/schedules', icon: '📅', permissionKey: 'schedules' },
   { type: 'divider' },
-  { label: 'Live Dashboard', path: '/dashboard/live', icon: '📈', roles: ['ADMIN', 'MANAGEMENT'] },
-  { label: 'Analytics Reports', path: '/dashboard/reports', icon: '📉', roles: ['ADMIN', 'MANAGEMENT'] },
-  { label: 'Audit Logs', path: '/dashboard/audit', icon: '🛡️', roles: ['ADMIN', 'MANAGEMENT'] },
+  { label: 'Live Dashboard', path: '/dashboard/live', icon: '📈', permissionKey: 'live' },
+  { label: 'Analytics Reports', path: '/dashboard/reports', icon: '📉', permissionKey: 'reports' },
+  { label: 'Audit Logs', path: '/dashboard/audit', icon: '🛡️', permissionKey: 'audit' },
   { type: 'divider' },
-  { label: 'TV Display', icon: '📺', roles: ['ADMIN'], children: [
+  { label: 'TV Display', icon: '📺', permissionKey: 'master', children: [
     { label: 'TV Admisi & Kasir', path: '/display/admisi', icon: '📺', external: true },
     { label: 'TV Lantai 5', path: '/display/lantai/5', icon: '📺', external: true },
     { label: 'TV Lantai 6', path: '/display/lantai/6', icon: '📺', external: true },
     { label: 'TV Lantai 7', path: '/display/lantai/7', icon: '📺', external: true },
     { label: 'TV Farmasi', path: '/display/farmasi', icon: '💊', external: true },
   ]},
-  { label: 'Kiosk Admisi', path: '/kiosk', icon: '🎫', roles: ['ADMIN', 'QUEUE_OFFICER'], external: true },
-  { label: 'Kiosk Kasir', path: '/kiosk/kasir', icon: '🧾', roles: ['ADMIN', 'QUEUE_OFFICER', 'KEPALA_ADMISI'], external: true },
+  { label: 'Kiosk Admisi', path: '/kiosk', icon: '🎫', permissionKey: 'admission', external: true },
+  { label: 'Kiosk Kasir', path: '/kiosk/kasir', icon: '🧾', permissionKey: 'counter-management', external: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -99,6 +100,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }
 
             if (item.roles && !item.roles.includes(user.role)) return null;
+
+            // Permission-based filtering: check user's permissions from access group
+            const userPermissions: string[] = user.permissions || [];
+            const isAdmin = user.role === 'ADMIN';
+
+            if (item.permissionKey && !isAdmin && !userPermissions.includes(item.permissionKey)) return null;
 
             if (item.children) {
               const isExpanded = expandedMenus.has(item.label);

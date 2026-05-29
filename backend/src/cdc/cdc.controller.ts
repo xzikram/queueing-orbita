@@ -2,11 +2,14 @@ import { Controller, Get, Post, Param, Body, UseGuards, Request } from '@nestjs/
 import { CdcService } from './cdc.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('cdc')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'CDC')
+@Permission('cdc')
 export class CdcController {
   constructor(private service: CdcService) {}
 

@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { ALL_PERMISSIONS } from '../master/access-group.service';
 
 @Injectable()
 export class AuthService {
@@ -9,6 +10,22 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
+
+  private async getPermissionsForRole(role: string): Promise<string[]> {
+    if (role === 'ADMIN') {
+      return [...ALL_PERMISSIONS];
+    }
+
+    const accessGroup = await this.prisma.accessGroup.findUnique({
+      where: { role: role as any },
+    });
+
+    if (!accessGroup || !accessGroup.isActive) {
+      return [];
+    }
+
+    return JSON.parse(accessGroup.permissions);
+  }
 
   async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -25,6 +42,8 @@ export class AuthService {
       throw new UnauthorizedException('Akun tidak aktif');
     }
 
+    const permissions = await this.getPermissionsForRole(user.role);
+
     const payload = {
       sub: user.id,
       email: user.email,
@@ -39,6 +58,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        permissions,
       },
     };
   }
@@ -60,6 +80,12 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return user;
+    const permissions = await this.getPermissionsForRole(user.role);
+
+    return {
+      ...user,
+      permissions,
+    };
   }
 }
+

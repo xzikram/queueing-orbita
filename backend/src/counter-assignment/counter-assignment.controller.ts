@@ -2,10 +2,13 @@ import { Controller, Get, Put, Param, Body, UseGuards } from '@nestjs/common';
 import { CounterAssignmentService } from './counter-assignment.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('counter-assignment')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@Permission('counter-management')
 export class CounterAssignmentController {
   constructor(private service: CounterAssignmentService) {}
 
