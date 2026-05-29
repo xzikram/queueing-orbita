@@ -30,7 +30,14 @@ async function bootstrap() {
   );
 
   const port = configService.get<number>('BACKEND_PORT', 3001);
-  await app.listen(port);
+  const server = await app.listen(port);
+  
+  // Disable timeouts for large file uploads
+  server.setTimeout(0);
+  if (server.keepAliveTimeout) {
+    server.keepAliveTimeout = 0;
+  }
+
   console.log(`🚀 Backend running on http://localhost:${port}`);
   console.log(`📡 WebSocket ready on ws://localhost:${port}`);
 }
