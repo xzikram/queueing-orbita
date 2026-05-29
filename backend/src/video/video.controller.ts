@@ -77,7 +77,7 @@ export class VideoController {
         cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
       },
     }),
-    limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB max
+    limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB max
     fileFilter: (req, file, cb) => {
       if (file.mimetype.startsWith('video/')) {
         cb(null, true);
@@ -107,6 +107,7 @@ export class VideoController {
         cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
       },
     }),
+    limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB max
     fileFilter: (req, file, cb) => {
       if (file.mimetype.match(/\/(mp4|webm|ogg)$/)) {
         cb(null, true);
