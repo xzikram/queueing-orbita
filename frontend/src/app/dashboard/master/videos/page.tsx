@@ -66,10 +66,10 @@ export default function VideoManagementPage() {
         const chunk = file.slice(start, end);
 
         const formData = new FormData();
-        formData.append('chunk', chunk, `chunk_${i}`);
         formData.append('uploadId', uploadId);
         formData.append('chunkIndex', String(i));
         formData.append('totalChunks', String(totalChunks));
+        formData.append('chunk', chunk, `chunk_${i}`);
 
         await api.post('/video/upload-chunk', formData, {
           headers: { 'Content-Type': undefined },
