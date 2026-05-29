@@ -30,12 +30,15 @@ async function bootstrap() {
   );
 
   const port = configService.get<number>('BACKEND_PORT', 3001);
-  const server = await app.listen(port);
+  await app.listen(port);
   
-  // Disable timeouts for large file uploads
-  server.setTimeout(0);
-  if (server.keepAliveTimeout) {
-    server.keepAliveTimeout = 0;
+  // Disable timeouts for large file uploads on the raw HTTP server
+  const server = app.getHttpServer();
+  if (server) {
+    server.setTimeout(0);
+    if (server.keepAliveTimeout !== undefined) {
+      server.keepAliveTimeout = 0;
+    }
   }
 
   console.log(`🚀 Backend running on http://localhost:${port}`);
