@@ -8,6 +8,7 @@ export default function VideoManagementPage() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [displays, setDisplays] = useState<any[]>([]);
@@ -54,16 +55,23 @@ export default function VideoManagementPage() {
     formData.append('file', file);
 
     try {
+      setUploadProgress(0);
       await api.post('/video/upload', formData, {
         headers: { 'Content-Type': undefined },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          }
+        },
       });
       fetchVideos();
     } catch (err: any) {
       alert(`Gagal upload: ${err.response?.data?.message || err.message}`);
-    } finally {
       setUploading(false);
+      setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -158,9 +166,20 @@ export default function VideoManagementPage() {
               className="btn btn-primary"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              style={{ margin: 0, whiteSpace: 'nowrap' }}
+              style={{ margin: 0, whiteSpace: 'nowrap', position: 'relative', overflow: 'hidden' }}
             >
-              {uploading ? '⏳ Mengupload...' : '📤 Upload Video'}
+              {uploading && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0, left: 0, bottom: 0,
+                  width: `${uploadProgress}%`,
+                  background: 'rgba(255, 255, 255, 0.25)',
+                  transition: 'width 0.2s ease',
+                }} />
+              )}
+              <span style={{ position: 'relative', zIndex: 1 }}>
+                {uploading ? `⏳ Mengupload... ${uploadProgress}%` : '📤 Upload Video'}
+              </span>
             </button>
           </div>
         </div>
