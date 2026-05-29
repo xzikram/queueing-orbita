@@ -46,30 +46,53 @@ export default function VideoManagementPage() {
     fetchDisplays();
   }, []);
 
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
+    setUploadProgress(0);
 
     try {
-      setUploadProgress(0);
-      await api.post('/video/upload', formData, {
-        headers: { 'Content-Type': undefined },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
-          }
-        },
+      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+      // Send each chunk
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+
+        const formData = new FormData();
+        formData.append('chunk', chunk, `chunk_${i}`);
+        formData.append('uploadId', uploadId);
+        formData.append('chunkIndex', String(i));
+        formData.append('totalChunks', String(totalChunks));
+
+        await api.post('/video/upload-chunk', formData, {
+          headers: { 'Content-Type': undefined },
+          timeout: 60000, // 60s per chunk is plenty
+        });
+
+        // Update progress based on chunks completed
+        setUploadProgress(Math.round(((i + 1) / totalChunks) * 95)); // 0-95% for chunks
+      }
+
+      // Tell backend to assemble the final file
+      setUploadProgress(97);
+      await api.post('/video/upload-complete', {
+        uploadId,
+        totalChunks,
+        fileName: file.name,
       });
+
+      setUploadProgress(100);
       fetchVideos();
     } catch (err: any) {
       alert(`Gagal upload: ${err.response?.data?.message || err.message}`);
+    } finally {
       setUploading(false);
       setUploadProgress(0);
       if (fileInputRef.current) fileInputRef.current.value = '';
