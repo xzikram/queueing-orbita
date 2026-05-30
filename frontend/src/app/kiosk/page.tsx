@@ -152,6 +152,8 @@ export default function KioskPage() {
               window.print();
               setTimeout(reset, 2000);
             }}>
+              🖨️ Cetak Tiket
+            </button>
             <button className="btn btn-secondary btn-lg" style={{ flex: 1 }} onClick={reset}>
               🏠 Selesai
             </button>
