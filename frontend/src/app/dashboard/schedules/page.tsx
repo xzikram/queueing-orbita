@@ -49,7 +49,7 @@ export default function SchedulesPage() {
     finally { setUploading(false); }
   };
 
-  const downloadTemplate = () => { window.open('http://localhost:3001/api/schedules/template', '_blank'); };
+  const downloadTemplate = () => { window.open(`${api.defaults.baseURL}/schedules/template`, '_blank'); };
 
   const removeAll = async () => {
     if(!confirm('Peringatan: Aksi ini akan menghapus SEMUA jadwal dokter secara permanen. Lanjutkan?')) return;
