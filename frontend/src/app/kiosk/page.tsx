@@ -92,10 +92,22 @@ export default function KioskPage() {
     }
   };
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setSelectedType(null);
     setTicket(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (ticket) {
+      timer = setTimeout(() => {
+        reset();
+      }, 15000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [ticket, reset]);
 
   const selectedCat = categories.find(c => c.type === selectedType);
 
@@ -127,8 +139,12 @@ export default function KioskPage() {
               <div>📅 {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
             </div>
             <div className={styles.ticketInstructions}>
+              <strong style={{color: '#ea580c', display: 'block', marginBottom: '8px', fontSize: '1.1rem'}}>📸 BANTU KAMI MENGURANGI PENGGUNAAN KERTAS</strong>
+              Silakan foto tiket ini menggunakan handphone Anda, lalu pilih <strong>Selesai</strong>.<br />
+              <br />
               Silakan menunggu di area admisi.<br />
-              Nomor antrian Anda akan dipanggil di TV.
+              Nomor antrian Anda akan dipanggil di TV.<br />
+              <small style={{display: 'block', marginTop: '16px', color: '#94a3b8', fontStyle: 'italic'}}>Layar akan tertutup otomatis dalam 15 detik...</small>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '400px', marginTop: '24px' }}>
