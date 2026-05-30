@@ -11,6 +11,7 @@ export default function SchedulesPage() {
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   
   // Manual form states
   const [showForm, setShowForm] = useState(false);
@@ -152,7 +153,14 @@ export default function SchedulesPage() {
               )}
             </div>
           )}
-          {importHistory.length > 0 && (
+
+          <div style={{marginTop:16}}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowHistory(!showHistory)}>
+              {showHistory ? 'Sembunyikan Riwayat' : 'Tampilkan Riwayat'}
+            </button>
+          </div>
+
+          {showHistory && importHistory.length > 0 && (
             <div style={{marginTop:16}}>
               <h4 style={{color:'var(--gray-300)',fontSize:'0.875rem',marginBottom:8}}>Riwayat Import</h4>
               <table className="data-table"><thead><tr><th>File</th><th>Total</th><th>✅</th><th>❌</th><th>Status</th><th>Waktu</th></tr></thead>
