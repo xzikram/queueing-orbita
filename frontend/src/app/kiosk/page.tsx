@@ -148,9 +148,10 @@ export default function KioskPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '400px', marginTop: '24px' }}>
-            <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={() => window.print()}>
-              🖨️ Cetak Tiket
-            </button>
+            <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={() => {
+              window.print();
+              setTimeout(reset, 2000);
+            }}>
             <button className="btn btn-secondary btn-lg" style={{ flex: 1 }} onClick={reset}>
               🏠 Selesai
             </button>
