@@ -16,6 +16,7 @@ export default function SchedulesPage() {
   // Manual form states
   const [showForm, setShowForm] = useState(false);
   const [docSearch, setDocSearch] = useState('');
+  const [showDocDropdown, setShowDocDropdown] = useState(false);
   const [doctors, setDoctors] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -185,27 +186,56 @@ export default function SchedulesPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Dokter</label>
-                <input 
-                  type="text"
-                  list="doctor-list"
-                  className="form-input" 
-                  placeholder="Ketik nama dokter..."
-                  required
-                  value={docSearch} 
-                  onChange={e => {
-                    setDocSearch(e.target.value);
-                    const d = doctors.find(doc => doc.doctorName === e.target.value);
-                    if(d) {
-                      setFormData({...formData, doctorId: d.id, roomId: d.defaultRoomId || '', floorId: d.defaultRoom?.floorId || ''});
-                    } else {
-                      setFormData({...formData, doctorId: '', roomId: '', floorId: ''});
-                    }
-                  }}
-                />
-                <datalist id="doctor-list">
-                  {doctors.map(d => <option key={d.id} value={d.doctorName} />)}
-                </datalist>
-                {!formData.roomId && docSearch && (
+                <div style={{position:'relative'}} onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setShowDocDropdown(false);
+                }}>
+                  <input 
+                    type="text"
+                    className="form-input" 
+                    placeholder="Ketik nama dokter..."
+                    required
+                    value={docSearch} 
+                    onFocus={() => setShowDocDropdown(true)}
+                    onChange={e => {
+                      setDocSearch(e.target.value);
+                      setShowDocDropdown(true);
+                      const exactMatch = doctors.find(doc => doc.doctorName.toLowerCase() === e.target.value.toLowerCase());
+                      if(exactMatch) {
+                        setFormData({...formData, doctorId: exactMatch.id, roomId: exactMatch.defaultRoomId || '', floorId: exactMatch.defaultRoom?.floorId || ''});
+                      } else {
+                        setFormData({...formData, doctorId: '', roomId: '', floorId: ''});
+                      }
+                    }}
+                  />
+                  {showDocDropdown && docSearch.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                      background: '#fff', border: '1px solid #ccc', 
+                      borderRadius: '8px', zIndex: 50, maxHeight: 200, overflowY: 'auto',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}>
+                      {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase())).map(d => (
+                        <div 
+                          key={d.id} 
+                          tabIndex={0}
+                          style={{padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #eee', color: '#333'}}
+                          onMouseDown={(e) => e.preventDefault()} // Prevent blur before onClick fires
+                          onClick={() => {
+                            setDocSearch(d.doctorName);
+                            setFormData({...formData, doctorId: d.id, roomId: d.defaultRoomId || '', floorId: d.defaultRoom?.floorId || ''});
+                            setShowDocDropdown(false);
+                          }}
+                        >
+                          {d.doctorName}
+                        </div>
+                      ))}
+                      {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase())).length === 0 && (
+                        <div style={{padding: '8px 12px', color: '#999', fontStyle: 'italic'}}>Dokter tidak ditemukan</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {!formData.roomId && formData.doctorId && (
                    <small style={{color:'var(--error)', marginTop: 4, display: 'block'}}>
                      *Dokter ini belum memiliki ruangan default.
                    </small>
