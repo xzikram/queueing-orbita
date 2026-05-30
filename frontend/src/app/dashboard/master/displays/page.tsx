@@ -40,22 +40,30 @@ export default function DisplaysPage() {
         <button className="btn btn-primary" onClick={openCreate}>+ Tambah Display</button>
       </div>
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
-        <table className="data-table"><thead><tr><th>Kode</th><th>Nama</th><th>Tipe</th><th>Lantai</th><th>Orientasi</th><th>Status</th><th>Aksi</th></tr></thead>
+        <table className="data-table"><thead><tr><th>Kode</th><th>Nama</th><th>Tipe</th><th>Lantai</th><th>Orientasi</th><th>Footer / Running Text</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>{displays.map(d=>(
-          <tr key={d.id}><td><code style={{color:'var(--primary-300)'}}>{d.code}</code></td><td><strong>{d.name}</strong></td><td><span className="badge badge-info">{d.displayType}</span></td><td>{floors.find(f=>f.id===d.floorId)?.name||'-'}</td><td>{d.orientation}</td><td><span className={styles.statusDot+' '+(d.isActive?styles.statusActive:styles.statusInactive)}/>{d.isActive?'Aktif':'Nonaktif'}</td>
-          <td><div style={{display:'flex',gap:6}}><button className="btn btn-secondary btn-sm" onClick={()=>openEdit(d)}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>{setSelected(d);setModal('delete')}}>Hapus</button></div></td></tr>
+          <tr key={d.id}>
+            <td><code style={{color:'var(--primary-300)'}}>{d.code}</code></td>
+            <td><strong>{d.name}</strong></td>
+            <td><span className="badge badge-info">{d.displayType}</span></td>
+            <td>{floors.find(f=>f.id===d.floorId)?.name||'-'}</td>
+            <td>{d.orientation}</td>
+            <td style={{maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={d.runningText||'-'}>{d.runningText || '-'}</td>
+            <td><span className={styles.statusDot+' '+(d.isActive?styles.statusActive:styles.statusInactive)}/>{d.isActive?'Aktif':'Nonaktif'}</td>
+            <td><div style={{display:'flex',gap:6}}><button className="btn btn-secondary btn-sm" onClick={()=>openEdit(d)}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>{setSelected(d);setModal('delete')}}>Hapus</button></div></td>
+          </tr>
         ))}</tbody></table>
       </div></div>
 
       {(modal==='create'||modal==='edit')&&<div className={styles.modalOverlay} onClick={()=>setModal(null)}><div className={styles.modal} onClick={e=>e.stopPropagation()}>
         <h3 className={styles.modalTitle}>{modal==='create'?'Tambah':'Edit'} Display</h3>
-        <div className="form-group"><label className="form-label">Kode</label><input className="form-input" value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></div>
+        <div className="form-group"><label className="form-label">Kode</label><input className="form-input" value={form.code} onChange={e=>setForm({...form,code:e.target.value})} disabled={modal==='edit'}/></div>
         <div className="form-group"><label className="form-label">Nama</label><input className="form-input" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div>
         <div className="form-group"><label className="form-label">Tipe</label><select className="form-select" value={form.displayType} onChange={e=>setForm({...form,displayType:e.target.value})}>{dtypes.map(t=><option key={t}>{t}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Lantai</label><select className="form-select" value={form.floorId} onChange={e=>setForm({...form,floorId:e.target.value})}><option value="">-- Tidak ada --</option>{floors.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
         <div className="form-group"><label className="form-label">Orientasi</label><select className="form-select" value={form.orientation} onChange={e=>setForm({...form,orientation:e.target.value})}><option>LANDSCAPE</option><option>PORTRAIT</option></select></div>
         <div className="form-group"><label className="form-label">Video Playlist</label><select className="form-select" value={form.videoPlaylistId} onChange={e=>setForm({...form,videoPlaylistId:e.target.value})}><option value="">-- Tidak ada --</option>{playlists.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-        <div className="form-group"><label className="form-label">Running Text</label><input className="form-input" value={form.runningText} onChange={e=>setForm({...form,runningText:e.target.value})} placeholder="Teks berjalan di TV..."/></div>
+        <div className="form-group"><label className="form-label">Footer / Running Text</label><textarea className="form-input" rows={3} value={form.runningText} onChange={e=>setForm({...form,runningText:e.target.value})} placeholder="Teks berjalan di bagian bawah TV..."/></div>
         <div className={styles.modalActions}><button className="btn btn-secondary" onClick={()=>setModal(null)}>Batal</button><button className="btn btn-primary" onClick={save} disabled={loading}>{loading?'...':'Simpan'}</button></div>
       </div></div>}
 
