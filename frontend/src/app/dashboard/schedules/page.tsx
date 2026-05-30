@@ -235,21 +235,23 @@ export default function SchedulesPage() {
                       )}
                     </div>
                   )}
-                </div>
-                {!formData.roomId && formData.doctorId && (
-                   <small style={{color:'var(--error)', marginTop: 4, display: 'block'}}>
-                     *Dokter ini belum memiliki ruangan default.
-                   </small>
-                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Ruangan</label>
-                <input 
-                  type="text" 
+                <select 
                   className="form-input" 
-                  disabled 
-                  value={rooms.find(rm => rm.id === formData.roomId) ? `${rooms.find(rm => rm.id === formData.roomId)?.name} (Lt. ${rooms.find(rm => rm.id === formData.roomId)?.floor?.name})` : 'Pilih dokter terlebih dahulu'} 
-                />
+                  required
+                  value={formData.roomId} 
+                  onChange={e => {
+                    const r = rooms.find(rm => rm.id === e.target.value);
+                    setFormData({...formData, roomId: e.target.value, floorId: r?.floorId || ''});
+                  }}
+                >
+                  <option value="">-- Pilih Ruangan --</option>
+                  {rooms.map(rm => (
+                    <option key={rm.id} value={rm.id}>{rm.name} (Lt. {rm.floor?.name || rm.floor?.floorNumber})</option>
+                  ))}
+                </select>
               </div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 16}}>
                 <div className="form-group">
