@@ -206,7 +206,7 @@ export default function KioskPage() {
       {/* Header */}
       <div className={`no-print ${styles.header}`}>
         <div className={styles.headerLogoWrap} style={{ background: 'white', padding: '5px 15px', borderRadius: '8px', height: '60px' }}>
-          <img src="/Logo RS JEC ORBITA.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
+          <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
         </div>
         <h1 className={styles.headerTitle}>Ambil Nomor Antrian</h1>
         <p className={styles.headerSub}>Silakan pilih kategori pasien dan dokter tujuan Anda</p>

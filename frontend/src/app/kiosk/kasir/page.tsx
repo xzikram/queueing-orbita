@@ -52,7 +52,7 @@ export default function KioskKasirPage() {
     <div className={styles.container}>
       <div className={styles.glassHeader}>
         <div className={styles.logoWrapper}>
-          <img src="/Logo RS JEC ORBITA.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
+          <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
         </div>
         <div className={styles.headerText}>
           <h1 className={styles.title}>Kiosk Kasir ORBITA</h1>
