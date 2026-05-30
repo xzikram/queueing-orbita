@@ -55,7 +55,6 @@ export class ScheduleController {
 
   @Post('import')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('ADMIN')
   @Permission('schedules')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
   async importExcel(@UploadedFile() file: Express.Multer.File, @Request() req: any) {
@@ -65,7 +64,6 @@ export class ScheduleController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('ADMIN')
   @Permission('schedules')
   create(@Body() body: any) {
     return this.scheduleService.create(body);
@@ -73,7 +71,6 @@ export class ScheduleController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('ADMIN')
   @Permission('schedules')
   update(@Param('id') id: string, @Body() body: any) {
     return this.scheduleService.update(id, body);
@@ -81,7 +78,6 @@ export class ScheduleController {
 
   @Delete('all')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('ADMIN')
   @Permission('schedules')
   deleteAll() {
     return this.scheduleService.deleteAll();
@@ -89,7 +85,6 @@ export class ScheduleController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-  @Roles('ADMIN')
   @Permission('schedules')
   delete(@Param('id') id: string) {
     return this.scheduleService.delete(id);

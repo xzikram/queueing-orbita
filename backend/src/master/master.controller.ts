@@ -66,6 +66,7 @@ export class MasterController {
   // ROOMS
   // ==================
   @Get('rooms')
+  @Permission('')
   findAllRooms() {
     return this.masterService.findAllRooms();
   }
@@ -97,6 +98,7 @@ export class MasterController {
   // DOCTORS
   // ==================
   @Get('doctors')
+  @Permission('')
   findAllDoctors() {
     return this.masterService.findAllDoctors();
   }
