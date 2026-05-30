@@ -15,6 +15,7 @@ export default function SchedulesPage() {
   
   // Manual form states
   const [showForm, setShowForm] = useState(false);
+  const [docSearch, setDocSearch] = useState('');
   const [doctors, setDoctors] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [formData, setFormData] = useState({
@@ -24,7 +25,6 @@ export default function SchedulesPage() {
     floorId: '',
     startTime: '08:00',
     endTime: '12:00',
-    quota: 20
   });
 
   const loadMasterData = async () => {
@@ -105,14 +105,15 @@ export default function SchedulesPage() {
       const payload = {
         ...formData,
         dayName,
-        quota: Number(formData.quota)
+        quota: 999
       };
       await api.post('/schedules', payload);
       setShowForm(false);
       setFormData({
         scheduleDate: new Date().toISOString().slice(0,10),
-        doctorId: '', roomId: '', floorId: '', startTime: '08:00', endTime: '12:00', quota: 20
+        doctorId: '', roomId: '', floorId: '', startTime: '08:00', endTime: '12:00'
       });
+      setDocSearch('');
       load();
     } catch(err:any) {
       alert(err.response?.data?.message || 'Gagal menyimpan jadwal');
@@ -184,20 +185,40 @@ export default function SchedulesPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Dokter</label>
-                <select className="form-input" required value={formData.doctorId} onChange={e=>setFormData({...formData, doctorId: e.target.value})}>
-                  <option value="">-- Pilih Dokter --</option>
-                  {doctors.map(d => <option key={d.id} value={d.id}>{d.doctorName}</option>)}
-                </select>
+                <input 
+                  type="text"
+                  list="doctor-list"
+                  className="form-input" 
+                  placeholder="Ketik nama dokter..."
+                  required
+                  value={docSearch} 
+                  onChange={e => {
+                    setDocSearch(e.target.value);
+                    const d = doctors.find(doc => doc.doctorName === e.target.value);
+                    if(d) {
+                      setFormData({...formData, doctorId: d.id, roomId: d.defaultRoomId || '', floorId: d.defaultRoom?.floorId || ''});
+                    } else {
+                      setFormData({...formData, doctorId: '', roomId: '', floorId: ''});
+                    }
+                  }}
+                />
+                <datalist id="doctor-list">
+                  {doctors.map(d => <option key={d.id} value={d.doctorName} />)}
+                </datalist>
+                {!formData.roomId && docSearch && (
+                   <small style={{color:'var(--error)', marginTop: 4, display: 'block'}}>
+                     *Dokter ini belum memiliki ruangan default.
+                   </small>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Ruangan</label>
-                <select className="form-input" required value={formData.roomId} onChange={e=>{
-                  const r = rooms.find(rm => rm.id === e.target.value);
-                  setFormData({...formData, roomId: e.target.value, floorId: r?.floorId || ''});
-                }}>
-                  <option value="">-- Pilih Ruangan --</option>
-                  {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Lt. {r.floor?.name})</option>)}
-                </select>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  disabled 
+                  value={rooms.find(rm => rm.id === formData.roomId) ? `${rooms.find(rm => rm.id === formData.roomId)?.name} (Lt. ${rooms.find(rm => rm.id === formData.roomId)?.floor?.name})` : 'Pilih dokter terlebih dahulu'} 
+                />
               </div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 16}}>
                 <div className="form-group">
@@ -209,14 +230,10 @@ export default function SchedulesPage() {
                   <input type="time" className="form-input" required value={formData.endTime} onChange={e=>setFormData({...formData, endTime: e.target.value})} />
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Kuota Pasien</label>
-                <input type="number" className="form-input" min="1" required value={formData.quota} onChange={e=>setFormData({...formData, quota: Number(e.target.value)})} />
-              </div>
               
               <div className={styles.modalActions}>
                 <button type="button" className="btn btn-secondary" onClick={()=>setShowForm(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary">Simpan</button>
+                <button type="submit" className="btn btn-primary" disabled={!formData.roomId}>Simpan</button>
               </div>
             </form>
           </div>
