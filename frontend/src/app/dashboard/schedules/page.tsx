@@ -11,6 +11,37 @@ export default function SchedulesPage() {
   const [importHistory, setImportHistory] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  
+  // Manual form states
+  const [showForm, setShowForm] = useState(false);
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    scheduleDate: new Date().toISOString().slice(0,10),
+    doctorId: '',
+    roomId: '',
+    floorId: '',
+    startTime: '08:00',
+    endTime: '12:00',
+    quota: 20
+  });
+
+  const loadMasterData = async () => {
+    try {
+      const [docRes, rmRes] = await Promise.all([
+        api.get('/doctors'),
+        api.get('/rooms')
+      ]);
+      setDoctors(docRes.data);
+      setRooms(rmRes.data);
+    } catch(err) { console.error(err); }
+  };
+
+  useEffect(() => {
+    if (showForm && doctors.length === 0) {
+      loadMasterData();
+    }
+  }, [showForm]);
 
   const load = useCallback(async () => {
     try {
@@ -62,6 +93,31 @@ export default function SchedulesPage() {
     }
   };
 
+  const submitManual = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.doctorId || !formData.roomId) return alert('Pilih dokter dan ruangan!');
+    try {
+      const dateObj = new Date(formData.scheduleDate);
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const dayName = days[dateObj.getDay()];
+      
+      const payload = {
+        ...formData,
+        dayName,
+        quota: Number(formData.quota)
+      };
+      await api.post('/schedules', payload);
+      setShowForm(false);
+      setFormData({
+        scheduleDate: new Date().toISOString().slice(0,10),
+        doctorId: '', roomId: '', floorId: '', startTime: '08:00', endTime: '12:00', quota: 20
+      });
+      load();
+    } catch(err:any) {
+      alert(err.response?.data?.message || 'Gagal menyimpan jadwal');
+    }
+  };
+
   return (
     <div className={styles.masterPage}>
       {/* Toolbar */}
@@ -71,6 +127,7 @@ export default function SchedulesPage() {
           <span style={{color:'var(--gray-400)',fontSize:'0.875rem'}}>{schedules.length} jadwal</span>
         </div>
         <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-primary" onClick={()=>setShowForm(true)}>➕ Tambah Manual</button>
           <button className="btn btn-secondary" onClick={()=>{setShowImport(!showImport);loadHistory();}}>📥 Import Excel</button>
           <button className="btn btn-secondary" onClick={downloadTemplate}>📋 Template</button>
           <button className="btn btn-danger" onClick={removeAll}>🗑️ Hapus Semua</button>
@@ -104,6 +161,57 @@ export default function SchedulesPage() {
               ))}</tbody></table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Manual Form Modal */}
+      {showForm && (
+        <div className={styles.modalOverlay} onClick={()=>setShowForm(false)}>
+          <div className={styles.modal} onClick={e=>e.stopPropagation()} style={{maxWidth: 500}}>
+            <h3 className={styles.modalTitle}>Tambah Jadwal Manual</h3>
+            <form onSubmit={submitManual} className={styles.modalForm}>
+              <div className="form-group">
+                <label className="form-label">Tanggal</label>
+                <input type="date" className="form-input" required value={formData.scheduleDate} onChange={e=>setFormData({...formData, scheduleDate: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Dokter</label>
+                <select className="form-input" required value={formData.doctorId} onChange={e=>setFormData({...formData, doctorId: e.target.value})}>
+                  <option value="">-- Pilih Dokter --</option>
+                  {doctors.map(d => <option key={d.id} value={d.id}>{d.doctorName}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Ruangan</label>
+                <select className="form-input" required value={formData.roomId} onChange={e=>{
+                  const r = rooms.find(rm => rm.id === e.target.value);
+                  setFormData({...formData, roomId: e.target.value, floorId: r?.floorId || ''});
+                }}>
+                  <option value="">-- Pilih Ruangan --</option>
+                  {rooms.map(r => <option key={r.id} value={r.id}>{r.name} (Lt. {r.floor?.name})</option>)}
+                </select>
+              </div>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 16}}>
+                <div className="form-group">
+                  <label className="form-label">Jam Mulai</label>
+                  <input type="time" className="form-input" required value={formData.startTime} onChange={e=>setFormData({...formData, startTime: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Jam Selesai</label>
+                  <input type="time" className="form-input" required value={formData.endTime} onChange={e=>setFormData({...formData, endTime: e.target.value})} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Kuota Pasien</label>
+                <input type="number" className="form-input" min="1" required value={formData.quota} onChange={e=>setFormData({...formData, quota: Number(e.target.value)})} />
+              </div>
+              
+              <div className={styles.modalActions}>
+                <button type="button" className="btn btn-secondary" onClick={()=>setShowForm(false)}>Batal</button>
+                <button type="submit" className="btn btn-primary">Simpan</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
