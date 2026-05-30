@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import api from '@/lib/api';
 import styles from './dashboard.module.css';
 import Logo from '@/components/Logo';
 
@@ -57,7 +58,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push('/login');
       return;
     }
+    
+    // Set user dari localstorage dulu biar cepat tampil
     setUser(JSON.parse(stored));
+    
+    // Sync ke server untuk update permission terbaru jika diubah oleh admin
+    api.get('/auth/me').then(res => {
+      setUser(res.data);
+      localStorage.setItem('orbita_user', JSON.stringify(res.data));
+    }).catch(err => {
+      console.error('Failed to sync user data', err);
+    });
   }, [router]);
 
   const handleLogout = () => {
