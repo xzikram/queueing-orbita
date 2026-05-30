@@ -199,7 +199,8 @@ export default function SchedulesPage() {
                     onChange={e => {
                       setDocSearch(e.target.value);
                       setShowDocDropdown(true);
-                      const exactMatch = doctors.find(doc => doc.doctorName.toLowerCase() === e.target.value.toLowerCase());
+                      const val = e.target.value.toLowerCase();
+                      const exactMatch = doctors.find(doc => doc.doctorName.toLowerCase() === val || doc.doctorCode?.toLowerCase() === val);
                       if(exactMatch) {
                         setFormData({...formData, doctorId: exactMatch.id, roomId: exactMatch.defaultRoomId || '', floorId: exactMatch.defaultRoom?.floorId || ''});
                       } else {
@@ -214,22 +215,22 @@ export default function SchedulesPage() {
                       borderRadius: '8px', zIndex: 50, maxHeight: 200, overflowY: 'auto',
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                     }}>
-                      {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase())).map(d => (
+                      {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase()) || d.doctorCode?.toLowerCase().includes(docSearch.toLowerCase())).map(d => (
                         <div 
                           key={d.id} 
                           tabIndex={0}
                           style={{padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #eee', color: '#333'}}
                           onMouseDown={(e) => e.preventDefault()} // Prevent blur before onClick fires
                           onClick={() => {
-                            setDocSearch(d.doctorName);
+                            setDocSearch(`${d.doctorCode} - ${d.doctorName}`);
                             setFormData({...formData, doctorId: d.id, roomId: d.defaultRoomId || '', floorId: d.defaultRoom?.floorId || ''});
                             setShowDocDropdown(false);
                           }}
                         >
-                          {d.doctorName}
+                          {d.doctorCode} - {d.doctorName}
                         </div>
                       ))}
-                      {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase())).length === 0 && (
+                      {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase()) || d.doctorCode?.toLowerCase().includes(docSearch.toLowerCase())).length === 0 && (
                         <div style={{padding: '8px 12px', color: '#999', fontStyle: 'italic'}}>Dokter tidak ditemukan</div>
                       )}
                     </div>
