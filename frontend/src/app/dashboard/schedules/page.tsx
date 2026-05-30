@@ -235,6 +235,7 @@ export default function SchedulesPage() {
                       )}
                     </div>
                   )}
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Ruangan</label>
