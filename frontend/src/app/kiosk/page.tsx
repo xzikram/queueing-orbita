@@ -61,8 +61,7 @@ export default function KioskPage() {
   const loadSchedules = useCallback(async () => {
     setLoadingSchedules(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const res = await api.get(`/schedules?date=${today}`);
+      const res = await api.get(`/schedules/active-today`);
       setSchedules(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to load schedules:', err);
