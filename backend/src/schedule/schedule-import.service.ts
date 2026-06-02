@@ -5,7 +5,9 @@ import * as ExcelJS from 'exceljs';
 function parseExcelTime(value: any): string {
   if (!value) return '';
   if (value instanceof Date) {
-    return value.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const h = String(value.getUTCHours()).padStart(2, '0');
+    const m = String(value.getUTCMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
   }
   if (typeof value === 'object' && value.result) {
     return parseExcelTime(value.result);
@@ -13,7 +15,11 @@ function parseExcelTime(value: any): string {
   const str = String(value).trim();
   if (str.includes('GMT')) {
     const d = new Date(str);
-    if (!isNaN(d.getTime())) return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (!isNaN(d.getTime())) {
+      const h = String(d.getUTCHours()).padStart(2, '0');
+      const m = String(d.getUTCMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
   }
   return str;
 }
