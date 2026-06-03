@@ -81,7 +81,7 @@ export class AdmissionService {
       const visitCode = `V${Date.now().toString(36).toUpperCase()}`;
 
       // Pre-generate doctor ticket number if a doctor is already selected from the kiosk
-      let doctorTicketNo = null;
+      let doctorTicketNo: string | null = null;
       if (ticket.selectedDoctorId) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
