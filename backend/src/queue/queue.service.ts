@@ -1,9 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
 export class QueueService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private displayGateway: DisplayGateway,
+  ) {}
 
   async generateTicket(data: {
     patientType: 'UMUM' | 'ASURANSI' | 'BARU' | 'LAMA' | 'ONLINE';
@@ -79,6 +83,7 @@ export class QueueService {
       }),
     ]);
 
+    this.displayGateway.triggerDashboardRefresh();
     return ticket;
   }
 
@@ -154,6 +159,7 @@ export class QueueService {
           data: { bookedCount: { increment: 1 } },
         }),
       ]);
+      this.displayGateway.triggerDashboardRefresh();
       return ticket;
     }
 
@@ -161,6 +167,7 @@ export class QueueService {
       data: ticketData,
     });
 
+    this.displayGateway.triggerDashboardRefresh();
     return ticket;
   }
 
@@ -223,6 +230,7 @@ export class QueueService {
       return [t, v];
     });
 
+    this.displayGateway.triggerDashboardRefresh();
     return ticket;
   }
 

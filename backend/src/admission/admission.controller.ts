@@ -5,6 +5,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Permission } from '../common/decorators/permission.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('admission')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -87,6 +88,7 @@ export class AdmissionController {
     });
   }
 
+  @Public()
   @Get('recent-calls')
   getRecentCalls(@Query('limit') limit?: string) {
     return this.admissionService.getRecentCalls(limit ? parseInt(limit) : 10);
