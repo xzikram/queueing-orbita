@@ -87,7 +87,7 @@ export default function UsersPage() {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>{modal === 'create' ? 'Tambah User' : 'Edit User'}</h3>
             <div className="form-group"><label className="form-label">Nama</label><input className="form-input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-            <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Email / NIK / ID</label><input className="form-input" type="text" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Password {modal === 'edit' ? '(kosongkan jika tidak diubah)' : ''}</label><input className="form-input" type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></div>
             <div className="form-group"><label className="form-label">Role</label><select className="form-select" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>{roles.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
             <div className={styles.modalActions}>
