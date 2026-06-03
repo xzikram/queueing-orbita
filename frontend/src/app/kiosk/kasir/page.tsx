@@ -91,7 +91,7 @@ export default function KioskKasirPage() {
               <div className={styles.cardIcon}>🛡️</div>
               <div className={styles.cardCode}>H</div>
               <h3 className={styles.cardLabel}>PASIEN ASURANSI</h3>
-              <p className={styles.cardDesc}>Pembayaran menggunakan Asuransi Kesehatan / BPJS</p>
+              <p className={styles.cardDesc}>Pembayaran menggunakan Asuransi Kesehatan</p>
               <div className={styles.cardHoverEffect}></div>
             </button>
           </div>
