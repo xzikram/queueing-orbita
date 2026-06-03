@@ -21,7 +21,7 @@ export default function AdmissionPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   // Patient data modal
   const [patientModal, setPatientModal] = useState<any>(null);
-  const [patientForm, setPatientForm] = useState({ patientRmNo: '', patientName: '', scheduleId: '' });
+  const [patientForm, setPatientForm] = useState({ patientRmNo: '', patientName: '', scheduleId: '', doctorTicketNo: '' });
   const [schedules, setSchedules] = useState<any[]>([]);
   // Time correction modal
   const [timeModal, setTimeModal] = useState<any>(null);
@@ -137,6 +137,7 @@ export default function AdmissionPage() {
       patientRmNo: v?.patientRmNo || '',
       patientName: v?.patientName || '',
       scheduleId: v?.selectedScheduleId || ticket.selectedScheduleId || '',
+      doctorTicketNo: v?.doctorTicketNo || '',
     });
     setPatientModal(ticket);
   };
@@ -296,6 +297,10 @@ export default function AdmissionPage() {
                   <option key={s.id} value={s.id}>{s.doctor?.doctorName} - Poli {s.room?.name}</option>
                 ))}
               </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nomor Antrian Dokter (Opsional)</label>
+              <input className="form-input" value={patientForm.doctorTicketNo} onChange={e => setPatientForm({ ...patientForm, doctorTicketNo: e.target.value })} placeholder="Otomatis digenerate jika kosong" />
             </div>
             <div className={styles.modalActions}>
               <button className="btn btn-secondary" onClick={() => setPatientModal(null)}>Batal</button>

@@ -79,6 +79,36 @@ export class AdmissionService {
     let visit = ticket.visit;
     if (!visit) {
       const visitCode = `V${Date.now().toString(36).toUpperCase()}`;
+
+      // Pre-generate doctor ticket number if a doctor is already selected from the kiosk
+      let doctorTicketNo = null;
+      if (ticket.selectedDoctorId) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const doctor = await this.prisma.doctor.findUnique({ where: { id: ticket.selectedDoctorId } });
+        const prefix = doctor?.doctorCode || 'DOC';
+
+        const lastVisit = await this.prisma.visit.findFirst({
+          where: {
+            visitDate: { gte: today, lt: tomorrow },
+            doctorTicketNo: { startsWith: prefix },
+            selectedDoctorId: ticket.selectedDoctorId,
+          },
+          orderBy: { doctorTicketNo: 'desc' },
+        });
+
+        let nextNumber = 1;
+        if (lastVisit && lastVisit.doctorTicketNo) {
+          const numberPart = lastVisit.doctorTicketNo.replace(prefix, '');
+          const lastNum = parseInt(numberPart) || 0;
+          nextNumber = lastNum + 1;
+        }
+        doctorTicketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+      }
+
       visit = await this.prisma.visit.create({
         data: {
           visitCode,
@@ -91,6 +121,7 @@ export class AdmissionService {
           selectedFloorId: ticket.selectedFloorId,
           currentUnitType: 'ADMISSION',
           currentStatus: 'CALLED',
+          doctorTicketNo,
           createdBy: data.userId,
         },
         include: {
@@ -341,7 +372,7 @@ export class AdmissionService {
   /**
    * Update patient data on a visit
    */
-  async updatePatientData(ticketId: string, data: { patientRmNo?: string; patientName?: string; patientDob?: string; scheduleId?: string }) {
+  async updatePatientData(ticketId: string, data: { patientRmNo?: string; patientName?: string; patientDob?: string; scheduleId?: string; doctorTicketNo?: string }) {
     const ticket = await this.prisma.queueTicket.findUnique({
       where: { id: ticketId },
       include: { visit: true },
@@ -352,6 +383,7 @@ export class AdmissionService {
     if (data.patientRmNo !== undefined) updateData.patientRmNo = data.patientRmNo;
     if (data.patientName !== undefined) updateData.patientName = data.patientName;
     if (data.patientDob !== undefined) updateData.patientDob = data.patientDob ? new Date(data.patientDob) : null;
+    if (data.doctorTicketNo !== undefined) updateData.doctorTicketNo = data.doctorTicketNo || null;
 
     if (data.scheduleId) {
       const schedule = await this.prisma.doctorSchedule.findUnique({

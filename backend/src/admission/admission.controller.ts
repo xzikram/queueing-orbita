@@ -69,7 +69,7 @@ export class AdmissionController {
   @Put(':ticketId/patient-data')
   updatePatientData(
     @Param('ticketId') ticketId: string,
-    @Body() body: { patientRmNo?: string; patientName?: string; patientDob?: string },
+    @Body() body: { patientRmNo?: string; patientName?: string; patientDob?: string; doctorTicketNo?: string },
   ) {
     return this.admissionService.updatePatientData(ticketId, body);
   }

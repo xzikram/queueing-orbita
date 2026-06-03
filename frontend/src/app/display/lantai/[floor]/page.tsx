@@ -271,11 +271,7 @@ export default function FloorDisplayPage() {
               ) : (
                 waitingList.map((w: any, idx: number) => (
                   <div key={idx} className={styles.waitingItem}>
-                    <div className={styles.waitingNo}>{w.ticketNo}</div>
-                    <div className={styles.waitingInfo}>
-                      {w.patientName && <div className={styles.waitingName}>{w.patientName}</div>}
-                      <div className={styles.waitingDest}>{w.unitType === 'BDR' ? 'BDR' : w.doctorName || w.roomName || 'Pengkajian'}</div>
-                    </div>
+                    <div className={styles.waitingNo} style={{ textAlign: 'center', width: '100%', fontSize: '2rem' }}>{w.ticketNo}</div>
                   </div>
                 ))
               )}
