@@ -199,17 +199,18 @@ export class ReportsService {
       const waitTime = formatDuration(row.waitingDurationSeconds);
       const serveTime = formatDuration(row.serviceDurationSeconds);
       
+      const rmNo = row.visit?.patientRmNo || '-';
       let step = '-';
       let user = row.updatedBy ? (userMap.get(row.updatedBy) || row.updatedBy) : '-';
 
-      const baseData = { Date: date, 'Patient ID': ticketNo, Step: step, User: user, 'Wait. Time': waitTime, 'Serv. Time': serveTime };
+      const baseData = { Date: date, 'Patient ID': ticketNo, 'RM Pasien': rmNo, Step: step, 'User Input': user, 'Wait. Time': waitTime, 'Serv. Time': serveTime };
 
       switch (row.unitType) {
         case 'ADMISSION':
           sheetsData.Admission.push({
-            q_number: ticketNo, q_jenisPatient: patientType, q_date: date, q_dateTime: waitStart,
+            q_number: ticketNo, rm_pasien: rmNo, q_jenisPatient: patientType, q_date: date, q_dateTime: waitStart,
             q_callingTime: calledAt, q_startTime: serveStart, q_doneTime: serveEnd,
-            ServiceTime: serveTime, WaitingTime: waitTime, q_admin_Counter: row.counter?.name || '-'
+            ServiceTime: serveTime, WaitingTime: waitTime, q_admin_Counter: row.counter?.name || '-', userInput: user
           });
           break;
         case 'ASSESSMENT':
@@ -222,7 +223,7 @@ export class ReportsService {
           sheetsData.CDC.push({ ...baseData, Step: row.serviceName || 'CDC' });
           break;
         case 'DOCTOR':
-          sheetsData.Doctor.push({ ...baseData, Step: row.doctor?.doctorName || 'Dokter', User: row.doctor?.doctorName || user });
+          sheetsData.Doctor.push({ ...baseData, Step: row.doctor?.doctorName || 'Dokter', 'User Input': row.doctor?.doctorName || user });
           break;
         case 'CASHIER':
           sheetsData.Cashier.push({ ...baseData, Step: 'Cashier' });
@@ -242,46 +243,22 @@ export class ReportsService {
       
       if (name === 'Admission') {
         sheet.columns = [
-          { header: 'q_number', key: 'q_number', width: 15 }, { header: 'q_jenisPatient', key: 'q_jenisPatient', width: 15 },
+          { header: 'q_number', key: 'q_number', width: 15 }, { header: 'RM Pasien', key: 'rm_pasien', width: 15 }, { header: 'q_jenisPatient', key: 'q_jenisPatient', width: 15 },
           { header: 'q_date', key: 'q_date', width: 15 }, { header: 'q_dateTime', key: 'q_dateTime', width: 15 },
           { header: 'q_callingTime', key: 'q_callingTime', width: 15 }, { header: 'q_startTime', key: 'q_startTime', width: 15 },
           { header: 'q_doneTime', key: 'q_doneTime', width: 15 }, { header: 'ServiceTime', key: 'ServiceTime', width: 15 },
           { header: 'WaitingTime', key: 'WaitingTime', width: 15 }, { header: 'q_admin_Counter', key: 'q_admin_Counter', width: 15 },
+          { header: 'User Input', key: 'userInput', width: 25 },
         ];
         sheet.addRows(rows);
-        
-        // Add Stats block
-        sheet.getCell('N1').value = 'WT'; sheet.getCell('O1').value = 'WL';
-        sheet.getCell('M2').value = 'MIN'; sheet.getCell('N2').value = { formula: 'TEXT(MIN(I2:I999),"hh:mm:ss")' }; sheet.getCell('O2').value = { formula: 'TEXT(MIN(H2:H999),"hh:mm:ss")' };
-        sheet.getCell('M3').value = 'MAX'; sheet.getCell('N3').value = { formula: 'TEXT(MAX(I2:I999),"hh:mm:ss")' }; sheet.getCell('O3').value = { formula: 'TEXT(MAX(H2:H999),"hh:mm:ss")' };
-        sheet.getCell('M4').value = 'AVERAGE'; sheet.getCell('N4').value = { formula: 'TEXT(AVERAGE(I2:I999),"hh:mm:ss")' }; sheet.getCell('O4').value = { formula: 'TEXT(AVERAGE(H2:H999),"hh:mm:ss")' };
-        
-        sheet.getCell('M6').value = 'Exclude'; sheet.getCell('N6').value = 'WT'; sheet.getCell('O6').value = 'WL';
-        sheet.getCell('M7').value = 'MIN'; sheet.getCell('N7').value = { formula: 'TEXT(MINIFS(I2:I999, I2:I999, ">=00:01:00", I2:I999, "<=05:00:00"),"hh:mm:ss")' }; sheet.getCell('O7').value = { formula: 'TEXT(MINIFS(H2:H999, H2:H999, ">=00:01:00", H2:H999, "<=05:00:00"),"hh:mm:ss")' };
-        sheet.getCell('M8').value = 'MAX'; sheet.getCell('N8').value = { formula: 'TEXT(MAXIFS(I2:I999, I2:I999, "<=05:00:00", I2:I999, ">=00:01:00"),"hh:mm:ss")' }; sheet.getCell('O8').value = { formula: 'TEXT(MAXIFS(H2:H999, H2:H999, "<=05:00:00", H2:H999, ">=00:01:00"),"hh:mm:ss")' };
-        sheet.getCell('M9').value = 'AVERAGE'; sheet.getCell('N9').value = { formula: 'TEXT(AVERAGEIFS(I2:I999, I2:I999, ">=00:01:00", I2:I999, "<=05:00:00"),"hh:mm:ss")' }; sheet.getCell('O9').value = { formula: 'TEXT(AVERAGEIFS(H2:H999, H2:H999, ">=00:01:00", H2:H999, "<=05:00:00"),"hh:mm:ss")' };
-        
-        sheet.getCell('M11').value = 'WT Kurang dari 1 menit dan lebih dari 5 jam maka di anggap exclude';
       } else {
         sheet.columns = [
           { header: 'Date', key: 'Date', width: 15 }, { header: 'Patient ID', key: 'Patient ID', width: 20 },
-          { header: 'Step', key: 'Step', width: 30 }, { header: 'User', key: 'User', width: 30 },
+          { header: 'RM Pasien', key: 'RM Pasien', width: 15 },
+          { header: 'Step', key: 'Step', width: 30 }, { header: 'User Input', key: 'User Input', width: 30 },
           { header: 'Wait. Time', key: 'Wait. Time', width: 15 }, { header: 'Serv. Time', key: 'Serv. Time', width: 15 }
         ];
         sheet.addRows(rows);
-
-        // Add Stats block
-        sheet.getCell('H1').value = 'Include'; sheet.getCell('I1').value = 'WT'; sheet.getCell('J1').value = 'WL';
-        sheet.getCell('H2').value = 'MIN'; sheet.getCell('I2').value = { formula: 'TEXT(MIN(E2:E999),"hh:mm:ss")' }; sheet.getCell('J2').value = { formula: 'TEXT(MIN(F2:F999),"hh:mm:ss")' };
-        sheet.getCell('H3').value = 'MAX'; sheet.getCell('I3').value = { formula: 'TEXT(MAX(E2:E999),"hh:mm:ss")' }; sheet.getCell('J3').value = { formula: 'TEXT(MAX(F2:F999),"hh:mm:ss")' };
-        sheet.getCell('H4').value = 'AVERAGE'; sheet.getCell('I4').value = { formula: 'TEXT(AVERAGE(E2:E999),"hh:mm:ss")' }; sheet.getCell('J4').value = { formula: 'TEXT(AVERAGE(F2:F999),"hh:mm:ss")' };
-        
-        sheet.getCell('H7').value = 'Exclude'; sheet.getCell('I7').value = 'WT'; sheet.getCell('J7').value = 'WL';
-        sheet.getCell('H8').value = 'MIN'; sheet.getCell('I8').value = { formula: 'TEXT(MINIFS(E2:E999, E2:E999, ">=00:01:00", E2:E999, "<=05:00:00"),"hh:mm:ss")' }; sheet.getCell('J8').value = { formula: 'TEXT(MINIFS(F2:F999, F2:F999, ">=00:01:00", F2:F999, "<=05:00:00"),"hh:mm:ss")' };
-        sheet.getCell('H9').value = 'MAX'; sheet.getCell('I9').value = { formula: 'TEXT(MAXIFS(E2:E999, E2:E999, "<=05:00:00", E2:E999, ">=00:01:00"),"hh:mm:ss")' }; sheet.getCell('J9').value = { formula: 'TEXT(MAXIFS(F2:F999, F2:F999, "<=05:00:00", F2:F999, ">=00:01:00"),"hh:mm:ss")' };
-        sheet.getCell('H10').value = 'AVERAGE'; sheet.getCell('I10').value = { formula: 'TEXT(AVERAGEIFS(E2:E999, E2:E999, ">=00:01:00", E2:E999, "<=05:00:00"),"hh:mm:ss")' }; sheet.getCell('J10').value = { formula: 'TEXT(AVERAGEIFS(F2:F999, F2:F999, ">=00:01:00", F2:F999, "<=05:00:00"),"hh:mm:ss")' };
-        
-        sheet.getCell('H13').value = 'WT Kurang dari 1 menit dan lebih dari 5 jam maka di anggap exclude';
       }
       sheet.getRow(1).font = { bold: true };
     };
