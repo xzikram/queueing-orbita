@@ -275,6 +275,9 @@ export class QueueService {
         createdAt: { gte: today },
         display: { floor: { floorNumber } },
       },
+      include: {
+        visit: true,
+      },
       orderBy: { calledAt: 'desc' },
       take: 50,
     });
@@ -283,10 +286,25 @@ export class QueueService {
     const uniquePoli: typeof recentCalls = [];
     
     for (const c of recentCalls) {
-      if (c.unitType === 'BDR') {
-        if (!uniqueBdr.some(x => x.ticketNo === c.ticketNo)) uniqueBdr.push(c);
-      } else if (c.unitType === 'DOCTOR' || c.unitType === 'ASSESSMENT') {
-        if (!uniquePoli.some(x => x.ticketNo === c.ticketNo)) uniquePoli.push(c);
+      // Tentukan apakah panggilan ini masih aktif di unit tersebut
+      let isActiveAtUnit = true;
+      if (c.visit) {
+        if (c.visit.currentStatus === 'FINISHED' || c.visit.currentStatus === 'CANCELLED') {
+          isActiveAtUnit = false;
+        } else if (c.unitType === 'BDR' && c.visit.currentUnitType !== 'BDR') {
+          isActiveAtUnit = false;
+        } else if ((c.unitType === 'DOCTOR' || c.unitType === 'ASSESSMENT') && 
+                   c.visit.currentUnitType !== 'DOCTOR' && c.visit.currentUnitType !== 'ASSESSMENT') {
+          isActiveAtUnit = false;
+        }
+      }
+
+      if (isActiveAtUnit) {
+        if (c.unitType === 'BDR') {
+          if (!uniqueBdr.some(x => x.ticketNo === c.ticketNo)) uniqueBdr.push(c);
+        } else if (c.unitType === 'DOCTOR' || c.unitType === 'ASSESSMENT') {
+          if (!uniquePoli.some(x => x.ticketNo === c.ticketNo)) uniquePoli.push(c);
+        }
       }
     }
 

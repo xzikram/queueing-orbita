@@ -9,7 +9,7 @@ import { Public } from '../common/decorators/public.decorator';
 
 @Controller('cashier')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Roles('ADMIN', 'CASHIER')
+@Roles('ADMIN', 'CASHIER', 'ADMISSION', 'FRONT_DESK')
 @Permission('cashier')
 export class CashierController {
   constructor(private service: CashierService) {}

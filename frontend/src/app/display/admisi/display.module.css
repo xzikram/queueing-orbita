@@ -72,6 +72,13 @@
   flex-shrink: 0;
 }
 
+.timeRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
 .clock {
   font-size: 1.5rem;
   font-weight: 800;
@@ -87,9 +94,9 @@
 }
 
 .connectionDot {
-  font-size: 0.85rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  margin-top: 4px;
+  line-height: 1;
 }
 
 .connected {

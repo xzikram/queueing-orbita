@@ -14,10 +14,16 @@ export class AssessmentService {
   ) {}
 
   async getQueue(floorId?: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const where: any = {
       currentUnitType: 'ASSESSMENT',
       currentStatus: { in: ['WAITING', 'SERVING'] },
       finishedAt: null,
+      visitDate: { gte: today, lt: tomorrow },
     };
     if (floorId) where.selectedFloorId = floorId;
 

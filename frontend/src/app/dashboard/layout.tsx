@@ -8,12 +8,11 @@ import Logo from '@/components/Logo';
 
 const menuItems = [
   { label: 'Dashboard', path: '/dashboard', icon: '📊', permissionKey: 'dashboard' },
-  { label: 'Admisi', path: '/dashboard/admission', icon: '🏥', permissionKey: 'admission' },
+  { label: 'Front Desk', path: '/dashboard/front-desk', icon: '🛎️', permissionKeys: ['admission', 'cashier'] },
   { label: 'Pengkajian', path: '/dashboard/assessment', icon: '📋', permissionKey: 'assessment' },
   { label: 'BDR', path: '/dashboard/bdr', icon: '💉', permissionKey: 'bdr' },
   { label: 'Dokter/Poli', path: '/dashboard/doctor', icon: '👨‍⚕️', permissionKey: 'doctor' },
   { label: 'CDC', path: '/dashboard/cdc', icon: '🔬', permissionKey: 'cdc' },
-  { label: 'Kasir', path: '/dashboard/cashier', icon: '💳', permissionKey: 'cashier' },
   { label: 'Farmasi', path: '/dashboard/pharmacy', icon: '💊', permissionKey: 'pharmacy' },
   { label: 'Optik', path: '/dashboard/optic', icon: '👓', permissionKey: 'optic' },
   { type: 'divider' },
@@ -32,6 +31,7 @@ const menuItems = [
   { type: 'divider' },
   { label: 'Live Dashboard', path: '/dashboard/live', icon: '📈', permissionKey: 'live' },
   { label: 'Analytics Reports', path: '/dashboard/reports', icon: '📉', permissionKey: 'reports' },
+  { label: 'Tracking Pasien', path: '/dashboard/reports/journey', icon: '🔍', permissionKey: 'reports' },
   { label: 'Audit Logs', path: '/dashboard/audit', icon: '🛡️', permissionKey: 'audit' },
   { type: 'divider' },
   { label: 'TV Display', icon: '📺', permissionKey: 'master', children: [
@@ -77,6 +77,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.removeItem('activeDoctorRoom');
     localStorage.removeItem('activeAdmissionCounter');
     localStorage.removeItem('activeCashierCounter');
+    localStorage.removeItem('activeBdrFloor');
+    localStorage.removeItem('activeAssessmentFloor');
     router.push('/login');
   };
 
@@ -116,7 +118,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             const userPermissions: string[] = user.permissions || [];
             const isAdmin = user.role === 'ADMIN';
 
-            if (item.permissionKey && !isAdmin && !userPermissions.includes(item.permissionKey)) return null;
+            const hasPermission = isAdmin || (
+              item.permissionKey ? userPermissions.includes(item.permissionKey) : 
+              item.permissionKeys ? item.permissionKeys.some((k: string) => userPermissions.includes(k)) : true
+            );
+
+            if (!hasPermission) return null;
 
             if (item.children) {
               const isExpanded = expandedMenus.has(item.label);

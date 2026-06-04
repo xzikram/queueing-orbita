@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +24,7 @@ export default function LoginPage() {
       localStorage.setItem('orbita_user', JSON.stringify(res.data.user));
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login gagal');
+      setError(err.response?.data?.message || 'Login gagal. Periksa kembali email dan password Anda.');
     } finally {
       setLoading(false);
     }
@@ -31,53 +32,121 @@ export default function LoginPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.bgOrbs}>
-        <div className={styles.orb1}></div>
-        <div className={styles.orb2}></div>
-        <div className={styles.orb3}></div>
+      {/* Animated Background */}
+      <div className={styles.bgPattern}>
+        <div className={styles.orb1} />
+        <div className={styles.orb2} />
+        <div className={styles.orb3} />
+        <div className={styles.orb4} />
+        <div className={styles.gridOverlay} />
       </div>
 
-      <div className={styles.card}>
-        <div className={styles.logo}>
-          <div className={styles.logoIcon}>
-            <img src="/Logo RS JEC ORBITA.png" alt="JEC ORBITA Logo" className={styles.logoImage} />
+      {/* Left Branding Panel */}
+      <div className={styles.brandPanel}>
+        <div className={styles.brandContent}>
+          <div className={styles.brandLogo}>
+            <img src="/Logo RS JEC ORBITA.png" alt="JEC ORBITA" className={styles.brandLogoImg} />
           </div>
-          <h1 className={styles.title}>Sistem Antrian Terpadu</h1>
-          <p className={styles.subtitle}>Queue Journey Management System</p>
+          <h1 className={styles.brandTitle}>Sistem Antrian Terpadu</h1>
+          <p className={styles.brandSubtitle}>Queue Journey Management System</p>
+          <div className={styles.brandFeatures}>
+            <div className={styles.featureItem}>
+              <span className={styles.featureIcon}>🏥</span>
+              <span>Multi-unit queue management</span>
+            </div>
+            <div className={styles.featureItem}>
+              <span className={styles.featureIcon}>📊</span>
+              <span>Real-time analytics & tracking</span>
+            </div>
+            <div className={styles.featureItem}>
+              <span className={styles.featureIcon}>🔔</span>
+              <span>Smart notification system</span>
+            </div>
+          </div>
         </div>
+        <div className={styles.brandFooter}>
+          <span>RS Mata JEC ORBITA @ Makassar</span>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          {error && <div className={styles.error}>{error}</div>}
-
-          <div className="form-group">
-            <label className="form-label">Email / NIK</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Masukkan Email atau NIK"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-            />
+      {/* Right Login Panel */}
+      <div className={styles.loginPanel}>
+        <div className={styles.loginCard}>
+          {/* Mobile Logo */}
+          <div className={styles.mobileLogo}>
+            <img src="/Logo RS JEC ORBITA.png" alt="JEC ORBITA" className={styles.mobileLogoImg} />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <div className={styles.loginHeader}>
+            <h2 className={styles.loginTitle}>Selamat Datang</h2>
+            <p className={styles.loginSubtitle}>Silakan masuk ke akun Anda untuk melanjutkan</p>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className={styles.form}>
+            {error && (
+              <div className={styles.errorBox}>
+                <span className={styles.errorIcon}>⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Email / NIK</label>
+              <div className={styles.inputWrapper}>
+                <span className={styles.inputIcon}>👤</span>
+                <input
+                  type="text"
+                  className={styles.input}
+                  placeholder="Masukkan email atau NIK"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoFocus
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Password</label>
+              <div className={styles.inputWrapper}>
+                <span className={styles.inputIcon}>🔒</span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className={styles.input}
+                  placeholder="Masukkan password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className={styles.togglePassword}
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className={styles.submitBtn}
+              disabled={loading}
+            >
+              {loading ? (
+                <span className={styles.spinner} />
+              ) : null}
+              {loading ? 'Memproses...' : 'Masuk'}
+            </button>
+          </form>
+
+          <div className={styles.loginFooter}>
+            <p>Powered by <strong>ORBITA Queue System</strong></p>
+          </div>
+        </div>
       </div>
     </div>
   );

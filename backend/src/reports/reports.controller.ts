@@ -63,4 +63,26 @@ export class ReportsController {
       throw new BadRequestException('Gagal mengekspor data: ' + error.message);
     }
   }
+
+  @Get('patient-journey')
+  @Roles('ADMIN', 'MANAGEMENT')
+  async getPatientJourneyList(@Query() query: any) {
+    return this.reportsService.getPatientJourneyList(query);
+  }
+
+  @Get('export-patient-journey')
+  @Roles('ADMIN', 'MANAGEMENT')
+  async exportPatientJourney(@Query() query: any, @Res() res: Response) {
+    try {
+      const buffer = await this.reportsService.exportPatientJourney(query);
+      const filename = `Laporan_Tracking_Pasien_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      res.send(buffer);
+    } catch (error: any) {
+      throw new BadRequestException('Gagal mengekspor data tracking: ' + error.message);
+    }
+  }
 }
+

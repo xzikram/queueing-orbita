@@ -14,11 +14,17 @@ export class CashierService {
   ) {}
 
   async getQueue() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     return this.prisma.visit.findMany({
       where: {
         currentUnitType: 'CASHIER',
         currentStatus: { in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'] },
         finishedAt: null,
+        visitDate: { gte: today, lt: tomorrow },
       },
       include: {
         queueTicket: true,

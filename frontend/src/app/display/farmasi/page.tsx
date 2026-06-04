@@ -234,77 +234,81 @@ export default function DisplayFarmasiPage() {
           </div>
         </div>
         <div className={styles.headerRight}>
-          <div className={styles.clock}>
-            {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          <div className={styles.timeRow}>
+            <div className={styles.clock}>
+              {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+            <div className={`${styles.connectionDot} ${connected ? styles.connected : styles.disconnected}`} title={connected ? 'Online' : 'Offline'}>
+              {connected ? '●' : '○'}
+            </div>
           </div>
           <div className={styles.date}>
             {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
-          <div className={`${styles.connectionDot} ${connected ? styles.connected : styles.disconnected}`}>
-            {connected ? '● Online' : '○ Offline'}
-          </div>
         </div>
       </div>
 
-      <div className={styles.mainContent}>
-        <div className={styles.currentCallSection}>
-          {currentCall ? (
-            <div className={styles.currentCallCard}>
-              <div className={styles.callLabel}>AMBIL OBAT</div>
-              <div className={styles.callNumber}>{currentCall.ticketNo}</div>
-              <div className={styles.callArrow}>→</div>
-              <div className={styles.callCounter}>Loket Farmasi</div>
-            </div>
+      <div className={styles.mainGrid}>
+        <div className={styles.videoArea}>
+          {playlist.length > 0 ? (
+            <video
+              ref={videoRef}
+              src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
+              autoPlay
+              muted={videoVolume === 0}
+              onLoadedData={handleVideoLoad}
+              loop={playlist.length === 1}
+              onEnded={handleVideoEnded}
+              onError={() => {
+                if (playlist.length > 1) {
+                  setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
+                }
+              }}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '24px', backgroundColor: '#000' }}
+            />
           ) : (
-            <div className={styles.noCall}>
-              <div className={styles.noCallIcon}>💊</div>
-              <div className={styles.noCallText}>Menunggu Panggilan...</div>
+            <div className={styles.videoPlaceholder}>
+              <div className={styles.videoIcon}>🎬</div>
+              <div className={styles.videoText}>Area Video Informasi</div>
+              <div className={styles.videoSub}>Upload video dari Dashboard untuk ditampilkan di sini</div>
             </div>
           )}
         </div>
 
-        <div className={styles.recentSection}>
-          <h3 className={styles.recentTitle}>Riwayat Panggilan</h3>
-          <div className={styles.recentList}>
-            {recentCalls.length === 0 ? (
-              <div className={styles.recentEmpty}>Belum ada riwayat</div>
+        <div className={styles.rightColumn}>
+          <div className={styles.currentCallSection}>
+            {currentCall ? (
+              <div className={styles.currentCallCard}>
+                <div className={styles.callLabel}>AMBIL OBAT</div>
+                <div className={styles.callNumber}>{currentCall.ticketNo}</div>
+                <div className={styles.callArrow}>→</div>
+                <div className={styles.callCounter}>Loket Farmasi</div>
+              </div>
             ) : (
-              recentCalls.map((call, idx) => (
-                <div key={idx} className={styles.recentItem}>
-                  <span className={styles.recentNo}>{call.ticketNo}</span>
-                  <span className={styles.recentArrow}>→</span>
-                  <span className={styles.recentCounter}>Farmasi</span>
-                </div>
-              ))
+              <div className={styles.noCall}>
+                <div className={styles.noCallIcon}>💊</div>
+                <div className={styles.noCallText}>Menunggu Panggilan...</div>
+              </div>
             )}
           </div>
-        </div>
-      </div>
 
-      <div className={styles.videoArea}>
-        {playlist.length > 0 ? (
-          <video
-            ref={videoRef}
-            src={getVideoUrl(playlist[currentVideoIdx]?.fileUrl)}
-            autoPlay
-            muted={videoVolume === 0}
-            onLoadedData={handleVideoLoad}
-            loop={playlist.length === 1}
-            onEnded={handleVideoEnded}
-            onError={() => {
-              if (playlist.length > 1) {
-                setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
-              }
-            }}
-            style={{ width: '100%', aspectRatio: '16/9', objectFit: 'contain', borderRadius: '24px', backgroundColor: '#000' }}
-          />
-        ) : (
-          <div className={styles.videoPlaceholder}>
-            <div className={styles.videoIcon}>🎬</div>
-            <div className={styles.videoText}>Area Video Informasi</div>
-            <div className={styles.videoSub}>Upload video dari Dashboard untuk ditampilkan di sini</div>
+          <div className={styles.recentSection}>
+            <h3 className={styles.recentTitle}>Riwayat Panggilan</h3>
+            <div className={styles.recentList}>
+              {recentCalls.length === 0 ? (
+                <div className={styles.recentEmpty}>Belum ada riwayat</div>
+              ) : (
+                recentCalls.map((call, idx) => (
+                  <div key={idx} className={styles.recentItem}>
+                    <span className={styles.recentNo}>{call.ticketNo}</span>
+                    <span className={styles.recentArrow}>→</span>
+                    <span className={styles.recentCounter}>Farmasi</span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
       <div className={styles.ticker}>

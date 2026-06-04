@@ -7,9 +7,362 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ========================
-// ENUMS
-// ========================
+model User {
+  id               String                @id @default(uuid())
+  name             String
+  email            String                @unique
+  passwordHash     String                @map("password_hash")
+  role             UserRole
+  isActive         Boolean               @default(true) @map("is_active")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  assignedCounters Counter[]
+  importBatches    ScheduleImportBatch[]
+
+  @@map("users")
+}
+
+model Counter {
+  id                 String               @id @default(uuid())
+  code               String               @unique
+  name               String
+  canHandleAdmission Boolean              @default(true) @map("can_handle_admission")
+  canHandleCashier   Boolean              @default(true) @map("can_handle_cashier")
+  assignedRole       String?              @map("assigned_role")
+  assignedUserId     String?              @map("assigned_user_id")
+  isActive           Boolean              @default(true) @map("is_active")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  assignedUser       User?                @relation(fields: [assignedUserId], references: [id])
+  journeySessions    JourneyUnitSession[]
+
+  @@map("counters")
+}
+
+model Floor {
+  id              String               @id @default(uuid())
+  floorNumber     Int                  @unique @map("floor_number")
+  name            String
+  isActive        Boolean              @default(true) @map("is_active")
+  displays        Display[]
+  doctorSchedules DoctorSchedule[]
+  journeyEvents   JourneyEvent[]
+  journeySessions JourneyUnitSession[]
+  queueTickets    QueueTicket[]
+  rooms           Room[]
+  visits          Visit[]
+
+  @@map("floors")
+}
+
+model Room {
+  id              String               @id @default(uuid())
+  code            String               @unique
+  name            String
+  roomType        RoomType             @map("room_type")
+  floorId         String?              @map("floor_id")
+  hasCalling      Boolean              @default(false) @map("has_calling")
+  displayId       String?              @map("display_id")
+  isActive        Boolean              @default(true) @map("is_active")
+  doctorSchedules DoctorSchedule[]
+  doctors         Doctor[]             @relation("DoctorDefaultRoom")
+  journeyEvents   JourneyEvent[]
+  journeySessions JourneyUnitSession[]
+  queueTickets    QueueTicket[]
+  display         Display?             @relation(fields: [displayId], references: [id])
+  floor           Floor?               @relation(fields: [floorId], references: [id])
+  currentVisits   Visit[]              @relation("VisitCurrentRoom")
+  visits          Visit[]              @relation("VisitSelectedRoom")
+
+  @@map("rooms")
+}
+
+model Doctor {
+  id              String               @id @default(uuid())
+  doctorCode      String               @unique @map("doctor_code")
+  doctorName      String               @map("doctor_name")
+  specialty       String
+  defaultRoomId   String?              @map("default_room_id")
+  isActive        Boolean              @default(true) @map("is_active")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  schedules       DoctorSchedule[]
+  defaultRoom     Room?                @relation("DoctorDefaultRoom", fields: [defaultRoomId], references: [id])
+  journeyEvents   JourneyEvent[]
+  journeySessions JourneyUnitSession[]
+  queueTickets    QueueTicket[]
+  visits          Visit[]
+
+  @@map("doctors")
+}
+
+model DoctorSchedule {
+  id            String               @id @default(uuid())
+  scheduleDate  DateTime             @map("schedule_date")
+  dayName       String               @map("day_name")
+  doctorId      String               @map("doctor_id")
+  roomId        String               @map("room_id")
+  floorId       String               @map("floor_id")
+  startTime     String               @map("start_time")
+  endTime       String               @map("end_time")
+  quota         Int
+  bookedCount   Int                  @default(0) @map("booked_count")
+  status        ScheduleStatus       @default("ACTIVE")
+  importBatchId String?              @map("import_batch_id")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+  importBatch   ScheduleImportBatch? @relation(fields: [importBatchId], references: [id])
+  floor         Floor                @relation(fields: [floorId], references: [id])
+  room          Room                 @relation(fields: [roomId], references: [id])
+  doctor        Doctor               @relation(fields: [doctorId], references: [id])
+  queueTickets  QueueTicket[]
+  visits        Visit[]
+
+  @@map("doctor_schedules")
+}
+
+model ScheduleImportBatch {
+  id          String           @id @default(uuid())
+  filename    String
+  uploadedBy  String           @map("uploaded_by")
+  totalRows   Int              @default(0) @map("total_rows")
+  successRows Int              @default(0) @map("success_rows")
+  failedRows  Int              @default(0) @map("failed_rows")
+  status      ImportStatus     @default("PROCESSING")
+  errorLog    String?          @map("error_log")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  schedules   DoctorSchedule[]
+  uploader    User             @relation(fields: [uploadedBy], references: [id])
+
+  @@map("schedule_import_batches")
+}
+
+model QueueTicket {
+  id                 String               @id @default(uuid())
+  ticketNo           String               @map("ticket_no")
+  queueDate          DateTime             @map("queue_date")
+  patientType        PatientType          @map("patient_type")
+  selectedScheduleId String?              @map("selected_schedule_id")
+  selectedDoctorId   String?              @map("selected_doctor_id")
+  selectedRoomId     String?              @map("selected_room_id")
+  selectedFloorId    String?              @map("selected_floor_id")
+  status             TicketStatus         @default("WAITING")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  displayCallLogs    DisplayCallLog[]
+  journeySessions    JourneyUnitSession[]
+  selectedFloor      Floor?               @relation(fields: [selectedFloorId], references: [id])
+  selectedRoom       Room?                @relation(fields: [selectedRoomId], references: [id])
+  selectedDoctor     Doctor?              @relation(fields: [selectedDoctorId], references: [id])
+  selectedSchedule   DoctorSchedule?      @relation(fields: [selectedScheduleId], references: [id])
+  visit              Visit?
+
+  @@unique([ticketNo, queueDate])
+  @@map("queue_tickets")
+}
+
+model Visit {
+  id                 String               @id @default(uuid())
+  visitCode          String               @unique @map("visit_code")
+  queueTicketId      String               @unique @map("queue_ticket_id")
+  visitDate          DateTime             @map("visit_date")
+  patientRmNo        String?              @map("patient_rm_no")
+  patientName        String?              @map("patient_name")
+  patientDob         DateTime?            @map("patient_dob")
+  patientType        PatientType          @map("patient_type")
+  selectedDoctorId   String?              @map("selected_doctor_id")
+  selectedScheduleId String?              @map("selected_schedule_id")
+  selectedRoomId     String?              @map("selected_room_id")
+  selectedFloorId    String?              @map("selected_floor_id")
+  currentUnitType    UnitType?            @map("current_unit_type")
+  currentRoomId      String?              @map("current_room_id")
+  currentStatus      String?              @map("current_status")
+  createdBy          String?              @map("created_by")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  finishedAt         DateTime?            @map("finished_at")
+  doctorTicketNo     String?              @map("doctor_ticket_no")
+  displayCallLogs    DisplayCallLog[]
+  journeyEvents      JourneyEvent[]
+  journeySessions    JourneyUnitSession[]
+  currentRoom        Room?                @relation("VisitCurrentRoom", fields: [currentRoomId], references: [id])
+  selectedFloor      Floor?               @relation(fields: [selectedFloorId], references: [id])
+  selectedRoom       Room?                @relation("VisitSelectedRoom", fields: [selectedRoomId], references: [id])
+  selectedSchedule   DoctorSchedule?      @relation(fields: [selectedScheduleId], references: [id])
+  selectedDoctor     Doctor?              @relation(fields: [selectedDoctorId], references: [id])
+  queueTicket        QueueTicket          @relation(fields: [queueTicketId], references: [id])
+
+  @@map("visits")
+}
+
+model JourneyUnitSession {
+  id                     String         @id @default(uuid())
+  visitId                String         @map("visit_id")
+  unitType               UnitType       @map("unit_type")
+  unitId                 String?        @map("unit_id")
+  roomId                 String?        @map("room_id")
+  floorId                String?        @map("floor_id")
+  doctorId               String?        @map("doctor_id")
+  counterId              String?        @map("counter_id")
+  queueTicketId          String?        @map("queue_ticket_id")
+  waitingStartedAt       DateTime?      @map("waiting_started_at")
+  calledAt               DateTime?      @map("called_at")
+  serviceStartedAt       DateTime?      @map("service_started_at")
+  readyAt                DateTime?      @map("ready_at")
+  serviceFinishedAt      DateTime?      @map("service_finished_at")
+  waitingDurationSeconds Int?           @map("waiting_duration_seconds")
+  serviceDurationSeconds Int?           @map("service_duration_seconds")
+  status                 SessionStatus  @default("WAITING")
+  isTimeEdited           Boolean        @default(false) @map("is_time_edited")
+  editedReason           String?        @map("edited_reason")
+  editedBy               String?        @map("edited_by")
+  editedAt               DateTime?      @map("edited_at")
+  createdBy              String?        @map("created_by")
+  updatedBy              String?        @map("updated_by")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  serviceName            String?        @map("service_name")
+  events                 JourneyEvent[]
+  queueTicket            QueueTicket?   @relation(fields: [queueTicketId], references: [id])
+  counter                Counter?       @relation(fields: [counterId], references: [id])
+  doctor                 Doctor?        @relation(fields: [doctorId], references: [id])
+  floor                  Floor?         @relation(fields: [floorId], references: [id])
+  room                   Room?          @relation(fields: [roomId], references: [id])
+  visit                  Visit          @relation(fields: [visitId], references: [id])
+
+  @@map("journey_unit_sessions")
+}
+
+model JourneyEvent {
+  id                   String              @id @default(uuid())
+  visitId              String              @map("visit_id")
+  journeyUnitSessionId String?             @map("journey_unit_session_id")
+  unitType             UnitType            @map("unit_type")
+  eventType            EventType           @map("event_type")
+  eventTime            DateTime            @map("event_time")
+  fromStatus           String?             @map("from_status")
+  toStatus             String?             @map("to_status")
+  roomId               String?             @map("room_id")
+  floorId              String?             @map("floor_id")
+  counterId            String?             @map("counter_id")
+  doctorId             String?             @map("doctor_id")
+  createdBy            String?             @map("created_by")
+  note                 String?
+  createdAt            DateTime            @default(now()) @map("created_at")
+  doctor               Doctor?             @relation(fields: [doctorId], references: [id])
+  floor                Floor?              @relation(fields: [floorId], references: [id])
+  room                 Room?               @relation(fields: [roomId], references: [id])
+  session              JourneyUnitSession? @relation(fields: [journeyUnitSessionId], references: [id])
+  visit                Visit               @relation(fields: [visitId], references: [id])
+
+  @@map("journey_events")
+}
+
+model Display {
+  id              String               @id @default(uuid())
+  code            String               @unique
+  name            String
+  displayType     DisplayType          @map("display_type")
+  floorId         String?              @map("floor_id")
+  orientation     Orientation          @default("LANDSCAPE")
+  videoPlaylistId String?              @map("video_playlist_id")
+  runningText     String?              @map("running_text")
+  videoVolume     Float                @default(0.3) @map("video_volume")
+  isActive        Boolean              @default(true) @map("is_active")
+  callLogs        DisplayCallLog[]
+  videoPlaylist   VideoPlaylist?       @relation(fields: [videoPlaylistId], references: [id])
+  floor           Floor?               @relation(fields: [floorId], references: [id])
+  rooms           Room[]
+  videoTargets    VideoDisplayTarget[]
+
+  @@map("displays")
+}
+
+model DisplayCallLog {
+  id            String       @id @default(uuid())
+  displayId     String       @map("display_id")
+  visitId       String?      @map("visit_id")
+  queueTicketId String?      @map("queue_ticket_id")
+  ticketNo      String       @map("ticket_no")
+  callText      String?      @map("call_text")
+  targetRoom    String?      @map("target_room")
+  targetCounter String?      @map("target_counter")
+  unitType      UnitType     @map("unit_type")
+  calledAt      DateTime     @map("called_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  queueTicket   QueueTicket? @relation(fields: [queueTicketId], references: [id])
+  visit         Visit?       @relation(fields: [visitId], references: [id])
+  display       Display      @relation(fields: [displayId], references: [id])
+
+  @@map("display_call_logs")
+}
+
+model VideoPlaylist {
+  id       String              @id @default(uuid())
+  name     String
+  isActive Boolean             @default(true) @map("is_active")
+  displays Display[]
+  items    VideoPlaylistItem[]
+
+  @@map("video_playlists")
+}
+
+model VideoPlaylistItem {
+  id              String               @id @default(uuid())
+  playlistId      String               @map("playlist_id")
+  title           String
+  fileUrl         String               @map("file_url")
+  durationSeconds Int                  @default(0) @map("duration_seconds")
+  sortOrder       Int                  @default(0) @map("sort_order")
+  isActive        Boolean              @default(true) @map("is_active")
+  targets         VideoDisplayTarget[]
+  playlist        VideoPlaylist        @relation(fields: [playlistId], references: [id])
+
+  @@map("video_playlist_items")
+}
+
+model VideoDisplayTarget {
+  id          String            @id @default(uuid())
+  videoItemId String            @map("video_item_id")
+  displayId   String            @map("display_id")
+  display     Display           @relation(fields: [displayId], references: [id], onDelete: Cascade)
+  videoItem   VideoPlaylistItem @relation(fields: [videoItemId], references: [id], onDelete: Cascade)
+
+  @@unique([videoItemId, displayId])
+  @@map("video_display_targets")
+}
+
+model AuditLog {
+  id               String   @id @default(uuid())
+  userId           String?  @map("user_id")
+  action           String
+  entity           String
+  entityId         String?  @map("entity_id")
+  oldValue         String?  @map("old_value")
+  newValue         String?  @map("new_value")
+  reason           String?
+  timestamp        DateTime @default(now())
+  counterName      String?  @map("counter_name")
+  humanDescription String?  @map("human_description")
+  patientName      String?  @map("patient_name")
+  ticketNo         String?  @map("ticket_no")
+  unitType         String?  @map("unit_type")
+  userName         String?  @map("user_name")
+
+  @@map("audit_logs")
+}
+
+model AccessGroup {
+  id          String   @id @default(uuid())
+  role        UserRole @unique
+  name        String
+  description String?
+  permissions String
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("access_groups")
+}
 
 enum UserRole {
   ADMIN
@@ -106,399 +459,4 @@ enum DisplayType {
 enum Orientation {
   PORTRAIT
   LANDSCAPE
-}
-
-// ========================
-// TABLES
-// ========================
-
-model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         UserRole
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  importBatches    ScheduleImportBatch[]
-  assignedCounters Counter[]
-
-  @@map("users")
-}
-
-model Counter {
-  id                 String   @id @default(uuid())
-  code               String   @unique
-  name               String
-  canHandleAdmission Boolean  @default(true) @map("can_handle_admission")
-  canHandleCashier   Boolean  @default(true) @map("can_handle_cashier")
-  assignedRole       String?  @map("assigned_role")
-  assignedUserId     String?  @map("assigned_user_id")
-  isActive           Boolean  @default(true) @map("is_active")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  assignedUser    User?                @relation(fields: [assignedUserId], references: [id])
-  journeySessions JourneyUnitSession[]
-
-  @@map("counters")
-}
-
-model Floor {
-  id          String  @id @default(uuid())
-  floorNumber Int     @unique @map("floor_number")
-  name        String
-  isActive    Boolean @default(true) @map("is_active")
-
-  // Relations
-  rooms           Room[]
-  doctorSchedules DoctorSchedule[]
-  displays        Display[]
-  queueTickets    QueueTicket[]
-  visits          Visit[]
-  journeySessions JourneyUnitSession[]
-  journeyEvents   JourneyEvent[]
-
-  @@map("floors")
-}
-
-model Room {
-  id         String   @id @default(uuid())
-  code       String   @unique
-  name       String
-  roomType   RoomType @map("room_type")
-  floorId    String?  @map("floor_id")
-  hasCalling Boolean  @default(false) @map("has_calling")
-  displayId  String?  @map("display_id")
-  isActive   Boolean  @default(true) @map("is_active")
-
-  // Relations
-  floor    Floor?   @relation(fields: [floorId], references: [id])
-  display  Display? @relation(fields: [displayId], references: [id])
-  doctors  Doctor[] @relation("DoctorDefaultRoom")
-
-  doctorSchedules  DoctorSchedule[]
-  queueTickets     QueueTicket[]
-  visits           Visit[]        @relation("VisitSelectedRoom")
-  currentVisits    Visit[]        @relation("VisitCurrentRoom")
-  journeySessions  JourneyUnitSession[]
-  journeyEvents    JourneyEvent[]
-
-  @@map("rooms")
-}
-
-model Doctor {
-  id            String  @id @default(uuid())
-  doctorCode    String  @unique @map("doctor_code")
-  doctorName    String  @map("doctor_name")
-  specialty     String
-  defaultRoomId String? @map("default_room_id")
-  isActive      Boolean @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  defaultRoom     Room?            @relation("DoctorDefaultRoom", fields: [defaultRoomId], references: [id])
-  schedules       DoctorSchedule[]
-  queueTickets    QueueTicket[]
-  visits          Visit[]
-  journeySessions JourneyUnitSession[]
-  journeyEvents   JourneyEvent[]
-
-  @@map("doctors")
-}
-
-model DoctorSchedule {
-  id            String         @id @default(uuid())
-  scheduleDate  DateTime       @map("schedule_date")
-  dayName       String         @map("day_name")
-  doctorId      String         @map("doctor_id")
-  roomId        String         @map("room_id")
-  floorId       String         @map("floor_id")
-  startTime     String         @map("start_time")
-  endTime       String         @map("end_time")
-  quota         Int
-  bookedCount   Int            @default(0) @map("booked_count")
-  status        ScheduleStatus @default(ACTIVE)
-  importBatchId String?        @map("import_batch_id")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-
-  // Relations
-  doctor      Doctor               @relation(fields: [doctorId], references: [id])
-  room        Room                 @relation(fields: [roomId], references: [id])
-  floor       Floor                @relation(fields: [floorId], references: [id])
-  importBatch ScheduleImportBatch? @relation(fields: [importBatchId], references: [id])
-  queueTickets QueueTicket[]
-  visits       Visit[]
-
-  @@map("doctor_schedules")
-}
-
-model ScheduleImportBatch {
-  id          String       @id @default(uuid())
-  filename    String
-  uploadedBy  String       @map("uploaded_by")
-  totalRows   Int          @default(0) @map("total_rows")
-  successRows Int          @default(0) @map("success_rows")
-  failedRows  Int          @default(0) @map("failed_rows")
-  status      ImportStatus @default(PROCESSING)
-  errorLog    String?      @map("error_log")
-  createdAt   DateTime     @default(now()) @map("created_at")
-
-  // Relations
-  uploader  User             @relation(fields: [uploadedBy], references: [id])
-  schedules DoctorSchedule[]
-
-  @@map("schedule_import_batches")
-}
-
-model QueueTicket {
-  id                String      @id @default(uuid())
-  ticketNo          String      @map("ticket_no")
-  queueDate         DateTime    @map("queue_date")
-  patientType       PatientType @map("patient_type")
-  selectedScheduleId String?    @map("selected_schedule_id")
-  selectedDoctorId  String?     @map("selected_doctor_id")
-  selectedRoomId    String?     @map("selected_room_id")
-  selectedFloorId   String?     @map("selected_floor_id")
-  status            TicketStatus @default(WAITING)
-  createdAt         DateTime    @default(now()) @map("created_at")
-
-  // Relations
-  selectedSchedule DoctorSchedule? @relation(fields: [selectedScheduleId], references: [id])
-  selectedDoctor   Doctor?         @relation(fields: [selectedDoctorId], references: [id])
-  selectedRoom     Room?           @relation(fields: [selectedRoomId], references: [id])
-  selectedFloor    Floor?          @relation(fields: [selectedFloorId], references: [id])
-  visit            Visit?
-  journeySessions  JourneyUnitSession[]
-  displayCallLogs  DisplayCallLog[]
-
-  @@unique([ticketNo, queueDate])
-  @@map("queue_tickets")
-}
-
-model Visit {
-  id                 String      @id @default(uuid())
-  visitCode          String      @unique @map("visit_code")
-  queueTicketId      String      @unique @map("queue_ticket_id")
-  doctorTicketNo     String?     @map("doctor_ticket_no")
-  visitDate          DateTime    @map("visit_date")
-  patientRmNo        String?     @map("patient_rm_no")
-  patientName        String?     @map("patient_name")
-  patientDob         DateTime?   @map("patient_dob")
-  patientType        PatientType @map("patient_type")
-  selectedDoctorId   String?     @map("selected_doctor_id")
-  selectedScheduleId String?     @map("selected_schedule_id")
-  selectedRoomId     String?     @map("selected_room_id")
-  selectedFloorId    String?     @map("selected_floor_id")
-  currentUnitType    UnitType?   @map("current_unit_type")
-  currentRoomId      String?     @map("current_room_id")
-  currentStatus      String?     @map("current_status")
-  createdBy          String?     @map("created_by")
-  createdAt          DateTime    @default(now()) @map("created_at")
-  updatedAt          DateTime    @updatedAt @map("updated_at")
-  finishedAt         DateTime?   @map("finished_at")
-
-  // Relations
-  queueTicket     QueueTicket          @relation(fields: [queueTicketId], references: [id])
-  selectedDoctor  Doctor?              @relation(fields: [selectedDoctorId], references: [id])
-  selectedSchedule DoctorSchedule?     @relation(fields: [selectedScheduleId], references: [id])
-  selectedRoom    Room?                @relation("VisitSelectedRoom", fields: [selectedRoomId], references: [id])
-  selectedFloor   Floor?               @relation(fields: [selectedFloorId], references: [id])
-  currentRoom     Room?                @relation("VisitCurrentRoom", fields: [currentRoomId], references: [id])
-  journeySessions JourneyUnitSession[]
-  journeyEvents   JourneyEvent[]
-  displayCallLogs DisplayCallLog[]
-
-  @@map("visits")
-}
-
-model JourneyUnitSession {
-  id                    String        @id @default(uuid())
-  visitId               String        @map("visit_id")
-  unitType              UnitType      @map("unit_type")
-  unitId                String?       @map("unit_id")
-  roomId                String?       @map("room_id")
-  floorId               String?       @map("floor_id")
-  doctorId              String?       @map("doctor_id")
-  counterId             String?       @map("counter_id")
-  queueTicketId         String?       @map("queue_ticket_id")
-  waitingStartedAt      DateTime?     @map("waiting_started_at")
-  calledAt              DateTime?     @map("called_at")
-  serviceStartedAt      DateTime?     @map("service_started_at")
-  readyAt               DateTime?     @map("ready_at")
-  serviceFinishedAt     DateTime?     @map("service_finished_at")
-  waitingDurationSeconds Int?         @map("waiting_duration_seconds")
-  serviceDurationSeconds Int?         @map("service_duration_seconds")
-  serviceName           String?       @map("service_name")
-  status                SessionStatus @default(WAITING)
-  isTimeEdited          Boolean       @default(false) @map("is_time_edited")
-  editedReason          String?       @map("edited_reason")
-  editedBy              String?       @map("edited_by")
-  editedAt              DateTime?     @map("edited_at")
-  createdBy             String?       @map("created_by")
-  updatedBy             String?       @map("updated_by")
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
-
-  // Relations
-  visit       Visit        @relation(fields: [visitId], references: [id])
-  room        Room?        @relation(fields: [roomId], references: [id])
-  floor       Floor?       @relation(fields: [floorId], references: [id])
-  doctor      Doctor?      @relation(fields: [doctorId], references: [id])
-  counter     Counter?     @relation(fields: [counterId], references: [id])
-  queueTicket QueueTicket? @relation(fields: [queueTicketId], references: [id])
-  events      JourneyEvent[]
-
-  @@map("journey_unit_sessions")
-}
-
-model JourneyEvent {
-  id                   String    @id @default(uuid())
-  visitId              String    @map("visit_id")
-  journeyUnitSessionId String?   @map("journey_unit_session_id")
-  unitType             UnitType  @map("unit_type")
-  eventType            EventType @map("event_type")
-  eventTime            DateTime  @map("event_time")
-  fromStatus           String?   @map("from_status")
-  toStatus             String?   @map("to_status")
-  roomId               String?   @map("room_id")
-  floorId              String?   @map("floor_id")
-  counterId            String?   @map("counter_id")
-  doctorId             String?   @map("doctor_id")
-  createdBy            String?   @map("created_by")
-  note                 String?
-  createdAt            DateTime  @default(now()) @map("created_at")
-
-  // Relations
-  visit   Visit              @relation(fields: [visitId], references: [id])
-  session JourneyUnitSession? @relation(fields: [journeyUnitSessionId], references: [id])
-  room    Room?              @relation(fields: [roomId], references: [id])
-  floor   Floor?             @relation(fields: [floorId], references: [id])
-  doctor  Doctor?            @relation(fields: [doctorId], references: [id])
-
-  @@map("journey_events")
-}
-
-model Display {
-  id              String      @id @default(uuid())
-  code            String      @unique
-  name            String
-  displayType     DisplayType @map("display_type")
-  floorId         String?     @map("floor_id")
-  orientation     Orientation @default(LANDSCAPE)
-  videoPlaylistId String?     @map("video_playlist_id")
-  runningText     String?     @map("running_text")
-  videoVolume     Float       @default(0.3) @map("video_volume")
-  isActive        Boolean     @default(true) @map("is_active")
-
-  // Relations
-  floor         Floor?         @relation(fields: [floorId], references: [id])
-  videoPlaylist VideoPlaylist? @relation(fields: [videoPlaylistId], references: [id])
-  rooms         Room[]
-  callLogs      DisplayCallLog[]
-  videoTargets  VideoDisplayTarget[]
-
-  @@map("displays")
-}
-
-model DisplayCallLog {
-  id            String   @id @default(uuid())
-  displayId     String   @map("display_id")
-  visitId       String?  @map("visit_id")
-  queueTicketId String?  @map("queue_ticket_id")
-  ticketNo      String   @map("ticket_no")
-  callText      String?  @map("call_text")
-  targetRoom    String?  @map("target_room")
-  targetCounter String?  @map("target_counter")
-  unitType      UnitType @map("unit_type")
-  calledAt      DateTime @map("called_at")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  // Relations
-  display     Display      @relation(fields: [displayId], references: [id])
-  visit       Visit?       @relation(fields: [visitId], references: [id])
-  queueTicket QueueTicket? @relation(fields: [queueTicketId], references: [id])
-
-  @@map("display_call_logs")
-}
-
-model VideoPlaylist {
-  id       String  @id @default(uuid())
-  name     String
-  isActive Boolean @default(true) @map("is_active")
-
-  // Relations
-  items    VideoPlaylistItem[]
-  displays Display[]
-
-  @@map("video_playlists")
-}
-
-model VideoPlaylistItem {
-  id              String  @id @default(uuid())
-  playlistId      String  @map("playlist_id")
-  title           String
-  fileUrl         String  @map("file_url")
-  durationSeconds Int     @default(0) @map("duration_seconds")
-  sortOrder       Int     @default(0) @map("sort_order")
-  isActive        Boolean @default(true) @map("is_active")
-
-  // Relations
-  playlist VideoPlaylist        @relation(fields: [playlistId], references: [id])
-  targets  VideoDisplayTarget[]
-
-  @@map("video_playlist_items")
-}
-
-model VideoDisplayTarget {
-  id          String @id @default(uuid())
-  videoItemId String @map("video_item_id")
-  displayId   String @map("display_id")
-
-  videoItem VideoPlaylistItem @relation(fields: [videoItemId], references: [id], onDelete: Cascade)
-  display   Display           @relation(fields: [displayId], references: [id], onDelete: Cascade)
-
-  @@unique([videoItemId, displayId])
-  @@map("video_display_targets")
-}
-
-model AuditLog {
-  id               String   @id @default(uuid())
-  userId           String?  @map("user_id")
-  userName         String?  @map("user_name")
-  action           String
-  entity           String
-  entityId         String?  @map("entity_id")
-  humanDescription String?  @map("human_description")
-  ticketNo         String?  @map("ticket_no")
-  patientName      String?  @map("patient_name")
-  unitType         String?  @map("unit_type")
-  counterName      String?  @map("counter_name")
-  oldValue         String?  @map("old_value")
-  newValue         String?  @map("new_value")
-  reason           String?
-  timestamp        DateTime @default(now())
-
-  // Relations (optional, user might be deleted so we don't strict enforce)
-  
-  @@map("audit_logs")
-}
-
-model AccessGroup {
-  id          String   @id @default(uuid())
-  role        UserRole @unique
-  name        String
-  description String?
-  permissions String   // JSON array of permission keys e.g. '["dashboard","admission","cashier"]'
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@map("access_groups")
 }

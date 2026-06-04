@@ -394,4 +394,320 @@ export class ReportsService {
       hourlyDistribution,
     };
   }
+
+  /**
+   * Get full patient journey list — all visits within date range with their complete journey
+   */
+  async getPatientJourneyList(query: any) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 30;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.startDate && query.endDate) {
+      where.visitDate = {
+        gte: new Date(query.startDate),
+        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+      };
+    } else if (query.startDate) {
+      where.visitDate = { gte: new Date(query.startDate) };
+    } else if (query.endDate) {
+      where.visitDate = { lte: new Date(query.endDate + 'T23:59:59.999Z') };
+    } else {
+      // Default today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      where.visitDate = { gte: today };
+    }
+
+    if (query.search) {
+      where.OR = [
+        { queueTicket: { ticketNo: { contains: query.search, mode: 'insensitive' } } },
+        { patientRmNo: { contains: query.search, mode: 'insensitive' } },
+        { patientName: { contains: query.search, mode: 'insensitive' } },
+        { doctorTicketNo: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (query.status === 'finished') {
+      where.finishedAt = { not: null };
+    } else if (query.status === 'active') {
+      where.finishedAt = null;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.visit.findMany({
+        where,
+        include: {
+          queueTicket: true,
+          selectedDoctor: true,
+          selectedRoom: { include: { floor: true } },
+          journeySessions: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              room: true,
+              floor: true,
+              doctor: true,
+              counter: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.visit.count({ where }),
+    ]);
+
+    const unitOrder = ['ADMISSION', 'ASSESSMENT', 'BDR', 'DOCTOR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'];
+    const unitLabels: Record<string, string> = {
+      ADMISSION: 'Admisi', ASSESSMENT: 'Pengkajian', BDR: 'BDR',
+      DOCTOR: 'Dokter/Poli', CDC: 'CDC', CASHIER: 'Kasir',
+      PHARMACY: 'Farmasi', OPTIC: 'Optik',
+    };
+
+    const result = data.map(visit => {
+      const sessions = visit.journeySessions;
+      
+      // Calculate total journey time (from first session waiting to last session finish or now)
+      let journeyStartTime: Date | null = null;
+      let journeyEndTime: Date | null = null;
+
+      for (const s of sessions) {
+        if (s.waitingStartedAt) {
+          if (!journeyStartTime || s.waitingStartedAt < journeyStartTime) {
+            journeyStartTime = s.waitingStartedAt;
+          }
+        }
+        if (s.serviceFinishedAt) {
+          if (!journeyEndTime || s.serviceFinishedAt > journeyEndTime) {
+            journeyEndTime = s.serviceFinishedAt;
+          }
+        }
+      }
+
+      let totalJourneySeconds: number | null = null;
+      if (journeyStartTime) {
+        const end = journeyEndTime || new Date();
+        totalJourneySeconds = Math.round((end.getTime() - journeyStartTime.getTime()) / 1000);
+      }
+
+      // Build steps
+      const steps = sessions.map(s => ({
+        unitType: s.unitType,
+        unitLabel: unitLabels[s.unitType] || s.unitType,
+        status: s.status,
+        roomName: s.room?.name || null,
+        floorName: s.floor?.name || null,
+        doctorName: s.doctor?.doctorName || null,
+        counterName: s.counter?.name || null,
+        waitingStartedAt: s.waitingStartedAt,
+        calledAt: s.calledAt,
+        serviceStartedAt: s.serviceStartedAt,
+        serviceFinishedAt: s.serviceFinishedAt,
+        waitingDurationSeconds: s.waitingDurationSeconds,
+        serviceDurationSeconds: s.serviceDurationSeconds,
+      }));
+
+      // Sort steps by unit order for display, but keep original timeline
+      steps.sort((a, b) => {
+        const ai = unitOrder.indexOf(a.unitType);
+        const bi = unitOrder.indexOf(b.unitType);
+        if (ai === bi) return 0;
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      });
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        ticketNo: visit.queueTicket?.ticketNo || '-',
+        doctorTicketNo: visit.doctorTicketNo,
+        patientRmNo: visit.patientRmNo,
+        patientName: visit.patientName,
+        patientType: visit.patientType,
+        doctorName: visit.selectedDoctor?.doctorName,
+        roomName: visit.selectedRoom?.name,
+        floorName: visit.selectedRoom?.floor?.name,
+        currentUnitType: visit.currentUnitType,
+        currentStatus: visit.currentStatus,
+        visitDate: visit.visitDate,
+        finishedAt: visit.finishedAt,
+        journeyStartTime,
+        journeyEndTime,
+        totalJourneySeconds,
+        steps,
+      };
+    });
+
+    return {
+      data: result,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Export Patient Journey Tracking to Excel
+   */
+  async exportPatientJourney(query: any) {
+    const where: any = {};
+    if (query.startDate && query.endDate) {
+      where.visitDate = {
+        gte: new Date(query.startDate),
+        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+      };
+    } else if (query.startDate) {
+      where.visitDate = { gte: new Date(query.startDate) };
+    } else if (query.endDate) {
+      where.visitDate = { lte: new Date(query.endDate + 'T23:59:59.999Z') };
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      where.visitDate = { gte: today };
+    }
+
+    if (query.search) {
+      where.OR = [
+        { queueTicket: { ticketNo: { contains: query.search, mode: 'insensitive' } } },
+        { patientRmNo: { contains: query.search, mode: 'insensitive' } },
+        { patientName: { contains: query.search, mode: 'insensitive' } },
+        { doctorTicketNo: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (query.status === 'finished') {
+      where.finishedAt = { not: null };
+    } else if (query.status === 'active') {
+      where.finishedAt = null;
+    }
+
+    const data = await this.prisma.visit.findMany({
+      where,
+      include: {
+        queueTicket: true,
+        selectedDoctor: true,
+        journeySessions: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Tracking Perjalanan Pasien');
+
+    // Define columns
+    sheet.columns = [
+      { header: 'Tanggal', key: 'date', width: 15 },
+      { header: 'No. Tiket', key: 'ticket', width: 12 },
+      { header: 'RM Pasien', key: 'rm', width: 12 },
+      { header: 'Nama Pasien', key: 'name', width: 25 },
+      { header: 'Tipe Pasien', key: 'type', width: 12 },
+      { header: 'Dokter Tujuan', key: 'doctor', width: 20 },
+      { header: 'Status Kunjungan', key: 'status', width: 15 },
+      { header: 'Datang', key: 'arrived', width: 12 },
+      { header: 'Pulang', key: 'finished', width: 12 },
+      { header: 'Total Waktu', key: 'totalTime', width: 15 },
+      
+      { header: 'Tunggu Admisi', key: 'w_adm', width: 15 },
+      { header: 'Layan Admisi', key: 's_adm', width: 15 },
+      
+      { header: 'Tunggu Kaji', key: 'w_ass', width: 15 },
+      { header: 'Layan Kaji', key: 's_ass', width: 15 },
+      
+      { header: 'Tunggu BDR', key: 'w_bdr', width: 15 },
+      { header: 'Layan BDR', key: 's_bdr', width: 15 },
+      
+      { header: 'Tunggu Poli', key: 'w_doc', width: 15 },
+      { header: 'Layan Poli', key: 's_doc', width: 15 },
+      
+      { header: 'Tunggu CDC', key: 'w_cdc', width: 15 },
+      { header: 'Layan CDC', key: 's_cdc', width: 15 },
+      
+      { header: 'Tunggu Kasir', key: 'w_csh', width: 15 },
+      { header: 'Layan Kasir', key: 's_csh', width: 15 },
+      
+      { header: 'Tunggu Farmasi', key: 'w_phr', width: 15 },
+      { header: 'Layan Farmasi', key: 's_phr', width: 15 },
+      
+      { header: 'Tunggu Optik', key: 'w_opt', width: 15 },
+      { header: 'Layan Optik', key: 's_opt', width: 15 },
+    ];
+
+    sheet.getRow(1).font = { bold: true };
+    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+
+    const formatDuration = (seconds: number | null | undefined) => {
+      if (!seconds || seconds <= 0) return '-';
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const formatTime = (dt: Date | null | undefined) => {
+      if (!dt) return '-';
+      return dt.toLocaleTimeString('id-ID', { hour12: false });
+    };
+
+    for (const visit of data) {
+      let journeyStartTime: Date | null = null;
+      let journeyEndTime: Date | null = null;
+
+      const sessionsByUnit: Record<string, { w: number, s: number }> = {
+        ADMISSION: { w: 0, s: 0 }, ASSESSMENT: { w: 0, s: 0 }, BDR: { w: 0, s: 0 },
+        DOCTOR: { w: 0, s: 0 }, CDC: { w: 0, s: 0 }, CASHIER: { w: 0, s: 0 },
+        PHARMACY: { w: 0, s: 0 }, OPTIC: { w: 0, s: 0 }
+      };
+
+      for (const s of visit.journeySessions) {
+        if (s.waitingStartedAt && (!journeyStartTime || s.waitingStartedAt < journeyStartTime)) {
+          journeyStartTime = s.waitingStartedAt;
+        }
+        if (s.serviceFinishedAt && (!journeyEndTime || s.serviceFinishedAt > journeyEndTime)) {
+          journeyEndTime = s.serviceFinishedAt;
+        }
+
+        if (sessionsByUnit[s.unitType]) {
+          sessionsByUnit[s.unitType].w += (s.waitingDurationSeconds || 0);
+          sessionsByUnit[s.unitType].s += (s.serviceDurationSeconds || 0);
+        }
+      }
+
+      let totalJourneySeconds = 0;
+      if (journeyStartTime && visit.finishedAt) {
+        totalJourneySeconds = Math.round((visit.finishedAt.getTime() - journeyStartTime.getTime()) / 1000);
+      } else if (journeyStartTime) {
+        totalJourneySeconds = Math.round((new Date().getTime() - journeyStartTime.getTime()) / 1000);
+      }
+
+      sheet.addRow({
+        date: visit.visitDate.toLocaleDateString('id-ID'),
+        ticket: visit.queueTicket?.ticketNo || '-',
+        rm: visit.patientRmNo || '-',
+        name: visit.patientName || '-',
+        type: visit.patientType,
+        doctor: visit.selectedDoctor?.doctorName || '-',
+        status: visit.finishedAt ? 'Selesai' : 'Aktif',
+        arrived: formatTime(journeyStartTime),
+        finished: formatTime(visit.finishedAt),
+        totalTime: formatDuration(totalJourneySeconds),
+        
+        w_adm: formatDuration(sessionsByUnit.ADMISSION.w), s_adm: formatDuration(sessionsByUnit.ADMISSION.s),
+        w_ass: formatDuration(sessionsByUnit.ASSESSMENT.w), s_ass: formatDuration(sessionsByUnit.ASSESSMENT.s),
+        w_bdr: formatDuration(sessionsByUnit.BDR.w), s_bdr: formatDuration(sessionsByUnit.BDR.s),
+        w_doc: formatDuration(sessionsByUnit.DOCTOR.w), s_doc: formatDuration(sessionsByUnit.DOCTOR.s),
+        w_cdc: formatDuration(sessionsByUnit.CDC.w), s_cdc: formatDuration(sessionsByUnit.CDC.s),
+        w_csh: formatDuration(sessionsByUnit.CASHIER.w), s_csh: formatDuration(sessionsByUnit.CASHIER.s),
+        w_phr: formatDuration(sessionsByUnit.PHARMACY.w), s_phr: formatDuration(sessionsByUnit.PHARMACY.s),
+        w_opt: formatDuration(sessionsByUnit.OPTIC.w), s_opt: formatDuration(sessionsByUnit.OPTIC.s),
+      });
+    }
+
+    return workbook.xlsx.writeBuffer();
+  }
 }

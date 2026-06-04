@@ -15,6 +15,8 @@ export default function DoctorQueuePage() {
   const [destinations, setDestinations] = useState<any[]>([]);
   const [transferModal, setTransferModal] = useState<string | null>(null);
   const [transferReason, setTransferReason] = useState('');
+  // Conflict detection
+  const [conflictInfo, setConflictInfo] = useState<{ savedRoomId: string; savedRoomName: string } | null>(null);
 
   const loadQueue = useCallback(async () => {
     try {
@@ -40,8 +42,30 @@ export default function DoctorQueuePage() {
 
   const saveRoomLock = () => {
     if (!tempRoom) return alert('Silakan pilih ruangan');
+    
+    // Check for conflict
+    const savedRoom = localStorage.getItem('activeDoctorRoom');
+    if (savedRoom && savedRoom !== tempRoom) {
+      const savedName = rooms.find((r: any) => r.id === savedRoom)?.name || 'ruangan lain';
+      setConflictInfo({ savedRoomId: savedRoom, savedRoomName: savedName });
+      return;
+    }
+    
     localStorage.setItem('activeDoctorRoom', tempRoom);
     setSelectedRoom(tempRoom);
+    setIsLocked(true);
+  };
+
+  const resolveConflict = (action: 'switch' | 'stay') => {
+    if (action === 'switch') {
+      localStorage.setItem('activeDoctorRoom', tempRoom);
+      setSelectedRoom(tempRoom);
+    } else {
+      const savedRoom = conflictInfo!.savedRoomId;
+      setSelectedRoom(savedRoom);
+      setTempRoom(savedRoom);
+    }
+    setConflictInfo(null);
     setIsLocked(true);
   };
 
@@ -99,6 +123,27 @@ export default function DoctorQueuePage() {
               </select>
             </div>
             <button className="btn btn-primary" style={{ width: '100%', marginTop: '10px', padding: '12px', fontSize: '1rem' }} onClick={saveRoomLock}>Mulai Sesi Jaga</button>
+          </div>
+        </div>
+      )}
+
+      {/* Conflict Warning Dialog */}
+      {conflictInfo && (
+        <div className={styles.modalOverlay} style={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', zIndex: 10000 }}>
+          <div className={styles.modal} style={{ maxWidth: '440px', textAlign: 'center' }}>
+            <h3 className={styles.modalTitle} style={{ fontSize: '1.3rem', marginBottom: '16px', color: '#f59e0b' }}>⚠️ Sesi Poli Masih Aktif</h3>
+            <p style={{ marginBottom: '20px', color: '#475569' }}>
+              Anda masih tercatat login di <strong>{conflictInfo.savedRoomName}</strong>.<br />
+              Apakah Anda ingin pindah ke <strong>{rooms.find((r: any) => r.id === tempRoom)?.name}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn btn-primary" style={{ flex: 1, padding: '12px' }} onClick={() => resolveConflict('switch')}>
+                Pindah ke {rooms.find((r: any) => r.id === tempRoom)?.name}
+              </button>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '12px' }} onClick={() => resolveConflict('stay')}>
+                Tetap di {conflictInfo.savedRoomName}
+              </button>
+            </div>
           </div>
         </div>
       )}

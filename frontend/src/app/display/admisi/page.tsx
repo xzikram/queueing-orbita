@@ -260,14 +260,16 @@ export default function DisplayAdmisiKasirPage() {
           </div>
         </div>
         <div className={styles.headerRight}>
-          <div className={styles.clock}>
-            {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          <div className={styles.timeRow}>
+            <div className={styles.clock}>
+              {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+            <div className={`${styles.connectionDot} ${connected ? styles.connected : styles.disconnected}`} title={connected ? 'Online' : 'Offline'}>
+              {connected ? '●' : '○'}
+            </div>
           </div>
           <div className={styles.date}>
             {time.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </div>
-          <div className={`${styles.connectionDot} ${connected ? styles.connected : styles.disconnected}`}>
-            {connected ? '● Online' : '○ Offline'}
           </div>
         </div>
       </div>

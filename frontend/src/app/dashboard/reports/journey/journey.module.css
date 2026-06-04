@@ -1,0 +1,368 @@
+.page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 24px;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+}
+
+.header p {
+  color: #64748b;
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Filters */
+.filterRow {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filterGroup label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filterGroup input,
+.filterGroup select {
+  min-width: 160px;
+}
+
+.resultInfo {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+  padding-left: 4px;
+}
+
+/* Journey List */
+.journeyList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loading, .empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  background: white;
+  border-radius: 12px;
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+/* Journey Card */
+.journeyCard {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-left: 5px solid #e2e8f0;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.journeyCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.journeyFinished {
+  border-left-color: #10b981;
+}
+
+.journeyActive {
+  border-left-color: #3b82f6;
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-left-color: #3b82f6; }
+  50% { border-left-color: #93c5fd; }
+}
+
+/* Card Header */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.cardHeader:hover {
+  background: #f8fafc;
+}
+
+.cardLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ticketNo {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e3a8a;
+  background: #eff6ff;
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+.doctorTicket {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7c3aed;
+  background: #f5f3ff;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.statusBadge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.badgeFinished {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badgeActive {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.cardCenter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.patientName {
+  font-weight: 600;
+  color: #334155;
+  font-size: 14px;
+}
+
+.rmNo {
+  font-size: 13px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.doctorInfo {
+  font-size: 13px;
+  color: #6366f1;
+}
+
+.cardRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.totalTime {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.totalLabel {
+  font-size: 11px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.totalValue {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.expandIcon {
+  font-size: 14px;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+/* Mini Timeline */
+.miniTimeline {
+  display: flex;
+  align-items: center;
+  padding: 0 20px 14px;
+  gap: 0;
+  overflow-x: auto;
+}
+
+.miniStep {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.miniDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid;
+}
+
+.dotDone {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.dotActive {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+}
+
+.dotWaiting {
+  background: white;
+  border-color: #cbd5e1;
+}
+
+.miniLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.miniLine {
+  width: 24px;
+  height: 2px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+.lineDone {
+  background: #10b981;
+}
+
+/* Expanded Detail */
+.expandedDetail {
+  border-top: 1px solid #e2e8f0;
+  padding: 20px;
+  background: #f8fafc;
+  animation: slideDown 0.25s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 600px; }
+}
+
+.detailTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.detailTable th {
+  background: #e2e8f0;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 700;
+  color: #475569;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.detailTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.detailTable tr:last-child td {
+  border-bottom: none;
+}
+
+.detailTable tr:hover td {
+  background: #eff6ff;
+}
+
+.durationCell {
+  font-weight: 700;
+  color: #1e3a8a;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryRow {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.summaryRow strong {
+  color: #0f172a;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 16px;
+}
+
+.pageInfo {
+  font-size: 14px;
+  color: #64748b;
+}

@@ -304,8 +304,8 @@ export default function FloorDisplayPage() {
           <div className={styles.clock}>
             {time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
-          <div className={`${styles.dot} ${connected ? styles.online : styles.offline}`}>
-            {connected ? '● Online' : '○ Offline'}
+          <div className={`${styles.dot} ${connected ? styles.online : styles.offline}`} title={connected ? 'Online' : 'Offline'}>
+            {connected ? '●' : '○'}
           </div>
         </div>
       </div>
