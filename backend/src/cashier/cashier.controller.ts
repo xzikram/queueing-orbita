@@ -58,4 +58,9 @@ export class CashierController {
   getRecentCalls(@Query('limit') limit?: string) {
     return this.service.getRecentCalls(limit ? parseInt(limit) : 10);
   }
+
+  @Post(':visitId/sync')
+  syncTicket(@Param('visitId') visitId: string, @Body() body: { targetVisitId: string }, @Request() req: any) {
+    return this.service.syncTicket(visitId, body.targetVisitId, req.user.id);
+  }
 }

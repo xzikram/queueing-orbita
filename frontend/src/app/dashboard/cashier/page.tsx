@@ -16,6 +16,8 @@ export default function CashierPage() {
   const [destinations, setDestinations] = useState<any[]>([]);
   const [transferModal, setTransferModal] = useState<string | null>(null);
   const [transferReason, setTransferReason] = useState('');
+  const [syncModal, setSyncModal] = useState<string | null>(null);
+  const [targetSyncVisit, setTargetSyncVisit] = useState('');
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/cashier/queue'); setQueue(res.data); }
@@ -95,6 +97,17 @@ export default function CashierPage() {
     finally { setActionLoading(null); }
   };
 
+  const confirmSync = async (sourceVisitId: string) => {
+    if (!targetSyncVisit) { alert('Pilih data pasien'); return; }
+    setSyncModal(null);
+    setActionLoading(sourceVisitId);
+    try {
+      await api.post(`/cashier/${sourceVisitId}/sync`, { targetVisitId: targetSyncVisit });
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
+    finally { setActionLoading(null); setTargetSyncVisit(''); }
+  };
+
   const waiting = queue.filter(v => v.journeySessions?.[0]?.status === 'WAITING');
   const active = queue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
   const needDest = queue.filter(v => v.currentStatus === 'WAITING_DESTINATION');
@@ -137,6 +150,7 @@ export default function CashierPage() {
                 <div className={styles.ticketInfo}><span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span></div>
                 <div className={styles.actionBtns}>
                   <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter}>📢 Panggil</button>
+                  <button className="btn btn-info btn-sm" onClick={() => setSyncModal(v.id)} title="Sync Tiket" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}>🔗</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                 </div>
               </div>
@@ -209,6 +223,32 @@ export default function CashierPage() {
               ))}
             </div>
             <button className={styles.modalClose} onClick={() => setTransferModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Modal */}
+      {syncModal && (
+        <div className={styles.modalOverlay} onClick={() => setSyncModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>🔗 Gabungkan Antrean</h3>
+            <p style={{ marginBottom: 15, fontSize: '0.9rem', color: '#64748b' }}>
+              Pilih data kunjungan pasien dari Dokter/Poli untuk digabungkan ke tiket Kiosk Kasir ini.
+            </p>
+            <div className="form-group">
+              <select className="form-input" value={targetSyncVisit} onChange={e => setTargetSyncVisit(e.target.value)} style={{ padding: '10px' }}>
+                <option value="">-- Pilih Data Pasien --</option>
+                {waiting.filter((w: any) => w.id !== syncModal).map((w: any) => (
+                  <option key={w.id} value={w.id}>
+                    {w.doctorTicketNo || w.queueTicket?.ticketNo} - {w.patientName || 'Tanpa Nama'}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => confirmSync(syncModal)}>Gabungkan</button>
+              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSyncModal(null)}>Batal</button>
+            </div>
           </div>
         </div>
       )}

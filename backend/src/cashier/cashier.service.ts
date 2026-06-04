@@ -148,4 +148,60 @@ export class CashierService {
       take: limit,
     });
   }
+
+  /**
+   * Sync a kiosk ticket (source) with an existing patient visit (target)
+   */
+  async syncTicket(sourceVisitId: string, targetVisitId: string, userId: string) {
+    const sourceVisit = await this.prisma.visit.findUnique({ where: { id: sourceVisitId } });
+    const targetVisit = await this.prisma.visit.findUnique({ where: { id: targetVisitId } });
+
+    if (!sourceVisit) throw new NotFoundException('Data tiket Kiosk tidak ditemukan');
+    if (!targetVisit) throw new NotFoundException('Data kunjungan pasien tidak ditemukan');
+
+    await this.prisma.$transaction(async (prisma) => {
+      // 1. Move ticket to targetVisit
+      await prisma.visit.update({
+        where: { id: targetVisitId },
+        data: { queueTicketId: sourceVisit.queueTicketId },
+      });
+
+      // 2. Update target session ticket
+      const targetSession = await prisma.journeyUnitSession.findFirst({
+        where: { visitId: targetVisitId, unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } }
+      });
+      if (targetSession) {
+        await prisma.journeyUnitSession.update({
+          where: { id: targetSession.id },
+          data: { queueTicketId: sourceVisit.queueTicketId },
+        });
+      }
+
+      // 3. Delete source visit journey events and sessions
+      const sourceSessions = await prisma.journeyUnitSession.findMany({ where: { visitId: sourceVisitId } });
+      const sourceSessionIds = sourceSessions.map(s => s.id);
+      if (sourceSessionIds.length > 0) {
+        await prisma.journeyEvent.deleteMany({ where: { journeyUnitSessionId: { in: sourceSessionIds } } });
+      }
+      await prisma.journeyEvent.deleteMany({ where: { visitId: sourceVisitId } });
+      await prisma.journeyUnitSession.deleteMany({ where: { visitId: sourceVisitId } });
+
+      // 4. Delete source visit
+      await prisma.visit.delete({ where: { id: sourceVisitId } });
+      
+      // Log audit
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          action: 'SYNC_TICKET',
+          entity: 'Visit',
+          entityId: targetVisitId,
+          reason: `Merged Kiosk ticket into patient visit`,
+        }
+      });
+    });
+
+    this.displayGateway.triggerDashboardRefresh();
+    return { message: 'Sinkronisasi antrean berhasil' };
+  }
 }
