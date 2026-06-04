@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { getSocket, joinDisplay } from '@/lib/socket';
 import api from '@/lib/api';
@@ -34,6 +34,15 @@ export default function FloorDisplayPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoVolume, setVideoVolume] = useState(0.3);
   const videoVolumeRef = useRef(0.3);
+  const waitingTrackRef = useRef<HTMLDivElement>(null);
+
+  // Determine if waiting list needs scrolling (more than fits in viewport)
+  const SCROLL_THRESHOLD = 6; // number of items before enabling auto-scroll
+  const needsScroll = waitingList.length > SCROLL_THRESHOLD;
+  const scrollDuration = useMemo(() => {
+    // Longer duration for more items so scroll is gentle
+    return Math.max(20, waitingList.length * 4);
+  }, [waitingList.length]);
 
   useEffect(() => {
     videoVolumeRef.current = videoVolume;
@@ -92,8 +101,25 @@ export default function FloorDisplayPage() {
 
       await playDingDong();
 
-      const dest = data.roomName || data.unitType;
-      const msg = `Nomor antrian. ${data.ticketNo.split('').join(' ')}. silakan menuju ke. ${dest}.`;
+      let dest = data.roomName || data.unitType || '';
+      
+      // Jika nama ruangan mengandung kata Poli (misal "Poli 5 - dr. George"), ambil hanya "Poli 5"
+      const poliMatch = dest.match(/poli\s*\d+/i);
+      if (poliMatch) {
+        dest = poliMatch[0];
+      } else {
+        // Hapus nama dokter (dr. atau drg.) yang mungkin ada di dalam kurung atau teks
+        dest = dest.replace(/\(?dr\.\s*[a-zA-Z\s.,]+\)?/gi, '');
+        dest = dest.replace(/\(?drg\.\s*[a-zA-Z\s.,]+\)?/gi, '');
+        // Bersihkan sisa karakter seperti strip atau kurung
+        dest = dest.replace(/[-()]/g, '').trim();
+      }
+
+      // Optimize pronunciation for TTS
+      dest = dest.replace(/BDR/gi, 'B D R');
+
+      const cleanTicketNo = data.ticketNo.replace(/[^a-zA-Z0-9]/g, '');
+      const msg = `Nomor antrian. ${cleanTicketNo.split('').join(' ')}. silakan menuju ke. ${dest}.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
       utterance.rate = 0.85;
@@ -237,6 +263,31 @@ export default function FloorDisplayPage() {
     );
   }
 
+  // Build duplicated list for seamless infinite scroll
+  const renderWaitingItems = () => {
+    if (waitingList.length === 0) {
+      return <span className={styles.waitingBarEmpty}>Tidak ada antrian menunggu</span>;
+    }
+
+    const items = waitingList.map((w: any, idx: number) => (
+      <div key={idx} className={styles.waitingBarItem}>
+        <span className={styles.waitingBarNo}>{w.ticketNo}</span>
+      </div>
+    ));
+
+    if (needsScroll) {
+      // Duplicate items for seamless looping
+      const duplicated = waitingList.map((w: any, idx: number) => (
+        <div key={`dup-${idx}`} className={styles.waitingBarItem}>
+          <span className={styles.waitingBarNo}>{w.ticketNo}</span>
+        </div>
+      ));
+      return [...items, ...duplicated];
+    }
+
+    return items;
+  };
+
   return (
     <div className={styles.container}>
       {/* Header */}
@@ -259,27 +310,9 @@ export default function FloorDisplayPage() {
         </div>
       </div>
 
+      {/* Main Content: Video + Call Cards */}
       <div className={styles.mainGrid}>
-        {/* Left Column: Waiting List Only */}
-        <div className={styles.leftColumn}>
-          {/* Waiting List */}
-          <div className={styles.waitingSection}>
-            <div className={styles.sectionTitle}>Menunggu Dilayani di Lantai {floorNumber}</div>
-            <div className={styles.waitingGrid}>
-              {waitingList.length === 0 ? (
-                <div className={styles.emptySection}>Tidak ada antrian</div>
-              ) : (
-                waitingList.map((w: any, idx: number) => (
-                  <div key={idx} className={styles.waitingItem}>
-                    <div className={styles.waitingNo} style={{ textAlign: 'center', width: '100%', fontSize: '2rem' }}>{w.ticketNo}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Center Column: Video Area */}
+        {/* Video Area - takes most of the space */}
         <div className={styles.centerColumn}>
           <div className={styles.videoArea}>
             {playlist.length > 0 ? (
@@ -296,7 +329,7 @@ export default function FloorDisplayPage() {
                     setCurrentVideoIdx((prev) => (prev + 1) % playlist.length);
                   }
                 }}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '24px', backgroundColor: '#000' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
               <div className={styles.videoPlaceholder}>
@@ -308,65 +341,47 @@ export default function FloorDisplayPage() {
           </div>
         </div>
 
-        {/* Right Column: History & Active Calls */}
+        {/* Right Column: Active Call Cards Only (no history) */}
         <div className={styles.rightColumn}>
-          {/* BDR Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
-            {recentBdr[0] ? (
-              <div className={styles.currentCallCard} style={{ padding: '16px', borderRadius: '16px', minHeight: 'auto' }}>
-                <div className={styles.currentLabel} style={{ fontSize: '0.8rem', marginBottom: '8px' }}>PANGGILAN BDR</div>
-                <div className={styles.currentNo} style={{ fontSize: '3rem' }}>{recentBdr[0].ticketNo}</div>
-              </div>
-            ) : (
-              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '16px', borderRadius: '16px', minHeight: 'auto' }}>
-                <div className={styles.currentDest} style={{ fontSize: '1rem' }}>Menunggu BDR...</div>
-              </div>
-            )}
-            <div className={styles.historyBox} style={{ flex: 1, minHeight: 0 }}>
-              <div className={styles.sectionTitle}>Riwayat BDR</div>
-              <div className={styles.callList}>
-                {recentBdr.length === 0 ? (
-                  <div className={styles.emptySection}>Kosong</div>
-                ) : (
-                  recentBdr.slice(1).map((call, idx) => (
-                    <div key={idx} className={styles.callItem}>
-                      <span className={styles.callNo}>{call.ticketNo}</span>
-                      <span className={styles.callRoom}>BDR</span>
-                    </div>
-                  ))
-                )}
-              </div>
+          {/* BDR Call Card */}
+          {recentBdr[0] ? (
+            <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px' }}>
+              <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px' }}>PANGGILAN BDR</div>
+              <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentBdr[0].ticketNo}</div>
             </div>
-          </div>
+          ) : (
+            <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px' }}>
+              <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu BDR...</div>
+            </div>
+          )}
 
-          {/* POLI Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
-            {recentPoli[0] ? (
-              <div className={styles.currentCallCard} style={{ padding: '16px', borderRadius: '16px', minHeight: 'auto', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
-                <div className={styles.currentLabel} style={{ fontSize: '0.8rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
-                <div className={styles.currentNo} style={{ fontSize: '3rem' }}>{recentPoli[0].ticketNo}</div>
-                <div className={styles.currentDest} style={{ fontSize: '1.2rem', marginTop: '4px' }}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
-              </div>
-            ) : (
-              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '16px', borderRadius: '16px', minHeight: 'auto', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
-                <div className={styles.currentDest} style={{ fontSize: '1rem' }}>Menunggu POLI...</div>
-              </div>
-            )}
-            <div className={styles.historyBox} style={{ flex: 1, minHeight: 0 }}>
-              <div className={styles.sectionTitle}>Riwayat POLI</div>
-              <div className={styles.callList}>
-                {recentPoli.length === 0 ? (
-                  <div className={styles.emptySection}>Kosong</div>
-                ) : (
-                  recentPoli.slice(1).map((call: any, idx) => (
-                    <div key={idx} className={styles.callItem}>
-                      <span className={styles.callNo}>{call.ticketNo}</span>
-                      <span className={styles.callRoom}>{call.roomName || call.targetRoom}</span>
-                    </div>
-                  ))
-                )}
-              </div>
+          {/* POLI Call Card */}
+          {recentPoli[0] ? (
+            <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
+              <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
+              <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentPoli[0].ticketNo}</div>
+              <div className={styles.currentDest} style={{ fontSize: '1.1rem', marginTop: '8px' }}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
             </div>
+          ) : (
+            <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
+              <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu POLI...</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Waiting Bar - above ticker */}
+      <div className={styles.waitingBar}>
+        <div className={styles.waitingBarTitle}>
+          Menunggu Dilayani
+        </div>
+        <div className={styles.waitingBarList}>
+          <div 
+            ref={waitingTrackRef}
+            className={`${styles.waitingBarTrack} ${needsScroll ? styles.animated : ''}`}
+            style={needsScroll ? { '--scroll-duration': `${scrollDuration}s` } as React.CSSProperties : undefined}
+          >
+            {renderWaitingItems()}
           </div>
         </div>
       </div>
