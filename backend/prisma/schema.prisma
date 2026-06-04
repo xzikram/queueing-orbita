@@ -107,7 +107,7 @@ model DoctorSchedule {
   endTime       String               @map("end_time")
   quota         Int
   bookedCount   Int                  @default(0) @map("booked_count")
-  status        ScheduleStatus       @default("ACTIVE")
+  status        ScheduleStatus       @default(ACTIVE)
   importBatchId String?              @map("import_batch_id")
   createdAt     DateTime             @default(now()) @map("created_at")
   updatedAt     DateTime             @updatedAt @map("updated_at")
@@ -128,7 +128,7 @@ model ScheduleImportBatch {
   totalRows   Int              @default(0) @map("total_rows")
   successRows Int              @default(0) @map("success_rows")
   failedRows  Int              @default(0) @map("failed_rows")
-  status      ImportStatus     @default("PROCESSING")
+  status      ImportStatus     @default(PROCESSING)
   errorLog    String?          @map("error_log")
   createdAt   DateTime         @default(now()) @map("created_at")
   schedules   DoctorSchedule[]
@@ -146,7 +146,7 @@ model QueueTicket {
   selectedDoctorId   String?              @map("selected_doctor_id")
   selectedRoomId     String?              @map("selected_room_id")
   selectedFloorId    String?              @map("selected_floor_id")
-  status             TicketStatus         @default("WAITING")
+  status             TicketStatus         @default(WAITING)
   createdAt          DateTime             @default(now()) @map("created_at")
   displayCallLogs    DisplayCallLog[]
   journeySessions    JourneyUnitSession[]
@@ -211,7 +211,7 @@ model JourneyUnitSession {
   serviceFinishedAt      DateTime?      @map("service_finished_at")
   waitingDurationSeconds Int?           @map("waiting_duration_seconds")
   serviceDurationSeconds Int?           @map("service_duration_seconds")
-  status                 SessionStatus  @default("WAITING")
+  status                 SessionStatus  @default(WAITING)
   isTimeEdited           Boolean        @default(false) @map("is_time_edited")
   editedReason           String?        @map("edited_reason")
   editedBy               String?        @map("edited_by")
@@ -263,7 +263,7 @@ model Display {
   name            String
   displayType     DisplayType          @map("display_type")
   floorId         String?              @map("floor_id")
-  orientation     Orientation          @default("LANDSCAPE")
+  orientation     Orientation          @default(LANDSCAPE)
   videoPlaylistId String?              @map("video_playlist_id")
   runningText     String?              @map("running_text")
   videoVolume     Float                @default(0.3) @map("video_volume")
