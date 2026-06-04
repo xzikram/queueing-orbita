@@ -103,8 +103,8 @@ export default function FloorDisplayPage() {
 
       let dest = data.roomName || data.unitType || '';
       
-      // Jika nama ruangan mengandung kata Poli (misal "Poli 5 - dr. George"), ambil hanya "Poli 5"
-      const poliMatch = dest.match(/poli\s*\d+/i);
+      // Jika nama ruangan mengandung kata Poli (misal "Poli 5B - dr. George"), ambil hanya "Poli 5B"
+      const poliMatch = dest.match(/poli\s*\d+\s*[a-z]?/i);
       if (poliMatch) {
         dest = poliMatch[0];
       } else {
