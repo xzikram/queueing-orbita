@@ -22,6 +22,7 @@ export class MasterController {
   // COUNTERS
   // ==================
   @Get('counters')
+  @Permission('')
   findAllCounters() {
     return this.masterService.findAllCounters();
   }
@@ -53,6 +54,7 @@ export class MasterController {
   // FLOORS
   // ==================
   @Get('floors')
+  @Permission('')
   findAllFloors() {
     return this.masterService.findAllFloors();
   }
@@ -154,11 +156,13 @@ export class MasterController {
   // DISPLAYS
   // ==================
   @Get('displays')
+  @Permission('')
   findAllDisplays() {
     return this.masterService.findAllDisplays();
   }
 
   @Get('displays/code/:code')
+  @Permission('')
   findDisplayByCode(@Param('code') code: string) {
     return this.masterService.findDisplayByCode(code);
   }
