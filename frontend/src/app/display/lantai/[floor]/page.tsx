@@ -385,7 +385,7 @@ export default function FloorDisplayPage() {
       {/* Waiting Bar - above ticker */}
       <div className={styles.waitingBar}>
         <div className={styles.waitingBarTitle}>
-          Menunggu Dilayani
+          Menunggu Pengkajian
         </div>
         <div className={styles.waitingBarList}>
           <div 

@@ -311,13 +311,14 @@ export class QueueService {
     const bdrCalls = uniqueBdr.slice(0, 5);
     const poliCalls = uniquePoli.slice(0, 5);
 
-    // Get waiting list: Visits that are WAITING for ASSESSMENT or DOCTOR or BDR on this floor
+    // Get waiting list: Visits that are WAITING for ASSESSMENT on this floor
+    // (Pasien yang langsung ke Dokter/BDR tidak akan muncul di ticker "Menunggu Dilayani")
     const waitingList = await this.prisma.visit.findMany({
       where: {
         visitDate: { gte: today },
         currentStatus: 'WAITING',
         selectedFloor: { floorNumber },
-        currentUnitType: { in: ['ASSESSMENT', 'DOCTOR', 'BDR'] },
+        currentUnitType: 'ASSESSMENT',
       },
       include: {
         queueTicket: true,
