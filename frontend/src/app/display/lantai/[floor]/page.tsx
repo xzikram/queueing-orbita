@@ -21,8 +21,10 @@ export default function FloorDisplayPage() {
   const displayCode = `display_lantai_${floorNumber}`;
 
   const [currentCall, setCurrentCall] = useState<CallData | null>(null);
-  const [recentBdr, setRecentBdr] = useState<CallData[]>([]);
-  const [recentPoli, setRecentPoli] = useState<CallData[]>([]);
+  const [recentBdr, setRecentBdr] = useState<any[]>([]);
+  const [recentPoli, setRecentPoli] = useState<any[]>([]);
+  const [waitingBdr, setWaitingBdr] = useState<string[]>([]);
+  const [waitingPoli, setWaitingPoli] = useState<string[]>([]);
   const [waitingList, setWaitingList] = useState<any[]>([]);
   const [time, setTime] = useState(new Date());
   const [connected, setConnected] = useState(false);
@@ -167,9 +169,11 @@ export default function FloorDisplayPage() {
   const loadData = useCallback(async () => {
     try {
       const res = await api.get(`/queue-tickets/floor-display/${floorNumber}`);
-      setRecentBdr(res.data.recentBdr);
-      setRecentPoli(res.data.recentPoli);
-      setWaitingList(res.data.waitingList);
+      setRecentBdr(res.data.recentBdr || []);
+      setRecentPoli(res.data.recentPoli || []);
+      setWaitingBdr(res.data.waitingBdr || []);
+      setWaitingPoli(res.data.waitingPoli || []);
+      setWaitingList(res.data.waitingList || []);
       if (res.data.recentPoli.length > 0 && res.data.recentBdr.length > 0) {
         const all = [...res.data.recentBdr, ...res.data.recentPoli].sort((a: any,b: any) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime());
         setCurrentCall(all[0]);
@@ -353,32 +357,54 @@ export default function FloorDisplayPage() {
           </div>
         </div>
 
-        {/* Right Column: Active Call Cards Only (no history) */}
+        {/* Right Column: Active Call Cards + Upcoming Queues */}
         <div className={styles.rightColumn}>
           {/* BDR Call Card */}
-          {recentBdr[0] ? (
-            <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px' }}>
-              <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px' }}>PANGGILAN BDR</div>
-              <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentBdr[0].ticketNo}</div>
-            </div>
-          ) : (
-            <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px' }}>
-              <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu BDR...</div>
-            </div>
-          )}
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            {recentBdr[0] ? (
+              <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px' }}>
+                <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px' }}>PANGGILAN BDR</div>
+                <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentBdr[0].ticketNo}</div>
+              </div>
+            ) : (
+              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px' }}>
+                <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu BDR...</div>
+              </div>
+            )}
+            
+            {waitingBdr.length > 0 && (
+              <div className={styles.upcomingQueue}>
+                <div className={styles.upcomingTitle}>Antrean BDR Berikutnya</div>
+                <div className={styles.upcomingList}>
+                  {waitingBdr.map((t, idx) => <span key={idx} className={styles.upcomingItem}>{t}</span>)}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* POLI Call Card */}
-          {recentPoli[0] ? (
-            <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
-              <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
-              <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentPoli[0].ticketNo}</div>
-              <div className={styles.currentDest} style={{ fontSize: '1.1rem', marginTop: '8px' }}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
-            </div>
-          ) : (
-            <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
-              <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu POLI...</div>
-            </div>
-          )}
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            {recentPoli[0] ? (
+              <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
+                <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
+                <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentPoli[0].ticketNo}</div>
+                <div className={styles.currentDest} style={{ fontSize: '1.1rem', marginTop: '8px' }}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
+              </div>
+            ) : (
+              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
+                <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu POLI...</div>
+              </div>
+            )}
+
+            {waitingPoli.length > 0 && (
+              <div className={styles.upcomingQueue}>
+                <div className={styles.upcomingTitle}>Antrean Poli Berikutnya</div>
+                <div className={styles.upcomingList}>
+                  {waitingPoli.map((t, idx) => <span key={idx} className={styles.upcomingItem}>{t}</span>)}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

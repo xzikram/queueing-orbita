@@ -328,9 +328,35 @@ export class QueueService {
       orderBy: { updatedAt: 'asc' },
     });
 
+    const waitingBdr = await this.prisma.visit.findMany({
+      where: {
+        visitDate: { gte: today },
+        currentStatus: 'WAITING',
+        selectedFloor: { floorNumber },
+        currentUnitType: 'BDR',
+      },
+      include: { queueTicket: true },
+      orderBy: { updatedAt: 'asc' },
+      take: 10,
+    });
+
+    const waitingPoli = await this.prisma.visit.findMany({
+      where: {
+        visitDate: { gte: today },
+        currentStatus: 'WAITING',
+        selectedFloor: { floorNumber },
+        currentUnitType: 'DOCTOR',
+      },
+      include: { queueTicket: true },
+      orderBy: { updatedAt: 'asc' },
+      take: 10,
+    });
+
     return {
       recentBdr: bdrCalls,
       recentPoli: poliCalls,
+      waitingBdr: waitingBdr.map(v => v.doctorTicketNo || v.queueTicket?.ticketNo),
+      waitingPoli: waitingPoli.map(v => v.doctorTicketNo || v.queueTicket?.ticketNo),
       waitingList: waitingList.map(v => ({
         ticketNo: v.doctorTicketNo || v.queueTicket?.ticketNo,
         unitType: v.currentUnitType,

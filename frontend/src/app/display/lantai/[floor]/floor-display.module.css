@@ -181,6 +181,39 @@
   box-shadow: 0 4px 15px rgba(234, 88, 12, 0.3);
 }
 
+.upcomingQueue {
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  width: 100%;
+}
+
+.upcomingTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.upcomingList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.upcomingItem {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
 /* ============================================ */
 /* Waiting Bar - horizontal strip above ticker  */
 /* ============================================ */
