@@ -8,7 +8,7 @@ import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('cdc')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Roles('ADMIN', 'CDC')
+@Roles('ADMIN', 'CDC', 'ASSESSMENT', 'DOCTOR')
 @Permission('cdc')
 export class CdcController {
   constructor(private service: CdcService) {}

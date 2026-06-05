@@ -8,7 +8,7 @@ import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('doctor-queue')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Roles('ADMIN', 'DOCTOR')
+@Roles('ADMIN', 'DOCTOR', 'ASSESSMENT', 'CDC')
 @Permission('doctor')
 export class DoctorQueueController {
   constructor(private service: DoctorQueueService) {}

@@ -8,7 +8,7 @@ import { Permission } from '../common/decorators/permission.decorator';
 
 @Controller('assessment')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Roles('ADMIN', 'ASSESSMENT')
+@Roles('ADMIN', 'ASSESSMENT', 'DOCTOR', 'CDC')
 @Permission('assessment')
 export class AssessmentController {
   constructor(private service: AssessmentService) {}

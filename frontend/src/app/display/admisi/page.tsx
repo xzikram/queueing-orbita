@@ -90,7 +90,19 @@ export default function DisplayAdmisiKasirPage() {
       const msg = `Nomor antrian. ${data.ticketNo.split('').join(' ')}. silakan menuju ke. ${data.counterName || 'Counter'}.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
-      utterance.rate = 0.85;
+      
+      const voices = window.speechSynthesis.getVoices();
+      const idVoices = voices.filter(v => v.lang === 'id-ID' || v.lang === 'id_ID');
+      const femaleVoice = idVoices.find(v => v.name.includes('Google') || v.name.includes('Ayu') || v.name.includes('Gadis') || v.name.toLowerCase().includes('female'));
+      
+      if (femaleVoice) {
+        utterance.voice = femaleVoice;
+      } else if (idVoices.length > 0) {
+        utterance.voice = idVoices[0];
+      }
+      
+      utterance.rate = 1.0;
+      utterance.pitch = 1.1;
 
       utterance.onend = () => {
         if (videoRef.current) videoRef.current.volume = videoVolumeRef.current;
