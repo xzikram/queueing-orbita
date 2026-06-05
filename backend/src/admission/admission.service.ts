@@ -268,18 +268,16 @@ export class AdmissionService {
     // Finish admission session
     await this.journeyService.finishService(session.id, { createdBy: data.userId });
 
-    // If visit doesn't have a schedule yet, check if it was updated
-    let finalRoomId = ticket.selectedRoomId;
-    let finalFloorId = ticket.selectedFloorId;
-    let finalDoctorId = ticket.selectedDoctorId;
-    let currentDoctorTicketNo = ticket.visit.doctorTicketNo;
+    // Re-fetch visit and ticket to get the latest data
+    // (updatePatientData may have changed doctor/schedule/room/floor during admission)
+    const freshVisit = await this.prisma.visit.findUnique({ where: { id: ticket.visit.id } });
+    const freshTicket = await this.prisma.queueTicket.findUnique({ where: { id: ticketId } });
 
-    // Check if visit has selected doctor (maybe updated during updatePatientData)
-    if (!finalDoctorId && ticket.visit.selectedDoctorId) {
-      finalDoctorId = ticket.visit.selectedDoctorId;
-      finalRoomId = ticket.visit.selectedRoomId;
-      finalFloorId = ticket.visit.selectedFloorId;
-    }
+    // Always prefer visit data (most up-to-date), then fall back to ticket
+    let finalDoctorId = freshVisit?.selectedDoctorId || freshTicket?.selectedDoctorId || null;
+    let finalRoomId = freshVisit?.selectedRoomId || freshTicket?.selectedRoomId || null;
+    let finalFloorId = freshVisit?.selectedFloorId || freshTicket?.selectedFloorId || null;
+    let currentDoctorTicketNo = freshVisit?.doctorTicketNo || null;
 
     // Generate doctorTicketNo if not exists and doctor is selected
     if (finalDoctorId && !currentDoctorTicketNo) {
