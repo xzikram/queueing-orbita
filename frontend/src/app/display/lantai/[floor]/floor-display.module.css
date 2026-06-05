@@ -183,19 +183,22 @@
 
 .upcomingQueue {
   margin-top: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #ffffff;
   border-radius: 12px;
   padding: 12px;
   width: 100%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0,0,0,0.05);
 }
 
 .upcomingTitle {
   font-size: 0.8rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 800;
+  color: #475569;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center;
 }
 
 .upcomingList {
@@ -206,12 +209,13 @@
 }
 
 .upcomingItem {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: #f1f5f9;
+  color: #0f172a;
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 0.95rem;
-  font-weight: 700;
+  font-weight: 800;
+  border: 1px solid #cbd5e1;
 }
 
 /* ============================================ */
