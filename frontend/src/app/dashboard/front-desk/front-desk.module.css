@@ -254,3 +254,68 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Compact Queue Card styles */
+.compactCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--gray-50);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  animation: fadeIn 0.3s ease-out;
+  gap: 12px;
+}
+
+.compactCard:hover {
+  border-color: var(--primary-200);
+  box-shadow: var(--shadow-md);
+}
+
+.cardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cardRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ticketHeaderCompact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticketNoCompact {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary-600);
+  line-height: 1.2;
+}
+
+.ticketInfoCompact {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticketTimeCompact {
+  color: var(--gray-400);
+}
+
+.activeCardCompact {
+  border-color: var(--primary-300);
+  border-left: 4px solid var(--accent-500);
+  background: var(--primary-50);
+}

@@ -1,9 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { HisApiService } from '../adapters/his-api.service';
 
 @Injectable()
 export class ScheduleService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ScheduleService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private hisApiService: HisApiService
+  ) {}
 
   async findActiveToday() {
     const today = new Date();
@@ -60,24 +66,86 @@ export class ScheduleService {
   }
 
   async create(data: any) {
+    const createData = { ...data };
+    if (createData.scheduleDate && typeof createData.scheduleDate === 'string') {
+      const parts = createData.scheduleDate.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const dateObj = new Date(y, m, d);
+        dateObj.setHours(0, 0, 0, 0);
+        createData.scheduleDate = dateObj;
+      } else {
+        createData.scheduleDate = new Date(createData.scheduleDate);
+      }
+    }
     return this.prisma.doctorSchedule.create({
-      data,
+      data: createData,
       include: { doctor: true, room: true, floor: true },
     });
   }
 
-  async update(id: string, data: any) {
-    await this.findOne(id);
-    return this.prisma.doctorSchedule.update({
+  async update(id: string, data: any, reason?: string, username: string = 'System') {
+    const old = await this.findOne(id);
+    const updateData = { ...data };
+    if (updateData.scheduleDate && typeof updateData.scheduleDate === 'string') {
+      const parts = updateData.scheduleDate.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const dateObj = new Date(y, m, d);
+        dateObj.setHours(0, 0, 0, 0);
+        updateData.scheduleDate = dateObj;
+      } else {
+        updateData.scheduleDate = new Date(updateData.scheduleDate);
+      }
+    }
+    const updated = await this.prisma.doctorSchedule.update({
       where: { id },
-      data,
+      data: updateData,
       include: { doctor: true, room: true, floor: true },
     });
+
+    if (reason) {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'UPDATE',
+          entity: 'DoctorSchedule',
+          entityId: id,
+          userName: username,
+          unitType: 'SCHEDULE',
+          humanDescription: `Edit Jadwal dr. ${old.doctor?.doctorName} pada ${old.scheduleDate.toLocaleDateString()}. Alasan: ${reason}`,
+          reason,
+          oldValue: JSON.stringify(old),
+          newValue: JSON.stringify(updated),
+        }
+      });
+    }
+
+    return updated;
   }
 
-  async delete(id: string) {
-    await this.findOne(id);
+  async delete(id: string, reason?: string, username: string = 'System') {
+    const old = await this.findOne(id);
     await this.prisma.doctorSchedule.delete({ where: { id } });
+
+    if (reason) {
+      await this.prisma.auditLog.create({
+        data: {
+          action: 'DELETE',
+          entity: 'DoctorSchedule',
+          entityId: id,
+          userName: username,
+          unitType: 'SCHEDULE',
+          humanDescription: `Hapus Jadwal dr. ${old.doctor?.doctorName} pada ${old.scheduleDate.toLocaleDateString()}. Alasan: ${reason}`,
+          reason,
+          oldValue: JSON.stringify(old),
+        }
+      });
+    }
+
     return { message: 'Jadwal berhasil dihapus' };
   }
 
@@ -85,4 +153,185 @@ export class ScheduleService {
     await this.prisma.doctorSchedule.deleteMany();
     return { message: 'Semua jadwal berhasil dihapus' };
   }
+
+  // --- HIS SYNC LOGIC ---
+
+  async syncDailySchedules(targetDateStr?: string) {
+    this.logger.log('Starting daily HIS schedule sync...');
+    
+    let dateStr = targetDateStr;
+    let today = new Date();
+    if (dateStr) {
+      // Normalize to YYYYMMDD
+      const normalized = dateStr.replace(/[^0-9]/g, '');
+      if (normalized.length === 8) {
+        dateStr = normalized;
+        const y = parseInt(normalized.substring(0, 4), 10);
+        const m = parseInt(normalized.substring(4, 6), 10) - 1;
+        const d = parseInt(normalized.substring(6, 8), 10);
+        today = new Date(y, m, d);
+      } else {
+        dateStr = undefined;
+      }
+    }
+
+    if (!dateStr) {
+      const yyyy = today.getFullYear().toString();
+      const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+      const dd = today.getDate().toString().padStart(2, '0');
+      dateStr = `${yyyy}${mm}${dd}`;
+    }
+
+    const serviceUnitIdsStr = process.env.HIS_SERVICE_UNIT_IDS || 'A101';
+    const serviceUnitIds = serviceUnitIdsStr.split(',').map(s => s.trim());
+
+    // Fetch all active doctors
+    const doctors = await this.prisma.doctor.findMany({ where: { isActive: true } });
+    let totalSynced = 0;
+
+    // Fetch default floor
+    let defaultFloor = await this.prisma.floor.findFirst();
+    if (!defaultFloor) {
+      defaultFloor = await this.prisma.floor.create({
+        data: { floorNumber: 1, name: 'Lantai 1' }
+      });
+    }
+
+    for (const doc of doctors) {
+      for (const unitId of serviceUnitIds) {
+        try {
+          const hisSchedules = await this.hisApiService.getSchedule(doc.doctorCode, dateStr, dateStr, unitId);
+          
+          for (const s of hisSchedules) {
+            // Find or create room based on RoomID from API
+            // Example HIS RoomID: "A1-501". Let's name it Poli 5A.
+            // We just store RoomID as code and name.
+            let room = await this.prisma.room.findUnique({ where: { code: s.RoomID } });
+            if (!room) {
+              let floorId = defaultFloor.id;
+              if (s.RoomID === 'B3-102') {
+                let targetFloor = await this.prisma.floor.findUnique({ where: { floorNumber: 7 } });
+                if (!targetFloor) {
+                  targetFloor = await this.prisma.floor.create({
+                    data: {
+                      floorNumber: 7,
+                      name: 'Lantai 7',
+                    }
+                  });
+                }
+                floorId = targetFloor.id;
+              } else {
+                const match = s.RoomID.match(/^[A-Z0-9]+-(\d+)$/i);
+                if (match) {
+                  const roomDigits = match[1];
+                  if (roomDigits.length >= 3) {
+                    const floorStr = roomDigits.substring(0, roomDigits.length - 2);
+                    const floorNum = parseInt(floorStr, 10);
+                    if (!isNaN(floorNum)) {
+                      let targetFloor = await this.prisma.floor.findUnique({ where: { floorNumber: floorNum } });
+                      if (!targetFloor) {
+                        targetFloor = await this.prisma.floor.create({
+                          data: {
+                            floorNumber: floorNum,
+                            name: `Lantai ${floorNum}`,
+                          }
+                        });
+                      }
+                      floorId = targetFloor.id;
+                    }
+                  }
+                }
+              }
+
+              const friendlyName = this.formatRoomName(s.RoomID);
+              room = await this.prisma.room.create({
+                data: {
+                  code: s.RoomID,
+                  name: friendlyName,
+                  roomType: 'DOCTOR' as any,
+                  floorId,
+                }
+              });
+              this.logger.log(`Created new room from HIS: ${friendlyName} (${s.RoomID})`);
+            }
+
+            // Convert startTime and endTime to Dates based on target/today's date
+            const scheduleDate = new Date(today);
+            scheduleDate.setHours(0,0,0,0);
+            
+            const daysId = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const dayName = daysId[scheduleDate.getDay()];
+
+            const startTimeStr = s.StartTime1 || '08:00';
+            const endTimeStr = s.EndTime1 || '15:00';
+
+            // Upsert the schedule (we find existing by doctorId, roomId, and scheduleDate)
+            // But Prisma doesn't have a unique constraint on these three, so we use findFirst and update/create.
+            const existing = await this.prisma.doctorSchedule.findFirst({
+              where: {
+                doctorId: doc.id,
+                roomId: room.id,
+                scheduleDate: scheduleDate
+              }
+            });
+
+            if (existing) {
+              await this.prisma.doctorSchedule.update({
+                where: { id: existing.id },
+                data: {
+                  startTime: startTimeStr,
+                  endTime: endTimeStr,
+                  quota: parseInt(s.Slot || '0') || existing.quota,
+                }
+              });
+            } else {
+              await this.prisma.doctorSchedule.create({
+                data: {
+                  doctorId: doc.id,
+                  roomId: room.id,
+                  floorId: room.floorId || defaultFloor.id,
+                  scheduleDate: scheduleDate,
+                  dayName: dayName,
+                  startTime: startTimeStr,
+                  endTime: endTimeStr,
+                  quota: parseInt(s.Slot || '0') || 50,
+                  status: 'ACTIVE'
+                }
+              });
+            }
+            totalSynced++;
+          }
+        } catch (e) {
+          this.logger.error(`Error syncing schedule for ${doc.doctorCode} unit ${unitId}: ${e.message}`);
+        }
+      }
+    }
+
+    this.logger.log(`Daily sync finished. Synced ${totalSynced} schedule entries.`);
+    return { success: true, totalSynced };
+  }
+
+  private formatRoomName(roomId: string) {
+    if (roomId === 'A1-605') return 'Internist';
+    if (roomId === 'A1-702') return 'Low Vision';
+    if (roomId === 'B3-102') return 'Pediatric';
+
+    // Attempt to map "A1-[floor][slot_padded]" (e.g. "A1-502") to "Poli [floor][letter]" (e.g. "Poli 5B")
+    if (roomId.startsWith('A1-')) {
+      const parts = roomId.split('-'); // e.g. ["A1", "502"]
+      if (parts[1] && parts[1].length >= 3) {
+        const floorStr = parts[1].substring(0, parts[1].length - 2); // e.g. "5"
+        const slotStr = parts[1].substring(parts[1].length - 2); // e.g. "02"
+        const slotNum = parseInt(slotStr, 10);
+        if (!isNaN(slotNum) && slotNum >= 1 && slotNum <= 26) {
+          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          const letter = alphabet[slotNum - 1];
+          return `Poli ${floorStr}${letter}`;
+        }
+      }
+      return `Poli ${parts[1]}`;
+    }
+    return roomId;
+  }
 }
+// Trigger rebuild for environment variables configuration

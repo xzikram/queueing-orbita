@@ -9,7 +9,7 @@ export default function DoctorsPage() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<'create'|'edit'|'delete'|null>(null);
   const [selected, setSelected] = useState<any>(null);
-  const [form, setForm] = useState({doctorCode:'',doctorName:'',isActive:true});
+  const [form, setForm] = useState({doctorCode:'',doctorName:'',doctorInitials:'',isActive:true});
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -18,8 +18,8 @@ export default function DoctorsPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => { setForm({doctorCode:'',doctorName:'',isActive:true}); setModal('create'); };
-  const openEdit = (d:any) => { setSelected(d); setForm({doctorCode:d.doctorCode,doctorName:d.doctorName,isActive:d.isActive}); setModal('edit'); };
+  const openCreate = () => { setForm({doctorCode:'',doctorName:'',doctorInitials:'',isActive:true}); setModal('create'); };
+  const openEdit = (d:any) => { setSelected(d); setForm({doctorCode:d.doctorCode,doctorName:d.doctorName,doctorInitials:d.doctorInitials||'',isActive:d.isActive}); setModal('edit'); };
 
   const save = async () => {
     setLoading(true);
@@ -98,14 +98,15 @@ export default function DoctorsPage() {
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
         <table className="data-table"><thead><tr><th>Kode/Singkatan</th><th>Nama Dokter</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>{filtered.map(d=>(
-          <tr key={d.id}><td><code style={{color:'var(--primary-300)'}}>{d.doctorCode}</code></td><td><strong>{d.doctorName}</strong></td><td><span className={styles.statusDot+' '+(d.isActive?styles.statusActive:styles.statusInactive)}/>{d.isActive?'Aktif':'Nonaktif'}</td>
+          <tr key={d.id}><td><code style={{color:'var(--primary-300)'}}>{d.doctorCode}{d.doctorInitials ? ` / ${d.doctorInitials}` : ''}</code></td><td><strong>{d.doctorName}</strong></td><td><span className={styles.statusDot+' '+(d.isActive?styles.statusActive:styles.statusInactive)}/>{d.isActive?'Aktif':'Nonaktif'}</td>
           <td><div style={{display:'flex',gap:6}}><button className="btn btn-secondary btn-sm" onClick={()=>openEdit(d)}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>{setSelected(d);setModal('delete')}}>Hapus</button></div></td></tr>
         ))}</tbody></table>
       </div></div>
 
       {(modal==='create'||modal==='edit')&&<div className={styles.modalOverlay} onClick={()=>setModal(null)}><div className={styles.modal} onClick={e=>e.stopPropagation()}>
         <h3 className={styles.modalTitle}>{modal==='create'?'Tambah':'Edit'} Dokter</h3>
-        <div className="form-group"><label className="form-label">Kode / Singkatan</label><input className="form-input" value={form.doctorCode} onChange={e=>setForm({...form,doctorCode:e.target.value})}/></div>
+        <div className="form-group"><label className="form-label">Kode HIS (Paramedic ID)</label><input className="form-input" value={form.doctorCode} onChange={e=>setForm({...form,doctorCode:e.target.value})}/></div>
+        <div className="form-group"><label className="form-label">Singkatan (Inisial)</label><input className="form-input" value={form.doctorInitials} onChange={e=>setForm({...form,doctorInitials:e.target.value})}/></div>
         <div className="form-group"><label className="form-label">Nama Dokter</label><input className="form-input" value={form.doctorName} onChange={e=>setForm({...form,doctorName:e.target.value})}/></div>
         <div className={styles.modalActions}><button className="btn btn-secondary" onClick={()=>setModal(null)}>Batal</button><button className="btn btn-primary" onClick={save} disabled={loading}>{loading?'...':'Simpan'}</button></div>
       </div></div>}

@@ -258,26 +258,89 @@
   margin-bottom: 24px;
 }
 
-/* ── Print Styles (Hidden in UI) ── */
-.ticketPrint {
-  display: none;
+/* ── Ticket Result Screen ── */
+.ticketScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  padding: 40px;
 }
 
-@media print {
-  @page { margin: 0; size: 80mm auto; }
-  body { background: white; color: black; font-family: 'Helvetica Neue', Arial, sans-serif; }
-  .container { display: none !important; }
-  .ticketPrint {
-    display: block !important;
-    padding: 15mm 5mm;
-    text-align: center;
-  }
-  .printHeader h2 { margin: 0; font-size: 16pt; font-weight: bold; }
-  .printHeader p { margin: 4px 0 16px; font-size: 10pt; border-bottom: 1px solid #000; padding-bottom: 10px; }
-  .printType { font-size: 12pt; font-weight: bold; margin-bottom: 10px; }
-  .printNumber { font-size: 36pt; font-weight: bold; margin: 10px 0; letter-spacing: 2px; }
-  .printDate { font-size: 10pt; margin-bottom: 15px; }
-  .printFooter p { font-size: 9pt; font-style: italic; border-top: 1px dashed #000; padding-top: 10px; }
+.ticketCard {
+  text-align: center;
+  padding: 48px 40px;
+  background: #ffffff;
+  border: 2px solid #dbeafe;
+  border-radius: 24px;
+  max-width: 440px;
+  width: 100%;
+  animation: fadeIn 0.5s ease-out;
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.1);
+  position: relative;
+  overflow: hidden;
+  color: #1e293b;
+}
+
+.ticketCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #3b82f6, #f97316);
+  border-radius: 24px 24px 0 0;
+}
+
+.ticketBadge {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.ticketNumber {
+  font-size: 5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.ticketType {
+  margin-bottom: 16px;
+}
+
+.ticketDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9375rem;
+  color: #475569;
+  margin-bottom: 20px;
+}
+
+.ticketInstructions {
+  font-size: 0.875rem;
+  color: #475569;
+  padding: 16px;
+  background: #eff6ff;
+  border-radius: 10px;
+  border: 1px solid #dbeafe;
+  line-height: 1.6;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Animations ── */
@@ -299,4 +362,61 @@
 @keyframes slowPulse {
   0% { transform: translate(0, 0); }
   100% { transform: translate(5%, 5%); }
+}
+
+/* ── Responsive adjustments for 11" screens and smaller viewports ── */
+@media (max-height: 850px), (max-width: 1280px) {
+  .glassHeader {
+    padding: 15px 30px;
+  }
+  .logoWrapper {
+    height: 45px;
+    padding: 6px 15px;
+  }
+  .title {
+    font-size: 1.5rem;
+  }
+  .subtitle {
+    font-size: 0.8rem;
+  }
+  .mainContent {
+    padding: 20px;
+  }
+  .promptArea {
+    margin-bottom: 25px;
+  }
+  .promptArea h2 {
+    font-size: 2.25rem;
+    margin-bottom: 8px;
+  }
+  .promptArea p {
+    font-size: 1.1rem;
+  }
+  .cardGrid {
+    gap: 24px;
+    max-width: 800px;
+  }
+  .selectionCard {
+    padding: 30px 24px;
+    border-radius: 24px;
+  }
+  .cardIcon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+  }
+  .cardCode {
+    font-size: 2.5rem;
+    top: 20px;
+    right: 20px;
+  }
+  .cardLabel {
+    font-size: 1.35rem;
+    margin-bottom: 8px;
+  }
+  .cardDesc {
+    font-size: 0.95rem;
+  }
+  .footer {
+    padding: 12px;
+  }
 }

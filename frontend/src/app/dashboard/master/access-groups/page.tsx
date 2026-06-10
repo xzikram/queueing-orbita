@@ -14,7 +14,6 @@ const PERMISSION_LABELS: Record<string, { label: string; icon: string }> = {
   cashier: { label: 'Kasir', icon: '💳' },
   pharmacy: { label: 'Farmasi', icon: '💊' },
   optic: { label: 'Optik', icon: '👓' },
-  'counter-management': { label: 'Counter Management', icon: '🔧' },
   master: { label: 'Master Data', icon: '⚙️' },
   schedules: { label: 'Jadwal Dokter', icon: '📅' },
   live: { label: 'Live Dashboard', icon: '📈' },

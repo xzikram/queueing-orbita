@@ -72,8 +72,10 @@ export class ScheduleController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Permission('schedules')
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.scheduleService.update(id, body);
+  update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    const { reason, ...data } = body;
+    const username = req.user?.name || req.user?.email || 'Admin';
+    return this.scheduleService.update(id, data, reason, username);
   }
 
   @Delete('all')
@@ -86,7 +88,16 @@ export class ScheduleController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Permission('schedules')
-  delete(@Param('id') id: string) {
-    return this.scheduleService.delete(id);
+  delete(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    const username = req.user?.name || req.user?.email || 'Admin';
+    // Reason might come from body.reason or query.reason depending on how frontend sends it
+    return this.scheduleService.delete(id, body?.reason, username);
+  }
+
+  @Post('sync')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Permission('schedules')
+  syncHisSchedule(@Query('date') date?: string) {
+    return this.scheduleService.syncDailySchedules(date);
   }
 }

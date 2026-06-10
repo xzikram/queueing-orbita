@@ -26,7 +26,10 @@ export default function SchedulesPage() {
     floorId: '',
     startTime: '08:00',
     endTime: '12:00',
+    reason: '',
   });
+  const [editMode, setEditMode] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const loadMasterData = async () => {
     try {
@@ -95,9 +98,56 @@ export default function SchedulesPage() {
     }
   };
 
+  const syncHis = async () => {
+    setSyncing(true);
+    try {
+      const res = await api.post('/schedules/sync');
+      alert(`Berhasil sinkronisasi. ${res.data?.totalSynced || 0} jadwal diperbarui.`);
+      load();
+    } catch(err:any) {
+      alert(err.response?.data?.message || 'Gagal sinkronisasi');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const openEdit = (s: any) => {
+    const dObj = new Date(s.scheduleDate);
+    const yyyy = dObj.getFullYear();
+    const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dObj.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+
+    setFormData({
+      scheduleDate: dateStr,
+      doctorId: s.doctorId,
+      roomId: s.roomId,
+      floorId: s.floorId || '',
+      startTime: formatTime(s.startTime),
+      endTime: formatTime(s.endTime),
+      reason: ''
+    });
+    setDocSearch(`${s.doctor?.doctorCode} - ${s.doctor?.doctorName}`);
+    setEditMode(s);
+    setShowForm(true);
+  };
+
+  const promptDelete = async (s: any) => {
+    const reason = window.prompt(`Hapus jadwal dr. ${s.doctor?.doctorName}?\nWAJIB ISI ALASAN PENGHAPUSAN:`);
+    if (reason === null) return;
+    if (reason.trim() === '') return alert('Alasan wajib diisi!');
+    try {
+      await api.delete(`/schedules/${s.id}`, { data: { reason } });
+      load();
+    } catch(err:any) {
+      alert(err.response?.data?.message || 'Gagal menghapus jadwal');
+    }
+  };
+
   const submitManual = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.doctorId || !formData.roomId) return alert('Pilih dokter dan ruangan!');
+    
     try {
       const dateObj = new Date(formData.scheduleDate);
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -108,11 +158,19 @@ export default function SchedulesPage() {
         dayName,
         quota: 999
       };
-      await api.post('/schedules', payload);
+
+      if (editMode) {
+        if (!formData.reason.trim()) return alert('Alasan wajib diisi untuk edit jadwal!');
+        await api.put(`/schedules/${editMode.id}`, payload);
+      } else {
+        await api.post('/schedules', payload);
+      }
+
       setShowForm(false);
+      setEditMode(null);
       setFormData({
         scheduleDate: new Date().toISOString().slice(0,10),
-        doctorId: '', roomId: '', floorId: '', startTime: '08:00', endTime: '12:00'
+        doctorId: '', roomId: '', floorId: '', startTime: '08:00', endTime: '12:00', reason: ''
       });
       setDocSearch('');
       load();
@@ -130,7 +188,8 @@ export default function SchedulesPage() {
           <span style={{color:'var(--gray-400)',fontSize:'0.875rem'}}>{schedules.length} jadwal</span>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button className="btn btn-primary" onClick={()=>setShowForm(true)}>➕ Tambah Manual</button>
+          <button className="btn btn-primary" onClick={syncHis} disabled={syncing}>{syncing ? 'Memproses...' : '🔄 Sinkronisasi HIS'}</button>
+          <button className="btn btn-secondary" onClick={()=>{setEditMode(null);setFormData({...formData, reason:''});setShowForm(true);}}>➕ Tambah Manual</button>
           <button className="btn btn-secondary" onClick={()=>{setShowImport(!showImport);loadHistory();}}>📥 Import Excel</button>
           <button className="btn btn-secondary" onClick={downloadTemplate}>📋 Template</button>
           <button className="btn btn-danger" onClick={removeAll}>🗑️ Hapus Semua</button>
@@ -178,7 +237,7 @@ export default function SchedulesPage() {
       {showForm && (
         <div className={styles.modalOverlay} onClick={()=>setShowForm(false)}>
           <div className={styles.modal} onClick={e=>e.stopPropagation()} style={{maxWidth: 500}}>
-            <h3 className={styles.modalTitle}>Tambah Jadwal Manual</h3>
+            <h3 className={styles.modalTitle}>{editMode ? 'Edit Jadwal' : 'Tambah Jadwal Manual'}</h3>
             <form onSubmit={submitManual} className={styles.modalForm}>
               <div className="form-group">
                 <label className="form-label">Tanggal</label>
@@ -250,7 +309,7 @@ export default function SchedulesPage() {
                 >
                   <option value="">-- Pilih Ruangan --</option>
                   {rooms.map(rm => (
-                    <option key={rm.id} value={rm.id}>{rm.name} (Lt. {rm.floor?.name || rm.floor?.floorNumber})</option>
+                    <option key={rm.id} value={rm.id}>{rm.roomName || rm.name} (Lt. {rm.floor?.name || rm.floor?.floorNumber})</option>
                   ))}
                 </select>
               </div>
@@ -265,9 +324,16 @@ export default function SchedulesPage() {
                 </div>
               </div>
               
+              {editMode && (
+                <div className="form-group" style={{marginTop: 16}}>
+                  <label className="form-label" style={{color: 'var(--error)'}}>Alasan Edit (Wajib)</label>
+                  <input type="text" className="form-input" required placeholder="Cth: Dokter ganti jadwal" value={formData.reason} onChange={e=>setFormData({...formData, reason: e.target.value})} />
+                </div>
+              )}
+              
               <div className={styles.modalActions}>
                 <button type="button" className="btn btn-secondary" onClick={()=>setShowForm(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary" disabled={!formData.roomId}>Simpan</button>
+                <button type="submit" className="btn btn-primary" disabled={!formData.roomId || (editMode && !formData.reason.trim())}>Simpan</button>
               </div>
             </form>
           </div>
@@ -276,16 +342,22 @@ export default function SchedulesPage() {
 
       {/* Schedule Table */}
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
-        <table className="data-table"><thead><tr><th>Tanggal</th><th>Hari</th><th>Dokter</th><th>Ruangan</th><th>Lantai</th><th>Jam</th><th>Status</th></tr></thead>
+        <table className="data-table"><thead><tr><th>Tanggal</th><th>Hari</th><th>Dokter</th><th>Ruangan</th><th>Lantai</th><th>Jam</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>{schedules.map((s:any)=>(
           <tr key={s.id}>
             <td>{new Date(s.scheduleDate).toLocaleDateString('id-ID')}</td>
             <td>{s.dayName}</td>
             <td><strong>{s.doctor?.doctorName}</strong></td>
-            <td>{s.room?.name}</td>
+            <td>{s.room?.roomName || s.room?.name}</td>
             <td>{s.floor?.name}</td>
             <td>{formatTime(s.startTime)} - {formatTime(s.endTime)}</td>
             <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':'badge-danger'}`}>{s.status}</span></td>
+            <td>
+              <div style={{display:'flex',gap:6}}>
+                <button className="btn btn-secondary btn-sm" onClick={()=>openEdit(s)}>Edit</button>
+                <button className="btn btn-danger btn-sm" onClick={()=>promptDelete(s)}>Hapus</button>
+              </div>
+            </td>
           </tr>
         ))}</tbody></table>
       </div></div>

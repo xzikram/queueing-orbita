@@ -87,6 +87,23 @@ export class MasterService {
     return { message: 'Ruangan berhasil dihapus' };
   }
 
+  async deleteAllRooms() {
+    // Set defaultRoomId to null in all Doctors
+    await this.prisma.doctor.updateMany({
+      data: { defaultRoomId: null }
+    });
+    // Delete all doctor schedules (since they require roomId)
+    await this.prisma.doctorSchedule.deleteMany();
+    // Set roomId/selectedRoomId/currentRoomId to null in other models to avoid constraint violations
+    await this.prisma.journeyEvent.updateMany({ data: { roomId: null } });
+    await this.prisma.journeyUnitSession.updateMany({ data: { roomId: null } });
+    await this.prisma.queueTicket.updateMany({ data: { selectedRoomId: null } });
+    await this.prisma.visit.updateMany({ data: { currentRoomId: null, selectedRoomId: null } });
+
+    await this.prisma.room.deleteMany();
+    return { message: 'Semua ruangan berhasil dihapus' };
+  }
+
   // ==================
   // DOCTORS
   // ==================

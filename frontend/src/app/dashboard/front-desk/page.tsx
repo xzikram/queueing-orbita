@@ -42,6 +42,8 @@ export default function FrontDeskPage() {
   
   const [syncModal, setSyncModal] = useState<string | null>(null);
   const [targetSyncVisit, setTargetSyncVisit] = useState('');
+  const [cancelModal, setCancelModal] = useState<{ ticket: any, type: 'ADMISSION' | 'CASHIER' } | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const loadQueues = useCallback(async () => {
     try { 
@@ -202,15 +204,53 @@ export default function FrontDeskPage() {
     finally { setActionLoading(null); }
   };
 
+  const openCancelModal = (ticket: any, type: 'ADMISSION' | 'CASHIER') => {
+    setCancelReason('');
+    setCancelModal({ ticket, type });
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelModal) return;
+    if (!cancelReason.trim()) { alert('Masukkan alasan batal'); return; }
+    const { ticket, type } = cancelModal;
+    setCancelModal(null);
+    setActionLoading(ticket.id);
+    try {
+      const prefix = type === 'ADMISSION' ? 'admission' : 'cashier';
+      await api.post(`/${prefix}/${ticket.id}/cancel`, { reason: cancelReason });
+      await loadQueues();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal membatalkan antrean'); }
+    finally { setActionLoading(null); }
+  };
+
+  const holdAction = async (id: string, type: 'ADMISSION' | 'CASHIER') => {
+    setActionLoading(id);
+    try {
+      const prefix = type === 'ADMISSION' ? 'admission' : 'cashier';
+      await api.post(`/${prefix}/${id}/hold`);
+      await loadQueues();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal me-hold antrean');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // --- RENDER HELPERS ---
   
-  const admWaiting = admissionQueue.filter(t => t.status === 'WAITING');
+  const admWaiting = admissionQueue.filter(t => {
+    const session = t.visit?.journeySessions?.[0];
+    return t.status === 'WAITING' || (t.status === 'IN_PROGRESS' && session?.status === 'SKIPPED');
+  });
   const admActive = admissionQueue.filter(t => {
     const session = t.visit?.journeySessions?.[0];
     return t.status === 'IN_PROGRESS' && session && ['CALLED', 'SERVING'].includes(session.status);
   });
 
-  const cashWaiting = cashierQueue.filter(v => v.journeySessions?.[0]?.status === 'WAITING');
+  const cashWaiting = cashierQueue.filter(v => {
+    const s = v.journeySessions?.[0];
+    return s?.status === 'WAITING' || s?.status === 'SKIPPED';
+  });
   const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
   const cashNeedDest = cashierQueue.filter(v => v.currentStatus === 'WAITING_DESTINATION');
 
@@ -252,19 +292,27 @@ export default function FrontDeskPage() {
             <div className={styles.columnHeader}><h3>🏥 Menunggu Admisi ({admWaiting.length})</h3></div>
             <div className={styles.queueList}>
               {admWaiting.length === 0 ? <div className={styles.empty}>Tidak ada pasien menunggu</div> : admWaiting.map(ticket => (
-                <div key={ticket.id} className={styles.queueCard}>
-                  <div className={styles.ticketHeader}>
-                    <span className={styles.ticketNo}>{ticket.ticketNo}</span>
-                    <span className={`badge ${ticket.patientType === 'UMUM' ? 'badge-primary' : 'badge-info'}`}>{ticket.patientType}</span>
+                <div key={ticket.id} className={styles.compactCard}>
+                  <div className={styles.cardLeft}>
+                    <div className={styles.ticketHeaderCompact}>
+                      <span className={styles.ticketNoCompact}>{ticket.ticketNo}</span>
+                      {ticket.visit?.journeySessions?.[0]?.status === 'SKIPPED' && (
+                        <span className="badge" style={{ backgroundColor: '#f59e0b', color: '#fff', fontSize: '0.65rem', padding: '2px 6px' }}>HOLD</span>
+                      )}
+                      <span className={`badge ${ticket.patientType === 'UMUM' ? 'badge-primary' : 'badge-info'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{ticket.patientType}</span>
+                    </div>
+                    <div className={styles.ticketInfoCompact}>
+                      <span>👨‍⚕️ {ticket.selectedDoctor?.doctorName || '-'}</span>
+                      {ticket.selectedRoom?.name && <span> • 🚪 {ticket.selectedRoom.name}</span>}
+                      <span className={styles.ticketTimeCompact}> ({new Date(ticket.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})</span>
+                    </div>
                   </div>
-                  <div className={styles.ticketInfo}>
-                    <span>👨‍⚕️ {ticket.selectedDoctor?.doctorName || '-'}</span>
-                    <span>🚪 {ticket.selectedRoom?.name || '-'}</span>
+                  <div className={styles.cardRight}>
+                    <button className="btn btn-primary btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id || !selectedCounter}>
+                      {actionLoading === ticket.id ? '...' : (ticket.visit?.journeySessions?.[0]?.status === 'SKIPPED' ? '📢 Panggil Ulang' : '📢 Panggil')}
+                    </button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
                   </div>
-                  <div className={styles.ticketTime}>{new Date(ticket.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
-                  <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id || !selectedCounter}>
-                    {actionLoading === ticket.id ? '...' : '📢 Panggil Admisi'}
-                  </button>
                 </div>
               ))}
             </div>
@@ -278,30 +326,34 @@ export default function FrontDeskPage() {
                 const isCalled = session?.status === 'CALLED';
                 const isServing = session?.status === 'SERVING';
                 return (
-                  <div key={ticket.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                    <div className={styles.ticketHeader}>
-                      <span className={styles.ticketNo}>{ticket.ticketNo}</span>
-                      <span className={`badge ${isCalled ? 'badge-warning' : 'badge-success'}`}>{isCalled ? 'DIPANGGIL' : 'DILAYANI'}</span>
+                  <div key={ticket.id} className={`${styles.compactCard} ${styles.activeCardCompact}`}>
+                    <div className={styles.cardLeft}>
+                      <div className={styles.ticketHeaderCompact}>
+                        <span className={styles.ticketNoCompact}>{ticket.ticketNo}</span>
+                        <span className={`badge ${isCalled ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{isCalled ? 'DIPANGGIL' : 'DILAYANI'}</span>
+                      </div>
+                      <div className={styles.ticketInfoCompact}>
+                        <span>👨‍⚕️ {ticket.selectedDoctor?.doctorName || '-'}</span>
+                        <span> • 🖥️ {session?.counter?.name || '-'}</span>
+                        {ticket.visit?.patientName && <span> • 👤 {ticket.visit.patientName}</span>}
+                        {ticket.visit?.patientRmNo && <span> • 📋 RM: {ticket.visit.patientRmNo}</span>}
+                      </div>
                     </div>
-                    <div className={styles.ticketInfo}>
-                      <span>👨‍⚕️ {ticket.selectedDoctor?.doctorName || '-'}</span>
-                      <span>🖥️ {session?.counter?.name || '-'}</span>
-                      {ticket.visit?.patientName && <span>👤 {ticket.visit.patientName}</span>}
-                      {ticket.visit?.patientRmNo && <span>📋 RM: {ticket.visit.patientRmNo}</span>}
-                    </div>
-                    <div className={styles.actionBtns}>
+                    <div className={styles.cardRight} style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       {isCalled && (
                         <>
-                          <button className="btn btn-success btn-sm" onClick={() => startService(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id}>▶️ Mulai</button>
-                          <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id}>🔁 Ulang</button>
+                          <button className="btn btn-success btn-sm" onClick={() => startService(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>▶️ Mulai</button>
+                          <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
                         </>
                       )}
                       {isServing && (
-                        <button className="btn btn-primary btn-sm" onClick={() => finishAdmisiService(ticket)} disabled={actionLoading === ticket.id} style={{ flex: 1 }}>✅ Selesai</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => finishAdmisiService(ticket)} disabled={actionLoading === ticket.id} style={{ padding: '6px 12px', fontSize: '0.8rem' }}>✅ Selesai</button>
                       )}
-                      <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien">👤</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => { setTimeForm({ field: 'calledAt', correctedTime: '', reason: '' }); setTimeModal(ticket); }} title="Koreksi Waktu">⏱️</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket, type: 'ADMISSION' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien" style={{ padding: '6px 10px' }}>👤</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => { setTimeForm({ field: 'calledAt', correctedTime: '', reason: '' }); setTimeModal(ticket); }} title="Koreksi Waktu" style={{ padding: '6px 10px' }}>⏱️</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket, type: 'ADMISSION' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
+                      <button className="btn btn-warning btn-sm" onClick={() => holdAction(ticket.id, 'ADMISSION')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }}>⏸️</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
                     </div>
                   </div>
                 );
@@ -316,21 +368,27 @@ export default function FrontDeskPage() {
             <div className={styles.columnHeader}><h3>💳 Menunggu Kasir ({cashWaiting.length})</h3></div>
             <div className={styles.queueList}>
               {cashWaiting.length === 0 ? <div className={styles.empty}>Tidak ada pasien menunggu</div> : cashWaiting.map((v: any) => (
-                <div key={v.id} className={styles.queueCard}>
-                  <div className={styles.ticketHeader}>
-                    <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                    <span className="badge badge-warning">WAITING</span>
+                <div key={v.id} className={styles.compactCard}>
+                  <div className={styles.cardLeft}>
+                    <div className={styles.ticketHeaderCompact}>
+                      <span className={styles.ticketNoCompact}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                      {v.journeySessions?.[0]?.status === 'SKIPPED' && (
+                        <span className="badge" style={{ backgroundColor: '#f59e0b', color: '#fff', fontSize: '0.65rem', padding: '2px 6px' }}>HOLD</span>
+                      )}
+                      <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>WAITING</span>
+                    </div>
+                    <div className={styles.ticketInfoCompact}>
+                      <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
+                      {v.patientName && <span> • 👤 {v.patientName}</span>}
+                    </div>
                   </div>
-                  <div className={styles.ticketInfo}>
-                    <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
-                    {v.patientName && <span>👤 {v.patientName}</span>}
-                  </div>
-                  <div className={styles.actionBtns}>
-                    <button className="btn btn-warning btn-sm" style={{ flex: 1, backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff' }} onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id || !selectedCounter}>
-                      📢 Panggil Kasir
+                  <div className={styles.cardRight}>
+                    <button className="btn btn-warning btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', color: '#fff', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id || !selectedCounter}>
+                      {v.journeySessions?.[0]?.status === 'SKIPPED' ? '📢 Panggil Ulang' : '📢 Panggil'}
                     </button>
-                    <button className="btn btn-info btn-sm" onClick={() => setSyncModal(v.id)} title="Sync Tiket" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}>🔗</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                    <button className="btn btn-info btn-sm" onClick={() => setSyncModal(v.id)} title="Sync Tiket" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6', padding: '6px 10px' }}>🔗</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
                   </div>
                 </div>
               ))}
@@ -344,40 +402,53 @@ export default function FrontDeskPage() {
                 <>
                   {cashActive.map((v: any) => {
                     const s = v.journeySessions?.[0];
+                    const isCalled = s?.status === 'CALLED';
                     return (
-                      <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                        <div className={styles.ticketHeader}>
-                          <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                          <span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span>
+                      <div key={v.id} className={`${styles.compactCard} ${styles.activeCardCompact}`}>
+                        <div className={styles.cardLeft}>
+                          <div className={styles.ticketHeaderCompact}>
+                            <span className={styles.ticketNoCompact}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                            <span className={`badge ${isCalled ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{s?.status}</span>
+                          </div>
+                          <div className={styles.ticketInfoCompact}>
+                            <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
+                            {v.patientName && <span> • 👤 {v.patientName}</span>}
+                          </div>
                         </div>
-                        <div className={styles.ticketInfo}>
-                          <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
-                          {v.patientName && <span>👤 {v.patientName}</span>}
-                        </div>
-                        <div className={styles.actionBtns}>
-                          {s?.status === 'CALLED' && (
+                        <div className={styles.cardRight} style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {isCalled && (
                             <>
-                              <button className="btn btn-success btn-sm" onClick={() => startService(v.id, 'CASHIER')} disabled={actionLoading === v.id}>▶️ Mulai</button>
-                              <button className="btn btn-warning btn-sm" onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id}>🔁 Ulang</button>
+                              <button className="btn btn-success btn-sm" onClick={() => startService(v.id, 'CASHIER')} disabled={actionLoading === v.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>▶️ Mulai</button>
+                              <button className="btn btn-warning btn-sm" onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
                             </>
                           )}
                           {s?.status === 'SERVING' && (
-                            <button className="btn btn-primary btn-sm" style={{ flex: 1, backgroundColor: '#10b981', borderColor: '#10b981' }} onClick={() => action(v.id, 'CASHIER', 'finish')} disabled={actionLoading === v.id}>
+                            <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')} disabled={actionLoading === v.id}>
                               ✅ Selesai
                             </button>
                           )}
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
+                          <button className="btn btn-warning btn-sm" onClick={() => holdAction(v.id, 'CASHIER')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }}>⏸️</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
                         </div>
                       </div>
                     );
                   })}
                   {cashNeedDest.map((v: any) => (
-                    <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                      <div className={styles.ticketHeader}>
-                        <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                        <span className="badge badge-info">PILIH TUJUAN</span>
+                    <div key={v.id} className={`${styles.compactCard} ${styles.activeCardCompact}`}>
+                      <div className={styles.cardLeft}>
+                        <div className={styles.ticketHeaderCompact}>
+                          <span className={styles.ticketNoCompact}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                          <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>PILIH TUJUAN</span>
+                        </div>
+                        <div className={styles.ticketInfoCompact}>
+                          <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
+                          {v.patientName && <span> • 👤 {v.patientName}</span>}
+                        </div>
                       </div>
-                      <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => setDestModal({ ticket: v, type: 'CASHIER' })}>🗺️ Pilih Tujuan</button>
+                      <div className={styles.cardRight}>
+                        <button className="btn btn-primary btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setDestModal({ ticket: v, type: 'CASHIER' })}>🗺️ Pilih Tujuan</button>
+                      </div>
                     </div>
                   ))}
                 </>
@@ -398,7 +469,24 @@ export default function FrontDeskPage() {
             <div className="form-group"><label className="form-label">No. Rekam Medis *</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Wajib diisi (Contoh: 000123)" /></div>
             <div className="form-group">
               <label className="form-label">Dokter Tujuan</label>
-              <select className="form-select" value={patientForm.scheduleId} onChange={e => setPatientForm({ ...patientForm, scheduleId: e.target.value })}>
+              <select
+                className="form-select"
+                value={patientForm.scheduleId}
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  setPatientForm(prev => ({ ...prev, scheduleId: val }));
+                  if (val) {
+                    try {
+                      const res = await api.get(`/admission/next-doctor-ticket?scheduleId=${val}`);
+                      setPatientForm(prev => ({ ...prev, doctorTicketNo: res.data.nextDoctorTicketNo }));
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  } else {
+                    setPatientForm(prev => ({ ...prev, doctorTicketNo: '' }));
+                  }
+                }}
+              >
                 <option value="">-- Pilih Dokter Tujuan --</option>
                 {schedules.map(s => (
                   <option key={s.id} value={s.id}>{s.doctor?.doctorName} - Poli {s.room?.name}</option>
@@ -515,6 +603,39 @@ export default function FrontDeskPage() {
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => confirmSync(syncModal)}>Gabungkan</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSyncModal(null)}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal */}
+      {cancelModal && (
+        <div className={styles.modalOverlay} onClick={() => setCancelModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle} style={{ color: '#ef4444' }}>❌ Batalkan / Drop Antrean ({cancelModal.type === 'ADMISSION' ? 'Admisi' : 'Kasir'})</h3>
+            <p style={{ color: 'var(--gray-400)', fontSize: '0.8125rem', marginBottom: 16 }}>
+              Apakah Anda yakin ingin membatalkan antrean ini? Sesi dan status tiket/kunjungan akan diubah menjadi CANCELLED.
+            </p>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Alasan Batal / Drop *</label>
+              <input 
+                className="form-input" 
+                value={cancelReason} 
+                onChange={e => setCancelReason(e.target.value)} 
+                placeholder="Contoh: Pasien batal berobat / Testing petugas" 
+                autoFocus
+              />
+            </div>
+            <div className={styles.modalActions} style={{ marginTop: 24 }}>
+              <button className="btn btn-secondary" onClick={() => setCancelModal(null)}>Batal</button>
+              <button 
+                className="btn btn-danger" 
+                onClick={confirmCancel} 
+                style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+                disabled={!cancelReason.trim()}
+              >
+                💾 Simpan Pembatalan
+              </button>
             </div>
           </div>
         </div>

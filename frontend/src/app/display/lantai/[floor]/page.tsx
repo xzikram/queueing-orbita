@@ -362,21 +362,41 @@ export default function FloorDisplayPage() {
           {/* BDR Call Card */}
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             {recentBdr[0] ? (
-              <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px' }}>
-                <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px' }}>PANGGILAN BDR</div>
-                <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentBdr[0].ticketNo}</div>
+              <div className={`${styles.currentCallCard} ${styles.bdrActive}`}>
+                <div className={styles.currentLabel}>PANGGILAN BDR</div>
+                <div className={styles.currentNo}>{recentBdr[0].ticketNo}</div>
               </div>
             ) : (
-              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px' }}>
-                <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu BDR...</div>
+              <div className={`${styles.currentCallCard} ${styles.bdrStandby}`}>
+                <div className={styles.standbyIcon}>💉</div>
+                <div className={styles.standbyText}>BDR STANDBY</div>
+                <div className={styles.standbySub}>Menunggu antrean pasien</div>
               </div>
             )}
             
             {waitingBdr.length > 0 && (
-              <div className={styles.upcomingQueue}>
-                <div className={styles.upcomingTitle}>Antrean BDR Berikutnya</div>
-                <div className={styles.upcomingList}>
-                  {waitingBdr.map((t, idx) => <span key={idx} className={styles.upcomingItem}>{t}</span>)}
+              <div className={`${styles.upcomingContainer} ${styles.upcomingBdr}`}>
+                <div className={styles.upcomingHeaderBdr}>
+                  <span className={styles.upcomingPulse}></span>
+                  <span className={styles.upcomingHeaderText}>Antrean BDR Berikutnya</span>
+                  <span className={styles.upcomingCount}>{waitingBdr.length}</span>
+                </div>
+                <div className={styles.upcomingContent}>
+                  <div className={styles.upcomingHighlightWrapper}>
+                    <span className={styles.nextLabel}>SELANJUTNYA</span>
+                    <span className={`${styles.highlightTicket} ${styles.highlightBdr}`}>
+                      {waitingBdr[0]}
+                    </span>
+                  </div>
+                  {waitingBdr.length > 1 && (
+                    <div className={styles.remainingList}>
+                      {waitingBdr.slice(1).map((t, idx) => (
+                        <span key={idx} className={`${styles.upcomingPill} ${styles.pillBdr}`}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -385,22 +405,42 @@ export default function FloorDisplayPage() {
           {/* POLI Call Card */}
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
             {recentPoli[0] ? (
-              <div className={styles.currentCallCard} style={{ padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', boxShadow: '0 10px 40px rgba(234, 88, 12, 0.2)' }}>
-                <div className={styles.currentLabel} style={{ fontSize: '0.85rem', marginBottom: '8px', color: '#ffedd5' }}>PANGGILAN POLI</div>
-                <div className={styles.currentNo} style={{ fontSize: '3.5rem' }}>{recentPoli[0].ticketNo}</div>
-                <div className={styles.currentDest} style={{ fontSize: '1.1rem', marginTop: '8px' }}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
+              <div className={`${styles.currentCallCard} ${styles.poliActive}`}>
+                <div className={styles.currentLabel} style={{ color: '#ffedd5' }}>PANGGILAN POLI</div>
+                <div className={styles.currentNo}>{recentPoli[0].ticketNo}</div>
+                <div className={styles.currentDest}>{recentPoli[0].roomName || (recentPoli[0] as any).targetRoom}</div>
               </div>
             ) : (
-              <div className={styles.currentCallCard} style={{ opacity: 0.5, padding: '20px', borderRadius: '20px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)' }}>
-                <div className={styles.currentDest} style={{ fontSize: '1rem', background: 'none', boxShadow: 'none' }}>Menunggu POLI...</div>
+              <div className={`${styles.currentCallCard} ${styles.poliStandby}`}>
+                <div className={styles.standbyIcon}>🩺</div>
+                <div className={styles.standbyText}>POLIKLINIK STANDBY</div>
+                <div className={styles.standbySub}>Menunggu panggilan poli</div>
               </div>
             )}
 
             {waitingPoli.length > 0 && (
-              <div className={styles.upcomingQueue}>
-                <div className={styles.upcomingTitle}>Antrean Poli Berikutnya</div>
-                <div className={styles.upcomingList}>
-                  {waitingPoli.map((t, idx) => <span key={idx} className={styles.upcomingItem}>{t}</span>)}
+              <div className={`${styles.upcomingContainer} ${styles.upcomingPoli}`}>
+                <div className={styles.upcomingHeaderPoli}>
+                  <span className={styles.upcomingPulse}></span>
+                  <span className={styles.upcomingHeaderText}>Antrean Poli Berikutnya</span>
+                  <span className={styles.upcomingCount}>{waitingPoli.length}</span>
+                </div>
+                <div className={styles.upcomingContent}>
+                  <div className={styles.upcomingHighlightWrapper}>
+                    <span className={styles.nextLabel}>SELANJUTNYA</span>
+                    <span className={`${styles.highlightTicket} ${styles.highlightPoli}`}>
+                      {waitingPoli[0]}
+                    </span>
+                  </div>
+                  {waitingPoli.length > 1 && (
+                    <div className={styles.remainingList}>
+                      {waitingPoli.slice(1).map((t, idx) => (
+                        <span key={idx} className={`${styles.upcomingPill} ${styles.pillPoli}`}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

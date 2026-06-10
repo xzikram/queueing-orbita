@@ -53,6 +53,28 @@ export class CashierController {
     });
   }
 
+  @Post(':visitId/cancel')
+  cancel(
+    @Param('visitId') visitId: string,
+    @Body() body: { reason: string },
+    @Request() req: any,
+  ) {
+    return this.service.cancelVisit(visitId, {
+      reason: body.reason,
+      userId: req.user.id,
+    });
+  }
+
+  @Post(':visitId/hold')
+  hold(
+    @Param('visitId') visitId: string,
+    @Request() req: any,
+  ) {
+    return this.service.holdVisit(visitId, {
+      userId: req.user.id,
+    });
+  }
+
   @Public()
   @Get('recent-calls')
   getRecentCalls(@Query('limit') limit?: string) {

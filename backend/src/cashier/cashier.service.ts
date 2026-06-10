@@ -54,6 +54,14 @@ export class CashierService {
     const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'CASHIER');
     if (!session) throw new BadRequestException('Sesi Kasir tidak ditemukan');
 
+    // Check if the ticket is already being processed by another counter
+    if (session.status === 'CALLED' || session.status === 'SERVING') {
+      if (session.counterId && session.counterId !== counterId) {
+        const otherCounter = await this.prisma.counter.findUnique({ where: { id: session.counterId } });
+        throw new BadRequestException(`Tiket ini sedang diproses di ${otherCounter?.name || 'counter lain'}`);
+      }
+    }
+
     await this.journeyService.callSession(session.id, { counterId, createdBy: userId });
     await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'CALLED' } });
 
@@ -132,6 +140,116 @@ export class CashierService {
   }
 
   /**
+   * Cancel / Drop a cashier visit
+   */
+  async cancelVisit(visitId: string, data: { reason: string; userId: string }) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: {
+        queueTicket: true,
+        journeySessions: {
+          where: { unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!visit) throw new NotFoundException('Data kunjungan tidak ditemukan');
+
+    // Find active session
+    const activeSession = visit.journeySessions?.[0];
+    if (activeSession) {
+      await this.journeyService.cancelSession(activeSession.id, {
+        reason: data.reason,
+        createdBy: data.userId,
+      });
+    } else {
+      // Fallback update visit & ticket
+      await this.prisma.visit.update({
+        where: { id: visitId },
+        data: { currentStatus: 'CANCELLED' },
+      });
+
+      if (visit.queueTicketId) {
+        await this.prisma.queueTicket.update({
+          where: { id: visit.queueTicketId },
+          data: { status: 'CANCELLED' },
+        });
+      }
+
+      await this.prisma.journeyEvent.create({
+        data: {
+          visitId: visitId,
+          unitType: 'CASHIER',
+          eventType: 'CANCELLED',
+          eventTime: new Date(),
+          note: data.reason,
+          createdBy: data.userId,
+        },
+      });
+    }
+
+    // Log audit
+    await this.prisma.auditLog.create({
+      data: {
+        userId: data.userId,
+        action: 'CANCEL_VISIT',
+        entity: 'Visit',
+        entityId: visitId,
+        reason: data.reason,
+        ticketNo: visit.doctorTicketNo || visit.queueTicket?.ticketNo,
+        unitType: 'CASHIER',
+        patientName: visit.patientName,
+      },
+    });
+
+    this.displayGateway.triggerDashboardRefresh();
+    return { message: 'Antrean kasir berhasil dibatalkan' };
+  }
+
+  /**
+   * Hold / Skip a cashier visit (patient not present / toilet break)
+   */
+  async holdVisit(visitId: string, data: { userId: string }) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: {
+        queueTicket: true,
+        journeySessions: {
+          where: { unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!visit) throw new NotFoundException('Data kunjungan tidak ditemukan');
+
+    const activeSession = visit.journeySessions?.[0];
+    if (!activeSession) throw new BadRequestException('Sesi aktif tidak ditemukan');
+
+    await this.journeyService.holdSession(activeSession.id, { createdBy: data.userId });
+
+    // Log audit
+    await this.prisma.auditLog.create({
+      data: {
+        userId: data.userId,
+        action: 'HOLD_VISIT',
+        entity: 'Visit',
+        entityId: visitId,
+        reason: 'Antrean di-hold/dilewati',
+        ticketNo: visit.doctorTicketNo || visit.queueTicket?.ticketNo,
+        unitType: 'CASHIER',
+        patientName: visit.patientName,
+      },
+    });
+
+    this.displayGateway.triggerDashboardRefresh();
+    return { message: 'Antrean kasir berhasil di-hold' };
+  }
+
+  /**
    * Get available destinations from cashier
    */
   getDestinations() {
@@ -166,24 +284,9 @@ export class CashierService {
     if (!targetVisit) throw new NotFoundException('Data kunjungan pasien tidak ditemukan');
 
     await this.prisma.$transaction(async (prisma) => {
-      // 1. Move ticket to targetVisit
-      await prisma.visit.update({
-        where: { id: targetVisitId },
-        data: { queueTicketId: sourceVisit.queueTicketId },
-      });
+      const sourceQueueTicketId = sourceVisit.queueTicketId;
 
-      // 2. Update target session ticket
-      const targetSession = await prisma.journeyUnitSession.findFirst({
-        where: { visitId: targetVisitId, unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } }
-      });
-      if (targetSession) {
-        await prisma.journeyUnitSession.update({
-          where: { id: targetSession.id },
-          data: { queueTicketId: sourceVisit.queueTicketId },
-        });
-      }
-
-      // 3. Delete source visit journey events and sessions
+      // 1. Delete source visit journey events and sessions
       const sourceSessions = await prisma.journeyUnitSession.findMany({ where: { visitId: sourceVisitId } });
       const sourceSessionIds = sourceSessions.map(s => s.id);
       if (sourceSessionIds.length > 0) {
@@ -192,8 +295,25 @@ export class CashierService {
       await prisma.journeyEvent.deleteMany({ where: { visitId: sourceVisitId } });
       await prisma.journeyUnitSession.deleteMany({ where: { visitId: sourceVisitId } });
 
-      // 4. Delete source visit
+      // 2. Delete source visit first to free up the unique constraint on queueTicketId
       await prisma.visit.delete({ where: { id: sourceVisitId } });
+
+      // 3. Move ticket to targetVisit
+      await prisma.visit.update({
+        where: { id: targetVisitId },
+        data: { queueTicketId: sourceQueueTicketId },
+      });
+
+      // 4. Update target session ticket
+      const targetSession = await prisma.journeyUnitSession.findFirst({
+        where: { visitId: targetVisitId, unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } }
+      });
+      if (targetSession) {
+        await prisma.journeyUnitSession.update({
+          where: { id: targetSession.id },
+          data: { queueTicketId: sourceQueueTicketId },
+        });
+      }
       
       // Log audit
       await prisma.auditLog.create({

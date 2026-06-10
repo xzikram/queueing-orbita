@@ -24,6 +24,67 @@ function parseExcelTime(value: any): string {
   return str;
 }
 
+function findDoctorRobustly(searchName: string, doctors: any[]): any | null {
+  const cleanSearch = searchName.toLowerCase().trim();
+  
+  // 1. Exact match (case insensitive, trimmed)
+  const exact = doctors.find(d => d.doctorName.toLowerCase().trim() === cleanSearch);
+  if (exact) return exact;
+
+  // 2. Exact match without common titles and punctuation
+  const cleanStr = (s: string) => s.toLowerCase()
+    .replace(/^(dr\.|dr|prof\.|prof|drs\.|drs)\s+/g, '')
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const cleanSearchStr = cleanStr(searchName);
+  const exactClean = doctors.find(d => cleanStr(d.doctorName) === cleanSearchStr);
+  if (exactClean) return exactClean;
+
+  // 3. Token-based matching
+  const stopWords = new Set(['dr', 'prof', 'sp', 'spd', 'spm', 'spog', 'spa', 'spb', 'sps', 'spu', 'mkes', 'phd', 'mars', 'dan', 'y', 'de', 'la']);
+  const getTokens = (s: string) => 
+    s.toLowerCase()
+     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+     .split(/\s+/)
+     .map(t => t.trim())
+     .filter(t => t.length > 2 && !stopWords.has(t));
+
+  const searchTokens = getTokens(searchName);
+  if (searchTokens.length === 0) return null;
+
+  let bestDoctor: any = null;
+  let maxScore = 0;
+  let matchesCount = 0;
+
+  for (const doc of doctors) {
+    const docTokens = getTokens(doc.doctorName);
+    let score = 0;
+    
+    for (const sTok of searchTokens) {
+      const hasMatch = docTokens.some(dTok => dTok === sTok || dTok.includes(sTok) || sTok.includes(dTok));
+      if (hasMatch) {
+        score++;
+      }
+    }
+
+    if (score > maxScore) {
+      maxScore = score;
+      bestDoctor = doc;
+      matchesCount = 1;
+    } else if (score === maxScore && score > 0) {
+      matchesCount++;
+    }
+  }
+
+  const minRequired = Math.min(2, searchTokens.length);
+  if (maxScore >= minRequired && matchesCount === 1) {
+    return bestDoctor;
+  }
+
+  return null;
+}
+
 @Injectable()
 export class ScheduleImportService {
   constructor(private prisma: PrismaService) {}
@@ -50,7 +111,6 @@ export class ScheduleImportService {
 
     const doctors = await this.prisma.doctor.findMany();
     const rooms = await this.prisma.room.findMany({ include: { floor: true } });
-    const doctorMap = new Map(doctors.map(d => [d.doctorName.toLowerCase().trim(), d]));
     const roomCodeMap = new Map(rooms.map(r => [r.code.toLowerCase().trim(), r]));
     const roomNameMap = new Map(rooms.map(r => [r.name.toLowerCase().trim(), r]));
 
@@ -75,8 +135,8 @@ export class ScheduleImportService {
           continue; // not a real schedule row
         }
 
-        // Validate doctor by name
-        const doctor = doctorMap.get(r.doctorName.toLowerCase());
+        // Validate doctor by name robustly
+        const doctor = findDoctorRobustly(r.doctorName, doctors);
         if (!doctor) { errors.push(`Row ${r.rowNum}: Dokter "${r.doctorName}" tidak ditemukan`); failed++; continue; }
 
         // Validate room

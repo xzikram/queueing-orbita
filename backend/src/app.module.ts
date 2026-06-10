@@ -21,10 +21,11 @@ import { join } from 'path';
 import { ReportsModule } from './reports/reports.module';
 import { AuditModule } from './audit/audit.module';
 import { VideoModule } from './video/video.module';
-import { CounterAssignmentModule } from './counter-assignment/counter-assignment.module';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    NestScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'public'),
@@ -52,7 +53,6 @@ import { CounterAssignmentModule } from './counter-assignment/counter-assignment
     ReportsModule,
     AuditModule,
     VideoModule,
-    CounterAssignmentModule,
   ],
   providers: [
     {

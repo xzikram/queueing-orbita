@@ -192,6 +192,67 @@ export class JourneyService {
   }
 
   /**
+   * Cancel session — mark as CANCELLED and log event, also cancel visit/ticket
+   */
+  async cancelSession(
+    sessionId: string,
+    data: { reason: string; createdBy: string },
+  ) {
+    const now = new Date();
+    const session = await this.prisma.journeyUnitSession.findUnique({
+      where: { id: sessionId },
+    });
+    if (!session) return null;
+
+    const serviceDuration = session.serviceStartedAt
+      ? Math.round((now.getTime() - session.serviceStartedAt.getTime()) / 1000)
+      : null;
+
+    const updated = await this.prisma.journeyUnitSession.update({
+      where: { id: sessionId },
+      data: {
+        serviceFinishedAt: now,
+        serviceDurationSeconds: serviceDuration,
+        status: 'CANCELLED',
+        updatedBy: data.createdBy,
+      },
+    });
+
+    await this.createEvent({
+      visitId: updated.visitId,
+      journeyUnitSessionId: updated.id,
+      unitType: updated.unitType,
+      eventType: 'CANCELLED',
+      roomId: updated.roomId,
+      floorId: updated.floorId,
+      doctorId: updated.doctorId,
+      counterId: updated.counterId,
+      note: data.reason,
+      createdBy: data.createdBy,
+    });
+
+    // Update visit current status
+    await this.prisma.visit.update({
+      where: { id: updated.visitId },
+      data: {
+        currentStatus: 'CANCELLED',
+      },
+    });
+
+    // Update associated queue ticket
+    if (updated.queueTicketId) {
+      await this.prisma.queueTicket.update({
+        where: { id: updated.queueTicketId },
+        data: {
+          status: 'CANCELLED',
+        },
+      });
+    }
+
+    return updated;
+  }
+
+  /**
    * Edit time (for "lupa klik" correction)
    */
   async editTime(
@@ -246,6 +307,42 @@ export class JourneyService {
       eventType: 'TIME_EDITED',
       note: data.reason,
       createdBy: data.editedBy,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Hold / Skip session (e.g. toilet break/not present)
+   */
+  async holdSession(sessionId: string, data: { createdBy: string }) {
+    const updated = await this.prisma.journeyUnitSession.update({
+      where: { id: sessionId },
+      data: {
+        status: 'SKIPPED',
+        counterId: null, // Reset counter assignment so anyone can call back
+        updatedBy: data.createdBy,
+      },
+    });
+
+    await this.createEvent({
+      visitId: updated.visitId,
+      journeyUnitSessionId: updated.id,
+      unitType: updated.unitType,
+      eventType: 'SKIPPED',
+      roomId: updated.roomId,
+      floorId: updated.floorId,
+      doctorId: updated.doctorId,
+      createdBy: data.createdBy,
+      note: 'Antrean di-hold / dilewati',
+    });
+
+    // Update visit currentStatus
+    await this.prisma.visit.update({
+      where: { id: updated.visitId },
+      data: {
+        currentStatus: 'SKIPPED',
+      },
     });
 
     return updated;

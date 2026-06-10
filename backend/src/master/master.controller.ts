@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, UseIntercep
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MasterService } from './master.service';
 import { DoctorImportService } from './doctor-import.service';
+import { RoomImportService } from './room-import.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
@@ -15,7 +16,8 @@ import type { Response } from 'express';
 export class MasterController {
   constructor(
     private masterService: MasterService,
-    private doctorImportService: DoctorImportService
+    private doctorImportService: DoctorImportService,
+    private roomImportService: RoomImportService
   ) {}
 
   // ==================
@@ -88,6 +90,36 @@ export class MasterController {
   @Roles('ADMIN')
   updateRoom(@Param('id') id: string, @Body() body: any) {
     return this.masterService.updateRoom(id, body);
+  }
+
+  @Get('rooms/template')
+  @Roles('ADMIN')
+  async downloadRoomTemplate(@Res() res: Response) {
+    const buffer = await this.roomImportService.generateTemplate();
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename=template-master-ruangan.xlsx',
+    });
+    res.send(buffer);
+  }
+
+  @Post('rooms/import')
+  @Roles('ADMIN')
+  @UseInterceptors(FileInterceptor('file'))
+  importRooms(@UploadedFile() file: Express.Multer.File) {
+    return this.roomImportService.importExcel(file);
+  }
+
+  @Post('rooms/import-default')
+  @Roles('ADMIN')
+  importDefaultRooms() {
+    return this.roomImportService.importDefaultRooms();
+  }
+
+  @Delete('rooms/all')
+  @Roles('ADMIN')
+  deleteAllRooms() {
+    return this.masterService.deleteAllRooms();
   }
 
   @Delete('rooms/:id')

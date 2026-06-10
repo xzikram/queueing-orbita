@@ -18,6 +18,8 @@ export default function CashierPage() {
   const [transferReason, setTransferReason] = useState('');
   const [syncModal, setSyncModal] = useState<string | null>(null);
   const [targetSyncVisit, setTargetSyncVisit] = useState('');
+  const [cancelModal, setCancelModal] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/cashier/queue'); setQueue(res.data); }
@@ -25,15 +27,6 @@ export default function CashierPage() {
   }, []);
 
   const loadCounters = useCallback(async () => {
-    try {
-      const res = await api.get('/counter-assignment/cashier-counters');
-      const c = res.data.filter((c: any) => c.isActive);
-      if (c.length > 0) {
-        setCounters(c);
-        setSelectedCounter(prev => c.find((x: any) => x.id === prev) ? prev : c[0].id);
-        return;
-      }
-    } catch {}
     try {
       const res = await api.get('/counters');
       const cashierCounters = res.data.filter((c: any) => c.canHandleCashier && c.isActive);
@@ -44,7 +37,9 @@ export default function CashierPage() {
         setSelectedCounter(saved);
         setIsLocked(true);
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load counters:', err);
+    }
   }, []);
 
   const saveCounterLock = () => {
@@ -108,7 +103,39 @@ export default function CashierPage() {
     finally { setActionLoading(null); setTargetSyncVisit(''); }
   };
 
-  const waiting = queue.filter(v => v.journeySessions?.[0]?.status === 'WAITING');
+  const openCancelModal = (visit: any) => {
+    setCancelReason('');
+    setCancelModal(visit);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelModal) return;
+    if (!cancelReason.trim()) { alert('Masukkan alasan batal'); return; }
+    setCancelModal(null);
+    setActionLoading(cancelModal.id);
+    try {
+      await api.post(`/cashier/${cancelModal.id}/cancel`, { reason: cancelReason });
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal membatalkan antrean kasir'); }
+    finally { setActionLoading(null); }
+  };
+
+  const holdVisit = async (visitId: string) => {
+    setActionLoading(visitId);
+    try {
+      await api.post(`/cashier/${visitId}/hold`);
+      await loadQueue();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal me-hold antrean kasir');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const waiting = queue.filter(v => {
+    const s = v.journeySessions?.[0];
+    return s?.status === 'WAITING' || s?.status === 'SKIPPED';
+  });
   const active = queue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
   const needDest = queue.filter(v => v.currentStatus === 'WAITING_DESTINATION');
 
@@ -146,12 +173,23 @@ export default function CashierPage() {
           <div className={styles.queueList}>
             {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
               <div key={v.id} className={styles.queueCard}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
+                <div className={styles.ticketHeader}>
+                  <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {v.journeySessions?.[0]?.status === 'SKIPPED' && (
+                      <span className="badge" style={{ backgroundColor: '#f59e0b', color: '#fff' }}>HOLD</span>
+                    )}
+                    <span className="badge badge-warning">WAITING</span>
+                  </div>
+                </div>
                 <div className={styles.ticketInfo}><span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span></div>
                 <div className={styles.actionBtns}>
-                  <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter}>📢 Panggil</button>
+                  <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter}>
+                    {v.journeySessions?.[0]?.status === 'SKIPPED' ? '📢 Panggil Ulang' : '📢 Panggil'}
+                  </button>
                   <button className="btn btn-info btn-sm" onClick={() => setSyncModal(v.id)} title="Sync Tiket" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}>🔗</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
                 </div>
               </div>
             ))}
@@ -171,6 +209,8 @@ export default function CashierPage() {
                         {s?.status === 'CALLED' && <button className="btn btn-success btn-sm" onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai</button>}
                         {s?.status === 'SERVING' && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>}
                         <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                        <button className="btn btn-warning btn-sm" onClick={() => holdVisit(v.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
                       </div>
                     </div>
                   );
@@ -248,6 +288,39 @@ export default function CashierPage() {
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => confirmSync(syncModal)}>Gabungkan</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSyncModal(null)}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal */}
+      {cancelModal && (
+        <div className={styles.modalOverlay} onClick={() => setCancelModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle} style={{ color: '#ef4444' }}>❌ Batalkan / Drop Kasir — {cancelModal.doctorTicketNo || cancelModal.queueTicket?.ticketNo}</h3>
+            <p style={{ color: 'var(--gray-400)', fontSize: '0.8125rem', marginBottom: 16 }}>
+              Apakah Anda yakin ingin membatalkan antrean kasir ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Alasan Batal / Drop *</label>
+              <input 
+                className="form-input" 
+                value={cancelReason} 
+                onChange={e => setCancelReason(e.target.value)} 
+                placeholder="Contoh: Pasien batal berobat / Testing pembayaran" 
+                autoFocus
+              />
+            </div>
+            <div className={styles.modalActions} style={{ marginTop: 24 }}>
+              <button className="btn btn-secondary" onClick={() => setCancelModal(null)}>Batal</button>
+              <button 
+                className="btn btn-danger" 
+                onClick={confirmCancel} 
+                style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+                disabled={!cancelReason.trim()}
+              >
+                💾 Simpan Pembatalan
+              </button>
             </div>
           </div>
         </div>

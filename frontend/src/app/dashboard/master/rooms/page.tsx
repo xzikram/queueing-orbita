@@ -13,6 +13,12 @@ export default function RoomsPage() {
   const [selected, setSelected] = useState<any>(null);
   const [form, setForm] = useState({code:'',name:'',roomType:'DOCTOR',floorId:'',displayId:'',hasCalling:true,isActive:true});
   const [loading, setLoading] = useState(false);
+  
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
   const types = ['BDR','DOCTOR','DOCTOR_CHILD','CDC','ADMISSION','CASHIER','PHARMACY','OPTIC'];
 
   const load = useCallback(async () => {
@@ -33,16 +39,86 @@ export default function RoomsPage() {
     } catch(e:any){alert(e.response?.data?.message||'Gagal');}
     finally{setLoading(false);}
   };
+  
   const remove = async () => { setLoading(true); try{await api.delete(`/rooms/${selected.id}`);setModal(null);await load();}catch(e:any){alert(e.response?.data?.message||'Gagal');}finally{setLoading(false);} };
+
+  const downloadTemplate = () => {
+    window.open(`${api.defaults.baseURL}/rooms/template`, '_blank');
+  };
+
+  const doImport = async () => {
+    if (!importFile) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', importFile);
+      const res = await api.post('/rooms/import', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      alert(`Import sukses! Total: ${res.data?.total}, Sukses: ${res.data?.success}, Gagal: ${res.data?.failed}`);
+      setImportFile(null);
+      setShowImport(false);
+      await load();
+    } catch(e:any) {
+      alert(e.response?.data?.message || 'Gagal import');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const generateDefaultRooms = async () => {
+    if (!confirm('Aksi ini akan men-generate ruangan default Lantai 5 (A1-501 sd A1-526) dan Lantai 6 (A1-601 sd A1-626). Lanjutkan?')) return;
+    setGenerating(true);
+    try {
+      const res = await api.post('/rooms/import-default');
+      alert(`Berhasil men-generate ${res.data?.success || 0} ruangan default.`);
+      await load();
+    } catch(e:any) {
+      alert(e.response?.data?.message || 'Gagal generate');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const removeAll = async () => {
+    if (!confirm('PERINGATAN: Aksi ini akan menghapus SEMUA ruangan beserta data jadwal dokter yang terkait secara permanen! Lanjutkan?')) return;
+    setLoading(true);
+    try {
+      await api.delete('/rooms/all');
+      await load();
+      alert('Semua ruangan berhasil dihapus');
+    } catch(e:any) {
+      alert(e.response?.data?.message || 'Gagal menghapus ruangan');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = rooms.filter(r => r.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className={styles.masterPage}>
+      {/* Toolbar */}
       <div className={`glass-card ${styles.toolbar}`}>
         <input className={styles.searchInput} placeholder="Cari ruangan..." value={search} onChange={e=>setSearch(e.target.value)}/>
-        <button className="btn btn-primary" onClick={openCreate}>+ Tambah Ruangan</button>
+        <div style={{display:'flex',gap:8}}>
+          <button className="btn btn-primary" onClick={openCreate}>+ Tambah Ruangan</button>
+          <button className="btn btn-secondary" onClick={()=>setShowImport(!showImport)}>📥 Import Excel</button>
+          <button className="btn btn-secondary" onClick={downloadTemplate}>📋 Template</button>
+          <button className="btn btn-secondary" onClick={generateDefaultRooms} disabled={generating}>{generating ? 'Memproses...' : '🔄 Generate Default'}</button>
+          <button className="btn btn-danger" onClick={removeAll}>🗑️ Hapus Semua</button>
+        </div>
       </div>
+
+      {/* Import Panel */}
+      {showImport && (
+        <div className="glass-card" style={{padding:20, marginBottom: 16}}>
+          <h3 style={{color:'var(--gray-200)',fontWeight:600,marginBottom:16}}>Import Ruangan dari Excel</h3>
+          <div style={{display:'flex',gap:12,alignItems:'center'}}>
+            <input type="file" accept=".xlsx,.xls" onChange={e=>setImportFile(e.target.files?.[0]||null)} style={{color:'var(--gray-300)'}} />
+            <button className="btn btn-primary" onClick={doImport} disabled={!importFile||uploading}>{uploading?'Mengupload...':'Upload & Import'}</button>
+          </div>
+        </div>
+      )}
+
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
         <table className="data-table"><thead><tr><th>Kode</th><th>Nama</th><th>Tipe</th><th>Lantai</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>{filtered.map(r=>(

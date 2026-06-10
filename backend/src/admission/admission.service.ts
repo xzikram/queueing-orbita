@@ -23,10 +23,17 @@ export class AdmissionService {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Get tickets that don't have a visit yet (haven't been processed by admission)
+    // Only fetch tickets with prefixes A, B, C, D (Admission ticket prefixes)
     const tickets = await this.prisma.queueTicket.findMany({
       where: {
         queueDate: { gte: today, lt: tomorrow },
         status: { in: ['WAITING', 'IN_PROGRESS'] },
+        OR: [
+          { ticketNo: { startsWith: 'A' } },
+          { ticketNo: { startsWith: 'B' } },
+          { ticketNo: { startsWith: 'C' } },
+          { ticketNo: { startsWith: 'D' } },
+        ],
       },
       include: {
         selectedDoctor: true,
@@ -75,6 +82,13 @@ export class AdmissionService {
     const counter = await this.prisma.counter.findUnique({ where: { id: data.counterId } });
     if (!counter) throw new NotFoundException('Counter tidak ditemukan');
 
+    // Check if the ticket is already being processed by another counter
+    const activeSession = ticket.visit?.journeySessions?.[0];
+    if (activeSession && activeSession.counterId && activeSession.counterId !== data.counterId) {
+      const otherCounter = await this.prisma.counter.findUnique({ where: { id: activeSession.counterId } });
+      throw new BadRequestException(`Tiket ini sedang diproses di ${otherCounter?.name || 'counter lain'}`);
+    }
+
     // If no visit yet, create one
     let visit = ticket.visit;
     if (!visit) {
@@ -83,30 +97,7 @@ export class AdmissionService {
       // Pre-generate doctor ticket number if a doctor is already selected from the kiosk
       let doctorTicketNo: string | null = null;
       if (ticket.selectedDoctorId) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const doctor = await this.prisma.doctor.findUnique({ where: { id: ticket.selectedDoctorId } });
-        const prefix = doctor?.doctorCode || 'DOC';
-
-        const lastVisit = await this.prisma.visit.findFirst({
-          where: {
-            visitDate: { gte: today, lt: tomorrow },
-            doctorTicketNo: { startsWith: prefix },
-            selectedDoctorId: ticket.selectedDoctorId,
-          },
-          orderBy: { doctorTicketNo: 'desc' },
-        });
-
-        let nextNumber = 1;
-        if (lastVisit && lastVisit.doctorTicketNo) {
-          const numberPart = lastVisit.doctorTicketNo.replace(prefix, '');
-          const lastNum = parseInt(numberPart) || 0;
-          nextNumber = lastNum + 1;
-        }
-        doctorTicketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+        doctorTicketNo = await this.generateDoctorTicketNo(ticket.selectedDoctorId);
       }
 
       visit = await this.prisma.visit.create({
@@ -281,32 +272,7 @@ export class AdmissionService {
 
     // Generate doctorTicketNo if not exists and doctor is selected
     if (finalDoctorId && !currentDoctorTicketNo) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const doctor = await this.prisma.doctor.findUnique({ where: { id: finalDoctorId } });
-      const prefix = doctor?.doctorCode || 'DOC';
-
-      // Find last doctor ticket for today
-      const lastVisit = await this.prisma.visit.findFirst({
-        where: {
-          visitDate: { gte: today, lt: tomorrow },
-          doctorTicketNo: { startsWith: prefix },
-          selectedDoctorId: finalDoctorId,
-        },
-        orderBy: { doctorTicketNo: 'desc' },
-      });
-
-      let nextNumber = 1;
-      if (lastVisit && lastVisit.doctorTicketNo) {
-        const numberPart = lastVisit.doctorTicketNo.replace(prefix, '');
-        const lastNum = parseInt(numberPart) || 0;
-        nextNumber = lastNum + 1;
-      }
-
-      currentDoctorTicketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+      currentDoctorTicketNo = await this.generateDoctorTicketNo(finalDoctorId);
     }
 
     const updateData: any = {
@@ -358,6 +324,123 @@ export class AdmissionService {
       data.reason,
       data.userId,
     );
+  }
+
+  /**
+   * Cancel / Drop a queue ticket
+   */
+  async cancelTicket(ticketId: string, data: { reason: string; userId: string }) {
+    const ticket = await this.prisma.queueTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        visit: {
+          include: {
+            journeySessions: {
+              where: { unitType: 'ADMISSION', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (!ticket) throw new NotFoundException('Ticket tidak ditemukan');
+
+    // Update queue ticket status
+    await this.prisma.queueTicket.update({
+      where: { id: ticketId },
+      data: { status: 'CANCELLED' },
+    });
+
+    if (ticket.visit) {
+      // Update visit status
+      await this.prisma.visit.update({
+        where: { id: ticket.visit.id },
+        data: { currentStatus: 'CANCELLED' },
+      });
+
+      // Find and cancel active session
+      const activeSession = ticket.visit.journeySessions?.[0];
+      if (activeSession) {
+        await this.journeyService.cancelSession(activeSession.id, {
+          reason: data.reason,
+          createdBy: data.userId,
+        });
+      } else {
+        // If there's a visit but no active session, create a cancelled event
+        await this.prisma.journeyEvent.create({
+          data: {
+            visitId: ticket.visit.id,
+            unitType: 'ADMISSION',
+            eventType: 'CANCELLED',
+            eventTime: new Date(),
+            note: data.reason,
+            createdBy: data.userId,
+          },
+        });
+      }
+    }
+
+    // Log audit
+    await this.prisma.auditLog.create({
+      data: {
+        userId: data.userId,
+        action: 'CANCEL_TICKET',
+        entity: 'QueueTicket',
+        entityId: ticketId,
+        reason: data.reason,
+        ticketNo: ticket.ticketNo,
+        unitType: 'ADMISSION',
+      },
+    });
+
+    this.displayGateway.triggerDashboardRefresh();
+    return { message: 'Tiket berhasil dibatalkan' };
+  }
+
+  /**
+   * Hold / Skip a ticket (patient not present / toilet break)
+   */
+  async holdTicket(ticketId: string, data: { userId: string }) {
+    const ticket = await this.prisma.queueTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        visit: {
+          include: {
+            journeySessions: {
+              where: { unitType: 'ADMISSION', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    if (!ticket) throw new NotFoundException('Ticket tidak ditemukan');
+    if (!ticket.visit) throw new BadRequestException('Visit belum dibuat/pasien belum dipanggil');
+
+    const activeSession = ticket.visit.journeySessions?.[0];
+    if (!activeSession) throw new BadRequestException('Sesi aktif tidak ditemukan');
+
+    await this.journeyService.holdSession(activeSession.id, { createdBy: data.userId });
+
+    // Log audit
+    await this.prisma.auditLog.create({
+      data: {
+        userId: data.userId,
+        action: 'HOLD_TICKET',
+        entity: 'QueueTicket',
+        entityId: ticketId,
+        reason: 'Antrean di-hold/dilewati',
+        ticketNo: ticket.ticketNo,
+        unitType: 'ADMISSION',
+      },
+    });
+
+    this.displayGateway.triggerDashboardRefresh();
+    return { message: 'Antrean berhasil di-hold' };
   }
 
   /**
@@ -481,5 +564,52 @@ export class AdmissionService {
       orderBy: { calledAt: 'desc' },
       take: limit,
     });
+  }
+
+  /**
+   * Helper to generate a doctor ticket number using doctorInitials (or fallback to doctorCode)
+   */
+  async generateDoctorTicketNo(doctorId: string): Promise<string> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const doctor = await this.prisma.doctor.findUnique({ where: { id: doctorId } });
+    if (!doctor) throw new NotFoundException('Dokter tidak ditemukan');
+
+    const prefix = doctor.doctorInitials || doctor.doctorCode || 'DOC';
+
+    // Find the last visit for this doctor today where the doctorTicketNo starts with the prefix
+    const lastVisit = await this.prisma.visit.findFirst({
+      where: {
+        visitDate: { gte: today, lt: tomorrow },
+        doctorTicketNo: { startsWith: prefix },
+        selectedDoctorId: doctorId,
+      },
+      orderBy: { doctorTicketNo: 'desc' },
+    });
+
+    let nextNumber = 1;
+    if (lastVisit && lastVisit.doctorTicketNo) {
+      const numberPart = lastVisit.doctorTicketNo.substring(prefix.length);
+      const lastNum = parseInt(numberPart) || 0;
+      nextNumber = lastNum + 1;
+    }
+
+    return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  /**
+   * Get next doctor ticket number for a specific schedule
+   */
+  async getNextDoctorTicket(scheduleId: string) {
+    const schedule = await this.prisma.doctorSchedule.findUnique({
+      where: { id: scheduleId },
+    });
+    if (!schedule) throw new NotFoundException('Jadwal tidak ditemukan');
+
+    const nextDoctorTicketNo = await this.generateDoctorTicketNo(schedule.doctorId);
+    return { nextDoctorTicketNo };
   }
 }

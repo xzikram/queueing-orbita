@@ -33,6 +33,9 @@ export default function AdmissionPage() {
   const [transferModal, setTransferModal] = useState<any>(null);
   const [transferReason, setTransferReason] = useState('');
   const [allDestinations, setAllDestinations] = useState<Destination[]>([]);
+  // Cancel modal
+  const [cancelModal, setCancelModal] = useState<any>(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/admission/queue'); setQueue(res.data); }
@@ -40,17 +43,6 @@ export default function AdmissionPage() {
   }, []);
 
   const loadCounters = useCallback(async () => {
-    try {
-      // Try to load assignment-based counters first
-      const res = await api.get('/counter-assignment/admission-counters');
-      const c = res.data.filter((c: any) => c.isActive);
-      if (c.length > 0) {
-        setCounters(c);
-        setSelectedCounter(prev => c.find((x: any) => x.id === prev) ? prev : c[0].id);
-        return;
-      }
-    } catch {}
-    // Fallback: load all counters that can handle admission
     try {
       const res = await api.get('/counters');
       const c = res.data.filter((c: any) => c.canHandleAdmission && c.isActive);
@@ -61,7 +53,9 @@ export default function AdmissionPage() {
         setSelectedCounter(saved);
         setIsLocked(true);
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to load counters:', err);
+    }
   }, []);
 
   const saveCounterLock = () => {
@@ -183,7 +177,39 @@ export default function AdmissionPage() {
     finally { setActionLoading(null); }
   };
 
-  const waitingTickets = queue.filter(t => t.status === 'WAITING');
+  const openCancelModal = (ticket: any) => {
+    setCancelReason('');
+    setCancelModal(ticket);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelModal) return;
+    if (!cancelReason.trim()) { alert('Masukkan alasan batal'); return; }
+    setCancelModal(null);
+    setActionLoading(cancelModal.id);
+    try {
+      await api.post(`/admission/${cancelModal.id}/cancel`, { reason: cancelReason });
+      await loadQueue();
+    } catch (err: any) { alert(err.response?.data?.message || 'Gagal membatalkan tiket'); }
+    finally { setActionLoading(null); }
+  };
+
+  const holdTicket = async (ticketId: string) => {
+    setActionLoading(ticketId);
+    try {
+      await api.post(`/admission/${ticketId}/hold`);
+      await loadQueue();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal me-hold antrean');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const waitingTickets = queue.filter(t => {
+    const session = t.visit?.journeySessions?.[0];
+    return t.status === 'WAITING' || (t.status === 'IN_PROGRESS' && session?.status === 'SKIPPED');
+  });
   const calledTickets = queue.filter(t => {
     const session = t.visit?.journeySessions?.[0];
     return t.status === 'IN_PROGRESS' && session && ['CALLED', 'SERVING'].includes(session.status);
@@ -227,16 +253,24 @@ export default function AdmissionPage() {
               <div key={ticket.id} className={styles.queueCard}>
                 <div className={styles.ticketHeader}>
                   <span className={styles.ticketNo}>{ticket.ticketNo}</span>
-                  <span className={`badge ${ticket.patientType === 'UMUM' ? 'badge-primary' : 'badge-info'}`}>{ticket.patientType}</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {ticket.visit?.journeySessions?.[0]?.status === 'SKIPPED' && (
+                      <span className="badge" style={{ backgroundColor: '#f59e0b', color: '#fff' }}>HOLD</span>
+                    )}
+                    <span className={`badge ${ticket.patientType === 'UMUM' ? 'badge-primary' : 'badge-info'}`}>{ticket.patientType}</span>
+                  </div>
                 </div>
                 <div className={styles.ticketInfo}>
                   <span>👨‍⚕️ {ticket.selectedDoctor?.doctorName || '-'}</span>
                   <span>🚪 {ticket.selectedRoom?.name || '-'}</span>
                 </div>
                 <div className={styles.ticketTime}>{new Date(ticket.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
-                <button className="btn btn-primary btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id}>
-                  {actionLoading === ticket.id ? '...' : '📢 Panggil'}
-                </button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id}>
+                    {actionLoading === ticket.id ? '...' : (ticket.visit?.journeySessions?.[0]?.status === 'SKIPPED' ? '📢 Panggil Ulang' : '📢 Panggil')}
+                  </button>
+                  <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
+                </div>
               </div>
             ))}
           </div>
@@ -275,6 +309,8 @@ export default function AdmissionPage() {
                     <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien">👤</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => openTimeModal(ticket)} title="Koreksi Waktu">⏱️</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => openTransferModal(ticket)} title="Transfer Pasien" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
+                    <button className="btn btn-warning btn-sm" onClick={() => holdTicket(ticket.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
                   </div>
                 </div>
               );
@@ -291,7 +327,24 @@ export default function AdmissionPage() {
             <div className="form-group"><label className="form-label">No. Rekam Medis *</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Wajib diisi (Contoh: 000123)" /></div>
             <div className="form-group">
               <label className="form-label">Dokter Tujuan</label>
-              <select className="form-select" value={patientForm.scheduleId} onChange={e => setPatientForm({ ...patientForm, scheduleId: e.target.value })}>
+              <select
+                className="form-select"
+                value={patientForm.scheduleId}
+                onChange={async (e) => {
+                  const val = e.target.value;
+                  setPatientForm(prev => ({ ...prev, scheduleId: val }));
+                  if (val) {
+                    try {
+                      const res = await api.get(`/admission/next-doctor-ticket?scheduleId=${val}`);
+                      setPatientForm(prev => ({ ...prev, doctorTicketNo: res.data.nextDoctorTicketNo }));
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  } else {
+                    setPatientForm(prev => ({ ...prev, doctorTicketNo: '' }));
+                  }
+                }}
+              >
                 <option value="">-- Pilih Dokter Tujuan --</option>
                 {schedules.map(s => (
                   <option key={s.id} value={s.id}>{s.doctor?.doctorName} - Poli {s.room?.name}</option>
@@ -382,6 +435,39 @@ export default function AdmissionPage() {
               ))}
             </div>
             <button className={styles.modalClose} onClick={() => setTransferModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal */}
+      {cancelModal && (
+        <div className={styles.modalOverlay} onClick={() => setCancelModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle} style={{ color: '#ef4444' }}>❌ Batalkan / Drop Antrean — {cancelModal.ticketNo}</h3>
+            <p style={{ color: 'var(--gray-400)', fontSize: '0.8125rem', marginBottom: 16 }}>
+              Apakah Anda yakin ingin membatalkan antrean ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Alasan Batal / Drop *</label>
+              <input 
+                className="form-input" 
+                value={cancelReason} 
+                onChange={e => setCancelReason(e.target.value)} 
+                placeholder="Contoh: Pasien tidak jadi berobat / Testing petugas" 
+                autoFocus
+              />
+            </div>
+            <div className={styles.modalActions} style={{ marginTop: 24 }}>
+              <button className="btn btn-secondary" onClick={() => setCancelModal(null)}>Batal</button>
+              <button 
+                className="btn btn-danger" 
+                onClick={confirmCancel} 
+                style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}
+                disabled={!cancelReason.trim()}
+              >
+                💾 Simpan Pembatalan
+              </button>
+            </div>
           </div>
         </div>
       )}

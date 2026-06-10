@@ -30,6 +30,20 @@ export default function KioskPage() {
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const optionsDate: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      const dateStr = now.toLocaleDateString('id-ID', optionsDate);
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setCurrentDateTime(`${dateStr} — ${timeStr}`);
+    };
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const formatTime = (timeStr: string) => {
     try {
@@ -223,11 +237,18 @@ export default function KioskPage() {
     <div className={styles.container}>
       {/* Header */}
       <div className={`no-print ${styles.header}`}>
-        <div className={styles.headerLogoWrap} style={{ background: 'white', padding: '5px 15px', borderRadius: '8px', height: '60px' }}>
-          <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div className={styles.headerLogoWrap} style={{ background: 'white', padding: '5px 15px', borderRadius: '8px', height: '60px' }}>
+            <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
+            <h1 className={styles.headerTitle} style={{ margin: 0 }}>Ambil Nomor Antrian</h1>
+            <p className={styles.headerSub} style={{ margin: '4px 0 0' }}>Silakan pilih kategori pasien dan dokter tujuan Anda</p>
+          </div>
         </div>
-        <h1 className={styles.headerTitle}>Ambil Nomor Antrian</h1>
-        <p className={styles.headerSub}>Silakan pilih kategori pasien dan dokter tujuan Anda</p>
+        <div className={styles.headerTime}>
+          {currentDateTime}
+        </div>
       </div>
 
       {/* Split View */}
@@ -294,7 +315,7 @@ export default function KioskPage() {
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                   <button
                     className={styles.doctorCard}
                     onClick={() => generateTicket()}

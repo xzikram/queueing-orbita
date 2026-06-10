@@ -103,14 +103,6 @@ export class DisplayGateway
   }
 
   /**
-   * Broadcast counter assignment changes to all connected clients
-   */
-  broadcastCounterUpdate(payload: any) {
-    this.server.emit('counterAssignmentUpdate', payload);
-    this.logger.log('Broadcast counter assignment update');
-  }
-
-  /**
    * Broadcast playlist update to a specific display
    */
   broadcastPlaylistToDisplay(displayCode: string, payload: any) {

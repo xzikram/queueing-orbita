@@ -8,15 +8,13 @@ import Logo from '@/components/Logo';
 
 const menuItems = [
   { label: 'Dashboard', path: '/dashboard', icon: '📊', permissionKey: 'dashboard' },
-  { label: 'Front Desk', path: '/dashboard/front-desk', icon: '🛎️', permissionKeys: ['admission', 'cashier'] },
+  { label: 'Admisi & Kasir', path: '/dashboard/front-desk', icon: '🛎️', permissionKeys: ['admission', 'cashier'] },
   { label: 'Pengkajian', path: '/dashboard/assessment', icon: '📋', permissionKey: 'assessment' },
   { label: 'BDR', path: '/dashboard/bdr', icon: '💉', permissionKey: 'bdr' },
   { label: 'Dokter/Poli', path: '/dashboard/doctor', icon: '👨‍⚕️', permissionKey: 'doctor' },
   { label: 'CDC', path: '/dashboard/cdc', icon: '🔬', permissionKey: 'cdc' },
   { label: 'Farmasi', path: '/dashboard/pharmacy', icon: '💊', permissionKey: 'pharmacy' },
   { label: 'Optik', path: '/dashboard/optic', icon: '👓', permissionKey: 'optic' },
-  { type: 'divider' },
-  { label: 'Counter Management', path: '/dashboard/counter-management', icon: '🔧', permissionKey: 'counter-management' },
   { type: 'divider' },
   { label: 'Master Data', icon: '⚙️', permissionKey: 'master', children: [
     { label: 'Users', path: '/dashboard/master/users', icon: '👤' },
@@ -42,7 +40,7 @@ const menuItems = [
     { label: 'TV Farmasi', path: '/display/farmasi', icon: '💊', external: true },
   ]},
   { label: 'Kiosk Admisi', path: '/kiosk', icon: '🎫', permissionKey: 'admission', external: true },
-  { label: 'Kiosk Kasir', path: '/kiosk/kasir', icon: '🧾', permissionKey: 'counter-management', external: true },
+  { label: 'Kiosk Kasir', path: '/kiosk/kasir', icon: '🧾', permissionKey: 'cashier', external: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

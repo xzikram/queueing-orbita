@@ -7,11 +7,12 @@ import { AccessGroupService } from './access-group.service';
 import { AccessGroupController } from './access-group.controller';
 import { WebsocketModule } from '../websocket/websocket.module';
 import { DoctorImportService } from './doctor-import.service';
+import { RoomImportService } from './room-import.service';
 
 @Module({
   imports: [WebsocketModule],
   controllers: [MasterController, UsersController, AccessGroupController],
-  providers: [MasterService, UsersService, AccessGroupService, DoctorImportService],
+  providers: [MasterService, UsersService, AccessGroupService, DoctorImportService, RoomImportService],
   exports: [MasterService, UsersService, AccessGroupService],
 })
 export class MasterModule {}

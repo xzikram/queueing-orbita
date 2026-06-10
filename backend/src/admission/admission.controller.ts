@@ -9,7 +9,7 @@ import { Public } from '../common/decorators/public.decorator';
 
 @Controller('admission')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
-@Roles('ADMIN', 'ADMISSION', 'CASHIER', 'FRONT_DESK')
+@Roles('ADMIN', 'KEPALA_ADMISI', 'ADMISSION', 'CASHIER', 'FRONT_DESK')
 @Permission('admission')
 export class AdmissionController {
   constructor(private admissionService: AdmissionService) {}
@@ -64,6 +64,33 @@ export class AdmissionController {
       reason: body.reason,
       userId: req.user.id,
     });
+  }
+
+  @Post(':ticketId/cancel')
+  cancelTicket(
+    @Param('ticketId') ticketId: string,
+    @Body() body: { reason: string },
+    @Request() req: any,
+  ) {
+    return this.admissionService.cancelTicket(ticketId, {
+      reason: body.reason,
+      userId: req.user.id,
+    });
+  }
+
+  @Post(':ticketId/hold')
+  holdTicket(
+    @Param('ticketId') ticketId: string,
+    @Request() req: any,
+  ) {
+    return this.admissionService.holdTicket(ticketId, {
+      userId: req.user.id,
+    });
+  }
+
+  @Get('next-doctor-ticket')
+  getNextDoctorTicket(@Query('scheduleId') scheduleId: string) {
+    return this.admissionService.getNextDoctorTicket(scheduleId);
   }
 
   @Put(':ticketId/patient-data')
