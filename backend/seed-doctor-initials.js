@@ -45,33 +45,99 @@ const mapByCode = {
 };
 
 async function main() {
-  for (const [code, alias] of Object.entries(mapByCode)) {
-    await prisma.$executeRaw`UPDATE doctors SET doctor_initials = ${alias} WHERE doctor_code = ${code}`;
-    console.log(`Assigned alias ${alias} to doctor code ${code}`);
+  console.log('Memulai migrasi & penyamaan data dokter server...');
+  
+  for (const [realCode, initials] of Object.entries(mapByCode)) {
+    // 1. Cari apakah ada dokter dengan code = realCode (misal D184)
+    const existingReal = await prisma.doctor.findUnique({
+      where: { doctorCode: realCode }
+    });
+
+    // 2. Cari apakah ada dokter dengan code = initials (misal HB)
+    const existingInitial = await prisma.doctor.findUnique({
+      where: { doctorCode: initials }
+    });
+
+    if (existingInitial) {
+      if (existingReal) {
+        // Jika dua-duanya ada (duplikat):
+        // Update initials di record realCode, lalu hapus record initials agar bersih
+        console.log(`Menggabungkan data: ${initials} -> ${realCode}`);
+        
+        // Pindahkan relasi jika ada (misal schedule atau visit)
+        await prisma.doctorSchedule.updateMany({
+          where: { doctorId: existingInitial.id },
+          data: { doctorId: existingReal.id }
+        });
+        await prisma.visit.updateMany({
+          where: { selectedDoctorId: existingInitial.id },
+          data: { selectedDoctorId: existingReal.id }
+        });
+        await prisma.queueTicket.updateMany({
+          where: { selectedDoctorId: existingInitial.id },
+          data: { selectedDoctorId: existingReal.id }
+        });
+
+        // Update record realCode dengan initials
+        await prisma.doctor.update({
+          where: { id: existingReal.id },
+          data: { doctorInitials: initials }
+        });
+
+        // Hapus record initials
+        await prisma.doctor.delete({
+          where: { id: existingInitial.id }
+        });
+        console.log(`Berhasil menggabungkan duplikat untuk ${initials}`);
+      } else {
+        // Jika hanya ada record initials (misal 'HB' ada, tapi 'D184' belum ada)
+        // Cukup ubah doctorCode dari 'HB' menjadi 'D184' dan set doctorInitials = 'HB'
+        await prisma.doctor.update({
+          where: { id: existingInitial.id },
+          data: {
+            doctorCode: realCode,
+            doctorInitials: initials
+          }
+        });
+        console.log(`Mengubah kode dokter ${initials} menjadi ${realCode} dan mengisi inisial`);
+      }
+    } else if (existingReal) {
+      // Jika record realCode ada dan initials tidak ada, cukup isi initials nya
+      await prisma.doctor.update({
+        where: { id: existingReal.id },
+        data: { doctorInitials: initials }
+      });
+      console.log(`Mengisi inisial ${initials} pada kode ${realCode}`);
+    } else {
+      console.log(`⚠️ Dokter ${realCode} (${initials}) tidak ditemukan di database`);
+    }
   }
 
-  // Adding NR (Andi Anissa Rahmadani Dahrif) because she was missing from the first list
-  await prisma.doctor.upsert({
-    where: { doctorCode: 'D999NR' }, // Assuming arbitrary code since it wasn't in original image
-    update: {
-      doctorName: 'dr. Andi Anissa Rahmadani Dahrif., Sp.PD',
-      doctorInitials: 'NR',
-      specialty: 'Penyakit Dalam'
-    },
-    create: {
-      doctorCode: 'D999NR',
-      doctorName: 'dr. Andi Anissa Rahmadani Dahrif., Sp.PD',
-      doctorInitials: 'NR',
-      specialty: 'Penyakit Dalam'
+  // Tambahkan inisial NR secara khusus
+  const existingNr = await prisma.doctor.findFirst({
+    where: {
+      OR: [
+        { doctorCode: 'NR' },
+        { doctorCode: 'D999NR' }
+      ]
     }
   });
-  console.log('Assigned alias NR to D999NR (dr. Andi Anissa)');
+  if (existingNr) {
+    await prisma.doctor.update({
+      where: { id: existingNr.id },
+      data: {
+        doctorCode: 'D999NR',
+        doctorInitials: 'NR'
+      }
+    });
+    console.log('Berhasil memetakan D999NR / NR');
+  }
 
-  console.log('Update initials selesai dengan akurat!');
+  console.log('Semua data dokter server berhasil diperbaiki & disamakan dengan local!');
 }
 
 main()
-  .catch((e) => {
+  .catch(e => {
     console.error(e);
     process.exit(1);
   })
