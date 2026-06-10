@@ -12,10 +12,20 @@ export class ScheduleService {
   ) {}
 
   async findActiveToday() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    let tzOffset = 8; // Default to Asia/Makassar (WITA, UTC+8)
+    if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+    else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+    const now = new Date();
+    const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+    const localDate = new Date(localTime);
+    
+    const year = localDate.getUTCFullYear();
+    const month = localDate.getUTCMonth();
+    const day = localDate.getUTCDate();
+    
+    const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
+    const tomorrow = new Date(today.getTime() + (24 * 60 * 60 * 1000));
 
     return this.prisma.doctorSchedule.findMany({
       where: {
@@ -35,11 +45,26 @@ export class ScheduleService {
     const where: any = {};
 
     if (query?.date) {
-      const date = new Date(query.date);
-      date.setHours(0, 0, 0, 0);
-      const nextDay = new Date(date);
-      nextDay.setDate(nextDay.getDate() + 1);
-      where.scheduleDate = { gte: date, lt: nextDay };
+      let tzOffset = 8;
+      if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+      else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+      const parts = query.date.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        
+        const date = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
+        const nextDay = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+        where.scheduleDate = { gte: date, lt: nextDay };
+      } else {
+        const date = new Date(query.date);
+        date.setHours(0, 0, 0, 0);
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        where.scheduleDate = { gte: date, lt: nextDay };
+      }
     }
 
     if (query?.doctorId) where.doctorId = query.doctorId;
@@ -159,8 +184,15 @@ export class ScheduleService {
   async syncDailySchedules(targetDateStr?: string) {
     this.logger.log('Starting daily HIS schedule sync...');
     
-    let dateStr = targetDateStr;
+    let tzOffset = 8;
+    if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+    else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
     let today = new Date();
+    const localTime = today.getTime() + (tzOffset * 60 * 60 * 1000);
+    const localDate = new Date(localTime);
+
+    let dateStr = targetDateStr;
     if (dateStr) {
       // Normalize to YYYYMMDD
       const normalized = dateStr.replace(/[^0-9]/g, '');
@@ -169,17 +201,29 @@ export class ScheduleService {
         const y = parseInt(normalized.substring(0, 4), 10);
         const m = parseInt(normalized.substring(4, 6), 10) - 1;
         const d = parseInt(normalized.substring(6, 8), 10);
-        today = new Date(y, m, d);
+        today = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
+      } else if (dateStr.length === 10 && dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        dateStr = `${parts[0]}${parts[1]}${parts[2]}`;
+        today = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
       } else {
         dateStr = undefined;
       }
     }
 
     if (!dateStr) {
-      const yyyy = today.getFullYear().toString();
-      const mm = (today.getMonth() + 1).toString().padStart(2, '0');
-      const dd = today.getDate().toString().padStart(2, '0');
+      const yyyy = localDate.getUTCFullYear().toString();
+      const mm = (localDate.getUTCMonth() + 1).toString().padStart(2, '0');
+      const dd = localDate.getUTCDate().toString().padStart(2, '0');
       dateStr = `${yyyy}${mm}${dd}`;
+      
+      const y = localDate.getUTCFullYear();
+      const m = localDate.getUTCMonth();
+      const d = localDate.getUTCDate();
+      today = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
     }
 
     const serviceUnitIdsStr = process.env.HIS_SERVICE_UNIT_IDS || 'A101,A110,A112,A201';
@@ -256,11 +300,11 @@ export class ScheduleService {
             }
 
             // Convert startTime and endTime to Dates based on target/today's date
-            const scheduleDate = new Date(today);
-            scheduleDate.setHours(0,0,0,0);
+            const scheduleDate = today;
             
             const daysId = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const dayName = daysId[scheduleDate.getDay()];
+            const localScheduleDate = new Date(scheduleDate.getTime() + (tzOffset * 60 * 60 * 1000));
+            const dayName = daysId[localScheduleDate.getUTCDay()];
 
             const startTimeStr = s.StartTime1 || '08:00';
             const endTimeStr = s.EndTime1 || '15:00';

@@ -3,9 +3,17 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import styles from '../master/master.module.css';
 
+const getLocalDateString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<any[]>([]);
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().slice(0,10));
+  const [filterDate, setFilterDate] = useState(getLocalDateString());
   const [importFile, setImportFile] = useState<File|null>(null);
   const [importResult, setImportResult] = useState<any>(null);
   const [importHistory, setImportHistory] = useState<any[]>([]);
@@ -20,7 +28,7 @@ export default function SchedulesPage() {
   const [doctors, setDoctors] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [formData, setFormData] = useState({
-    scheduleDate: new Date().toISOString().slice(0,10),
+    scheduleDate: getLocalDateString(),
     doctorId: '',
     roomId: '',
     floorId: '',
@@ -105,7 +113,7 @@ export default function SchedulesPage() {
   const syncHis = async () => {
     setSyncing(true);
     try {
-      const res = await api.post('/schedules/sync');
+      const res = await api.post(`/schedules/sync?date=${filterDate}`);
       alert(`Berhasil sinkronisasi. ${res.data?.totalSynced || 0} jadwal diperbarui.`);
       load();
     } catch(err:any) {
@@ -173,7 +181,7 @@ export default function SchedulesPage() {
       setShowForm(false);
       setEditMode(null);
       setFormData({
-        scheduleDate: new Date().toISOString().slice(0,10),
+        scheduleDate: getLocalDateString(),
         doctorId: '', roomId: '', floorId: '', startTime: '08:00', endTime: '12:00', reason: ''
       });
       setDocSearch('');
