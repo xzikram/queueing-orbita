@@ -29,6 +29,7 @@ JWT_EXPIRATION=24h
 BACKEND_PORT=3001
 CORS_ORIGIN=*
 TZ="Asia/Makassar"
+HIS_SERVICE_UNIT_IDS=A101,A110,A112,A201
 EOF
   echo "✅ File .env berhasil dibuat"
 fi

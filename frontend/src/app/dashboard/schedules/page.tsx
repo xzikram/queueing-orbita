@@ -30,6 +30,10 @@ export default function SchedulesPage() {
   });
   const [editMode, setEditMode] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
+  
+  // Search and Sort states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   const loadMasterData = async () => {
     try {
@@ -179,13 +183,67 @@ export default function SchedulesPage() {
     }
   };
 
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const filteredAndSortedSchedules = [...schedules]
+    .filter(s => {
+      const docName = s.doctor?.doctorName?.toLowerCase() || '';
+      const docCode = s.doctor?.doctorCode?.toLowerCase() || '';
+      const roomName = (s.room?.roomName || s.room?.name || '').toLowerCase();
+      const floorName = (s.floor?.name || '').toLowerCase();
+      const search = searchTerm.toLowerCase();
+      return docName.includes(search) || docCode.includes(search) || roomName.includes(search) || floorName.includes(search);
+    })
+    .sort((a, b) => {
+      if (!sortConfig) return 0;
+      const { key, direction } = sortConfig;
+      
+      let valA: any = '';
+      let valB: any = '';
+      
+      if (key === 'room') {
+        valA = a.room?.roomName || a.room?.name || '';
+        valB = b.room?.roomName || b.room?.name || '';
+      } else if (key === 'floor') {
+        valA = a.floor?.floorNumber ?? 0;
+        valB = b.floor?.floorNumber ?? 0;
+        if (valA === valB) {
+          valA = a.floor?.name || '';
+          valB = b.floor?.name || '';
+        }
+      } else if (key === 'time') {
+        valA = a.startTime || '';
+        valB = b.startTime || '';
+      }
+      
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
   return (
     <div className={styles.masterPage}>
       {/* Toolbar */}
       <div className={`glass-card ${styles.toolbar}`}>
         <div className={styles.toolbarLeft}>
           <input type="date" className="form-input" style={{width:180}} value={filterDate} onChange={e=>setFilterDate(e.target.value)} />
-          <span style={{color:'var(--gray-400)',fontSize:'0.875rem'}}>{schedules.length} jadwal</span>
+          <input 
+            type="text" 
+            className="form-input" 
+            placeholder="Cari dokter, ruangan..." 
+            style={{width:220}} 
+            value={searchTerm} 
+            onChange={e=>setSearchTerm(e.target.value)} 
+          />
+          <span style={{color:'var(--gray-400)',fontSize:'0.875rem'}}>
+            {searchTerm ? `${filteredAndSortedSchedules.length} dari ` : ''}{schedules.length} jadwal
+          </span>
         </div>
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-primary" onClick={syncHis} disabled={syncing}>{syncing ? 'Memproses...' : '🔄 Sinkronisasi HIS'}</button>
@@ -276,7 +334,7 @@ export default function SchedulesPage() {
                     }}>
                       {doctors.filter(d => d.doctorName.toLowerCase().includes(docSearch.toLowerCase()) || d.doctorCode?.toLowerCase().includes(docSearch.toLowerCase())).map(d => (
                         <div 
-                          key={d.id} 
+                           key={d.id} 
                           tabIndex={0}
                           style={{padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #eee', color: '#333'}}
                           onMouseDown={(e) => e.preventDefault()} // Prevent blur before onClick fires
@@ -342,24 +400,43 @@ export default function SchedulesPage() {
 
       {/* Schedule Table */}
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
-        <table className="data-table"><thead><tr><th>Tanggal</th><th>Hari</th><th>Dokter</th><th>Ruangan</th><th>Lantai</th><th>Jam</th><th>Status</th><th>Aksi</th></tr></thead>
-        <tbody>{schedules.map((s:any)=>(
-          <tr key={s.id}>
-            <td>{new Date(s.scheduleDate).toLocaleDateString('id-ID')}</td>
-            <td>{s.dayName}</td>
-            <td><strong>{s.doctor?.doctorName}</strong></td>
-            <td>{s.room?.roomName || s.room?.name}</td>
-            <td>{s.floor?.name}</td>
-            <td>{formatTime(s.startTime)} - {formatTime(s.endTime)}</td>
-            <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':'badge-danger'}`}>{s.status}</span></td>
-            <td>
-              <div style={{display:'flex',gap:6}}>
-                <button className="btn btn-secondary btn-sm" onClick={()=>openEdit(s)}>Edit</button>
-                <button className="btn btn-danger btn-sm" onClick={()=>promptDelete(s)}>Hapus</button>
-              </div>
-            </td>
-          </tr>
-        ))}</tbody></table>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Hari</th>
+              <th>Dokter</th>
+              <th onClick={() => handleSort('room')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Ruangan {sortConfig?.key === 'room' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
+              </th>
+              <th onClick={() => handleSort('floor')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Lantai {sortConfig?.key === 'floor' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
+              </th>
+              <th onClick={() => handleSort('time')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                Jam {sortConfig?.key === 'time' ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
+              </th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>{filteredAndSortedSchedules.map((s:any)=>(
+            <tr key={s.id}>
+              <td>{new Date(s.scheduleDate).toLocaleDateString('id-ID')}</td>
+              <td>{s.dayName}</td>
+              <td><strong>{s.doctor?.doctorName}</strong></td>
+              <td>{s.room?.roomName || s.room?.name}</td>
+              <td>{s.floor?.name}</td>
+              <td>{formatTime(s.startTime)} - {formatTime(s.endTime)}</td>
+              <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':'badge-danger'}`}>{s.status}</span></td>
+              <td>
+                <div style={{display:'flex',gap:6}}>
+                  <button className="btn btn-secondary btn-sm" onClick={()=>openEdit(s)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={()=>promptDelete(s)}>Hapus</button>
+                </div>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table>
       </div></div>
     </div>
   );

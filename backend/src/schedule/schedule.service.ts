@@ -182,7 +182,7 @@ export class ScheduleService {
       dateStr = `${yyyy}${mm}${dd}`;
     }
 
-    const serviceUnitIdsStr = process.env.HIS_SERVICE_UNIT_IDS || 'A101';
+    const serviceUnitIdsStr = process.env.HIS_SERVICE_UNIT_IDS || 'A101,A110,A112,A201';
     const serviceUnitIds = serviceUnitIdsStr.split(',').map(s => s.trim());
 
     // Fetch all active doctors
