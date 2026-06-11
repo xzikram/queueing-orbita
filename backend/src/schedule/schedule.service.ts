@@ -75,7 +75,7 @@ export class ScheduleService {
   }
 
   async create(data: any) {
-    const createData = { ...data };
+    const { reason, ...createData } = data;
     if (createData.scheduleDate) {
       createData.scheduleDate = parseLocalDate(createData.scheduleDate);
     }
