@@ -368,7 +368,6 @@ export default function FloorDisplayPage() {
               </div>
             ) : (
               <div className={`${styles.currentCallCard} ${styles.bdrStandby}`}>
-                <div className={styles.standbyIcon}>💉</div>
                 <div className={styles.standbyText}>BDR STANDBY</div>
                 <div className={styles.standbySub}>Menunggu antrean pasien</div>
               </div>
@@ -412,7 +411,6 @@ export default function FloorDisplayPage() {
               </div>
             ) : (
               <div className={`${styles.currentCallCard} ${styles.poliStandby}`}>
-                <div className={styles.standbyIcon}>🩺</div>
                 <div className={styles.standbyText}>POLIKLINIK STANDBY</div>
                 <div className={styles.standbySub}>Menunggu panggilan poli</div>
               </div>
