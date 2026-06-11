@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { DisplayGateway } from '../websocket/display.gateway';
+import { getLocalDateBoundaries } from '../common/timezone.utils';
 
 @Injectable()
 export class PharmacyService {
@@ -32,8 +33,7 @@ export class PharmacyService {
   }
 
   async getRecentCalls(limit: number = 10) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { today } = getLocalDateBoundaries();
     return this.prisma.displayCallLog.findMany({
       where: {
         unitType: 'PHARMACY',

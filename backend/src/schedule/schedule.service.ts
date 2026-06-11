@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HisApiService } from '../adapters/his-api.service';
+import { parseLocalDate } from '../common/timezone.utils';
 
 @Injectable()
 export class ScheduleService {
@@ -45,26 +46,9 @@ export class ScheduleService {
     const where: any = {};
 
     if (query?.date) {
-      let tzOffset = 8;
-      if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
-      else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
-
-      const parts = query.date.split('-');
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const d = parseInt(parts[2], 10);
-        
-        const date = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
-        const nextDay = new Date(date.getTime() + (24 * 60 * 60 * 1000));
-        where.scheduleDate = { gte: date, lt: nextDay };
-      } else {
-        const date = new Date(query.date);
-        date.setHours(0, 0, 0, 0);
-        const nextDay = new Date(date);
-        nextDay.setDate(nextDay.getDate() + 1);
-        where.scheduleDate = { gte: date, lt: nextDay };
-      }
+      const date = parseLocalDate(query.date);
+      const nextDay = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+      where.scheduleDate = { gte: date, lt: nextDay };
     }
 
     if (query?.doctorId) where.doctorId = query.doctorId;
@@ -92,18 +76,8 @@ export class ScheduleService {
 
   async create(data: any) {
     const createData = { ...data };
-    if (createData.scheduleDate && typeof createData.scheduleDate === 'string') {
-      const parts = createData.scheduleDate.split('-');
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const d = parseInt(parts[2], 10);
-        const dateObj = new Date(y, m, d);
-        dateObj.setHours(0, 0, 0, 0);
-        createData.scheduleDate = dateObj;
-      } else {
-        createData.scheduleDate = new Date(createData.scheduleDate);
-      }
+    if (createData.scheduleDate) {
+      createData.scheduleDate = parseLocalDate(createData.scheduleDate);
     }
     return this.prisma.doctorSchedule.create({
       data: createData,
@@ -114,18 +88,8 @@ export class ScheduleService {
   async update(id: string, data: any, reason?: string, username: string = 'System') {
     const old = await this.findOne(id);
     const updateData = { ...data };
-    if (updateData.scheduleDate && typeof updateData.scheduleDate === 'string') {
-      const parts = updateData.scheduleDate.split('-');
-      if (parts.length === 3) {
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const d = parseInt(parts[2], 10);
-        const dateObj = new Date(y, m, d);
-        dateObj.setHours(0, 0, 0, 0);
-        updateData.scheduleDate = dateObj;
-      } else {
-        updateData.scheduleDate = new Date(updateData.scheduleDate);
-      }
+    if (updateData.scheduleDate) {
+      updateData.scheduleDate = parseLocalDate(updateData.scheduleDate);
     }
     const updated = await this.prisma.doctorSchedule.update({
       where: { id },

@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DisplayGateway } from '../websocket/display.gateway';
+import { getLocalDateBoundaries } from '../common/timezone.utils';
 
 @Injectable()
 export class QueueService {
@@ -32,10 +33,7 @@ export class QueueService {
     }
 
     // Generate ticket number using Doctor Code as prefix
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     const prefix = schedule.doctor.doctorCode || (data.patientType === 'UMUM' ? 'U' : 'A');
 
@@ -88,10 +86,7 @@ export class QueueService {
   }
 
   async generateAdmissionTicket(data: { patientType: 'BARU' | 'LAMA' | 'ASURANSI' | 'ONLINE'; scheduleId?: string }) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     let prefix = 'A';
     if (data.patientType === 'BARU') prefix = 'A';
@@ -172,10 +167,7 @@ export class QueueService {
   }
 
   async generateCashierTicket(data: { patientType: 'UMUM' | 'ASURANSI' }) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     const prefix = data.patientType === 'UMUM' ? 'G' : 'H';
 
@@ -235,10 +227,7 @@ export class QueueService {
   }
 
   async findTodayTickets() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     return this.prisma.queueTicket.findMany({
       where: {
@@ -266,8 +255,7 @@ export class QueueService {
   }
 
   async getFloorDisplayData(floorNumber: number) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { today } = getLocalDateBoundaries();
 
     // Get recent calls for this floor from display_call_logs
     const recentCalls = await this.prisma.displayCallLog.findMany({

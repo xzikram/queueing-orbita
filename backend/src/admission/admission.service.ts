@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
 import { DisplayGateway } from '../websocket/display.gateway';
+import { getLocalDateBoundaries } from '../common/timezone.utils';
 
 @Injectable()
 export class AdmissionService {
@@ -17,10 +18,7 @@ export class AdmissionService {
    * Get admission queue — tickets waiting for admission
    */
   async getQueue() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     // Get tickets that don't have a visit yet (haven't been processed by admission)
     // Only fetch tickets with prefixes A, B, C, D (Admission ticket prefixes)
@@ -553,8 +551,7 @@ export class AdmissionService {
    * Get recent call logs for the admission display
    */
   async getRecentCalls(limit = 10) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { today } = getLocalDateBoundaries();
 
     return this.prisma.displayCallLog.findMany({
       where: {
@@ -570,10 +567,7 @@ export class AdmissionService {
    * Helper to generate a doctor ticket number using doctorInitials (or fallback to doctorCode)
    */
   async generateDoctorTicketNo(doctorId: string): Promise<string> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     const doctor = await this.prisma.doctor.findUnique({ where: { id: doctorId } });
     if (!doctor) throw new NotFoundException('Dokter tidak ditemukan');

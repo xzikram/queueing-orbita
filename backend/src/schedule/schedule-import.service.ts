@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as ExcelJS from 'exceljs';
+import { parseLocalDate } from '../common/timezone.utils';
 
 function parseExcelTime(value: any): string {
   if (!value) return '';
@@ -145,14 +146,8 @@ export class ScheduleImportService {
         if (!room) { errors.push(`Row ${r.rowNum}: Ruangan "${r.roomQuery}" tidak ditemukan`); failed++; continue; }
 
         // Parse date
-        let date: Date;
-        if (r.scheduleDate instanceof Date) {
-          date = r.scheduleDate;
-        } else {
-          date = new Date(String(r.scheduleDate));
-        }
+        const date = parseLocalDate(r.scheduleDate);
         if (isNaN(date.getTime())) { errors.push(`Row ${r.rowNum}: Tanggal tidak valid`); failed++; continue; }
-        date.setHours(0, 0, 0, 0);
 
         const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
         const dayName = dayNames[date.getDay()];

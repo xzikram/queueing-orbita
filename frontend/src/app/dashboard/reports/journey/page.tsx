@@ -34,6 +34,17 @@ const formatTime = (dt: string | null) => {
   return new Date(dt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 
+const getLocalDateString = (offsetDays = 0) => {
+  const d = new Date();
+  if (offsetDays !== 0) {
+    d.setDate(d.getDate() + offsetDays);
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function PatientJourneyPage() {
   const [data, setData] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ total: 0, page: 1, totalPages: 1 });
@@ -41,8 +52,8 @@ export default function PatientJourneyPage() {
   const [expandedVisit, setExpandedVisit] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => getLocalDateString());
+  const [endDate, setEndDate] = useState(() => getLocalDateString());
   const [page, setPage] = useState(1);
 
   const fetchData = useCallback(async () => {

@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
 import { DisplayGateway } from '../websocket/display.gateway';
+import { getLocalDateBoundaries } from '../common/timezone.utils';
 
 @Injectable()
 export class BdrService {
@@ -14,10 +15,7 @@ export class BdrService {
   ) {}
 
   async getQueue(floorId?: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { today, tomorrow } = getLocalDateBoundaries();
 
     const where: any = {
       currentUnitType: 'BDR',

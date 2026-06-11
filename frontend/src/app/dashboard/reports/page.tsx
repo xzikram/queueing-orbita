@@ -18,18 +18,25 @@ const UNITS = [
   { id: 'OPTIC', label: 'Optik', icon: '👓' },
 ];
 
+const getLocalDateString = (offsetDays = 0) => {
+  const d = new Date();
+  if (offsetDays !== 0) {
+    d.setDate(d.getDate() + offsetDays);
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('ADMISSION');
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   // Filters
-  const [startDate, setStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7); // Default 7 days ago
-    return d.toISOString().split('T')[0];
-  });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(() => getLocalDateString(-7));
+  const [endDate, setEndDate] = useState(() => getLocalDateString());
 
   const fetchData = async () => {
     setLoading(true);
