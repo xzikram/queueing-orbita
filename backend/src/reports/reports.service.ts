@@ -7,6 +7,26 @@ import { Prisma } from '@prisma/client';
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
+  private parseLocalDate(dateStr: string, isEndOfDay: boolean = false): Date {
+    let tzOffset = 8; // Default to Asia/Makassar (WITA, UTC+8)
+    if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+    else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      
+      let ms = Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000);
+      if (isEndOfDay) {
+        ms += (24 * 60 * 60 * 1000) - 1; // 23:59:59.999 of local day
+      }
+      return new Date(ms);
+    }
+    return new Date(dateStr);
+  }
+
   private buildWhereClause(query: any): Prisma.JourneyUnitSessionWhereInput {
     const where: Prisma.JourneyUnitSessionWhereInput = {
       status: 'FINISHED',
@@ -19,13 +39,13 @@ export class ReportsService {
 
     if (query.startDate && query.endDate) {
       where.createdAt = {
-        gte: new Date(query.startDate),
-        lte: new Date(query.endDate),
+        gte: this.parseLocalDate(query.startDate),
+        lte: this.parseLocalDate(query.endDate, true),
       };
     } else if (query.startDate) {
-      where.createdAt = { gte: new Date(query.startDate) };
+      where.createdAt = { gte: this.parseLocalDate(query.startDate) };
     } else if (query.endDate) {
-      where.createdAt = { lte: new Date(query.endDate) };
+      where.createdAt = { lte: this.parseLocalDate(query.endDate, true) };
     }
 
     if (query.patientType) {
@@ -277,8 +297,19 @@ export class ReportsService {
   }
 
   async getLiveStats() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    let tzOffset = 8;
+    if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+    else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+    const now = new Date();
+    const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+    const localDate = new Date(localTime);
+    
+    const year = localDate.getUTCFullYear();
+    const month = localDate.getUTCMonth();
+    const day = localDate.getUTCDate();
+    
+    const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
 
     const [totalTickets, totalVisits, finishedVisits, activeSessions] = await Promise.all([
       this.prisma.queueTicket.count({ where: { queueDate: { gte: today } } }),
@@ -339,8 +370,8 @@ export class ReportsService {
 
     if (query.startDate && query.endDate) {
       where.createdAt = {
-        gte: new Date(query.startDate),
-        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+        gte: this.parseLocalDate(query.startDate),
+        lte: this.parseLocalDate(query.endDate, true),
       };
     }
 
@@ -406,17 +437,28 @@ export class ReportsService {
     const where: any = {};
     if (query.startDate && query.endDate) {
       where.visitDate = {
-        gte: new Date(query.startDate),
-        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+        gte: this.parseLocalDate(query.startDate),
+        lte: this.parseLocalDate(query.endDate, true),
       };
     } else if (query.startDate) {
-      where.visitDate = { gte: new Date(query.startDate) };
+      where.visitDate = { gte: this.parseLocalDate(query.startDate) };
     } else if (query.endDate) {
-      where.visitDate = { lte: new Date(query.endDate + 'T23:59:59.999Z') };
+      where.visitDate = { lte: this.parseLocalDate(query.endDate, true) };
     } else {
       // Default today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      let tzOffset = 8;
+      if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+      else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+      const now = new Date();
+      const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+      const localDate = new Date(localTime);
+      
+      const year = localDate.getUTCFullYear();
+      const month = localDate.getUTCMonth();
+      const day = localDate.getUTCDate();
+      
+      const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
       where.visitDate = { gte: today };
     }
 
@@ -557,16 +599,27 @@ export class ReportsService {
     const where: any = {};
     if (query.startDate && query.endDate) {
       where.visitDate = {
-        gte: new Date(query.startDate),
-        lte: new Date(query.endDate + 'T23:59:59.999Z'),
+        gte: this.parseLocalDate(query.startDate),
+        lte: this.parseLocalDate(query.endDate, true),
       };
     } else if (query.startDate) {
-      where.visitDate = { gte: new Date(query.startDate) };
+      where.visitDate = { gte: this.parseLocalDate(query.startDate) };
     } else if (query.endDate) {
-      where.visitDate = { lte: new Date(query.endDate + 'T23:59:59.999Z') };
+      where.visitDate = { lte: this.parseLocalDate(query.endDate, true) };
     } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      let tzOffset = 8;
+      if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+      else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+      const now = new Date();
+      const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+      const localDate = new Date(localTime);
+      
+      const year = localDate.getUTCFullYear();
+      const month = localDate.getUTCMonth();
+      const day = localDate.getUTCDate();
+      
+      const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
       where.visitDate = { gte: today };
     }
 
