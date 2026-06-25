@@ -290,7 +290,12 @@ export default function AdmissionPage() {
                   <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id}>
                     {actionLoading === ticket.id ? '...' : (ticket.visit?.journeySessions?.[0]?.status === 'SKIPPED' ? '📢 Panggil Ulang' : '📢 Panggil')}
                   </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))}
@@ -327,7 +332,12 @@ export default function AdmissionPage() {
                       </>
                     )}
                     <button className="btn btn-warning btn-sm" onClick={() => holdTicket(ticket.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
                   </div>
                 </div>
               );

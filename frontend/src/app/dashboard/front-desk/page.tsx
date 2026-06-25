@@ -332,7 +332,12 @@ export default function FrontDeskPage() {
                     <button className="btn btn-primary btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id || !selectedCounter}>
                       {actionLoading === ticket.id ? '...' : (ticket.visit?.journeySessions?.[0]?.status === 'SKIPPED' ? '📢 Panggil Ulang' : '📢 Panggil')}
                     </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -368,7 +373,12 @@ export default function FrontDeskPage() {
                         </>
                       )}
                       <button className="btn btn-warning btn-sm" onClick={() => holdAction(ticket.id, 'ADMISSION')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }}>⏸️</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 );
@@ -403,7 +413,12 @@ export default function FrontDeskPage() {
                     </button>
                     <button className="btn btn-info btn-sm" onClick={() => setSyncModal(v.id)} title="Sync Tiket" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6', padding: '6px 10px' }}>🔗</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -441,7 +456,12 @@ export default function FrontDeskPage() {
                           )}
                           <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
                           <button className="btn btn-warning btn-sm" onClick={() => holdAction(v.id, 'CASHIER')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }}>⏸️</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     );
