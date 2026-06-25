@@ -320,14 +320,11 @@ export default function AdmissionPage() {
                     )}
                   </div>
                   <div className={styles.actionBtns}>
-                    {isCalled && (
+                    {(isCalled || isServing) && (
                       <>
-                        <button className="btn btn-success btn-sm" onClick={() => startService(ticket.id)} disabled={actionLoading === ticket.id}>▶️ Mulai</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => finishService(ticket)} disabled={actionLoading === ticket.id} style={{ flex: 1 }}>✅ Selesai</button>
                         <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id}>🔁 Ulang</button>
                       </>
-                    )}
-                    {isServing && (
-                      <button className="btn btn-primary btn-sm" onClick={() => finishService(ticket)} disabled={actionLoading === ticket.id} style={{ flex: 1 }}>✅ Selesai</button>
                     )}
                     <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien">👤</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => openTimeModal(ticket)} title="Koreksi Waktu">⏱️</button>

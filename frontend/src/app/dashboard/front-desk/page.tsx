@@ -361,14 +361,11 @@ export default function FrontDeskPage() {
                       </div>
                     </div>
                     <div className={styles.cardRight} style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {isCalled && (
+                      {(isCalled || isServing) && (
                         <>
-                          <button className="btn btn-success btn-sm" onClick={() => startService(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>▶️ Mulai</button>
+                          <button className="btn btn-primary btn-sm" onClick={() => finishAdmisiService(ticket)} disabled={actionLoading === ticket.id} style={{ padding: '6px 12px', fontSize: '0.8rem' }}>✅ Selesai</button>
                           <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
                         </>
-                      )}
-                      {isServing && (
-                        <button className="btn btn-primary btn-sm" onClick={() => finishAdmisiService(ticket)} disabled={actionLoading === ticket.id} style={{ padding: '6px 12px', fontSize: '0.8rem' }}>✅ Selesai</button>
                       )}
                       <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien" style={{ padding: '6px 10px' }}>👤</button>
                       <button className="btn btn-secondary btn-sm" onClick={() => { setTimeForm({ field: 'calledAt', correctedTime: '', reason: '' }); setTimeModal(ticket); }} title="Koreksi Waktu" style={{ padding: '6px 10px' }}>⏱️</button>
@@ -437,16 +434,13 @@ export default function FrontDeskPage() {
                           </div>
                         </div>
                         <div className={styles.cardRight} style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {isCalled && (
+                          {(isCalled || s?.status === 'SERVING') && (
                             <>
-                              <button className="btn btn-success btn-sm" onClick={() => startService(v.id, 'CASHIER')} disabled={actionLoading === v.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>▶️ Mulai</button>
+                              <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')} disabled={actionLoading === v.id}>
+                                ✅ Selesai
+                              </button>
                               <button className="btn btn-warning btn-sm" onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
                             </>
-                          )}
-                          {s?.status === 'SERVING' && (
-                            <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')} disabled={actionLoading === v.id}>
-                              ✅ Selesai
-                            </button>
                           )}
                           <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
                           <button className="btn btn-warning btn-sm" onClick={() => holdAction(v.id, 'CASHIER')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }}>⏸️</button>

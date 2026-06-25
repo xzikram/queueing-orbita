@@ -169,10 +169,49 @@ export class AdmissionService {
       });
     }
 
-    // Call the session
-    await this.journeyService.callSession(session.id, {
-      counterId: data.counterId,
-      createdBy: data.userId,
+    // Check if first call or recall
+    const now = new Date();
+    const isFirstCall = session.status === 'WAITING' || session.status === 'SKIPPED';
+    const waitingDuration = (isFirstCall && session.waitingStartedAt)
+      ? Math.round((now.getTime() - session.waitingStartedAt.getTime()) / 1000)
+      : session.waitingDurationSeconds;
+
+    // Directly set status to SERVING and set both calledAt and serviceStartedAt to now
+    await this.prisma.journeyUnitSession.update({
+      where: { id: session.id },
+      data: {
+        calledAt: now,
+        serviceStartedAt: now,
+        status: 'SERVING',
+        waitingDurationSeconds: waitingDuration,
+        counterId: data.counterId,
+        updatedBy: data.userId,
+      },
+    });
+
+    // Create both CALLED and SERVICE_STARTED events
+    await this.prisma.journeyEvent.create({
+      data: {
+        visitId: visit.id,
+        journeyUnitSessionId: session.id,
+        unitType: 'ADMISSION',
+        eventType: 'CALLED',
+        counterId: data.counterId,
+        eventTime: now,
+        createdBy: data.userId,
+      },
+    });
+
+    await this.prisma.journeyEvent.create({
+      data: {
+        visitId: visit.id,
+        journeyUnitSessionId: session.id,
+        unitType: 'ADMISSION',
+        eventType: 'SERVICE_STARTED',
+        counterId: data.counterId,
+        eventTime: now,
+        createdBy: data.userId,
+      },
     });
 
     // Update ticket status
@@ -184,7 +223,7 @@ export class AdmissionService {
     // Update visit current status
     await this.prisma.visit.update({
       where: { id: visit.id },
-      data: { currentStatus: 'CALLED', currentUnitType: 'ADMISSION' },
+      data: { currentStatus: 'SERVING', currentUnitType: 'ADMISSION' },
     });
 
     // Create display call log

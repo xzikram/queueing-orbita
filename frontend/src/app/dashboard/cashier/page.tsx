@@ -206,8 +206,12 @@ export default function CashierPage() {
                     <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                       <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span></div>
                       <div className={styles.actionBtns}>
-                        {s?.status === 'CALLED' && <button className="btn btn-success btn-sm" onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>▶️ Mulai</button>}
-                        {s?.status === 'SERVING' && <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>}
+                        {(s?.status === 'CALLED' || s?.status === 'SERVING') && (
+                          <>
+                            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>
+                            <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter}>🔁 Ulang</button>
+                          </>
+                        )}
                         <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                         <button className="btn btn-warning btn-sm" onClick={() => holdVisit(v.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
                         <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>

@@ -78,13 +78,51 @@ export class CashierService {
       }
     }
 
-    await this.journeyService.callSession(session.id, {
-      counterId,
-      createdBy: userId,
+    const now = new Date();
+    const isFirstCall = session.status === 'WAITING' || session.status === 'SKIPPED';
+    const waitingDuration = (isFirstCall && session.waitingStartedAt)
+      ? Math.round((now.getTime() - session.waitingStartedAt.getTime()) / 1000)
+      : session.waitingDurationSeconds;
+
+    await this.prisma.journeyUnitSession.update({
+      where: { id: session.id },
+      data: {
+        calledAt: now,
+        serviceStartedAt: now,
+        status: 'SERVING',
+        waitingDurationSeconds: waitingDuration,
+        counterId,
+        updatedBy: userId,
+      },
     });
+
+    await this.prisma.journeyEvent.create({
+      data: {
+        visitId,
+        journeyUnitSessionId: session.id,
+        unitType: 'CASHIER',
+        eventType: 'CALLED',
+        counterId,
+        eventTime: now,
+        createdBy: userId,
+      },
+    });
+
+    await this.prisma.journeyEvent.create({
+      data: {
+        visitId,
+        journeyUnitSessionId: session.id,
+        unitType: 'CASHIER',
+        eventType: 'SERVICE_STARTED',
+        counterId,
+        eventTime: now,
+        createdBy: userId,
+      },
+    });
+
     await this.prisma.visit.update({
       where: { id: visitId },
-      data: { currentStatus: 'CALLED' },
+      data: { currentStatus: 'SERVING' },
     });
 
     // Broadcast to kasir display
