@@ -311,11 +311,22 @@ export class AdmissionService {
       currentDoctorTicketNo = await this.generateDoctorTicketNo(finalDoctorId);
     }
 
+    let finalPatientRmNo = data.patientRmNo || freshVisit?.patientRmNo;
+    if (!finalPatientRmNo) {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const todayStr = `${year}${month}${day}`;
+      const randomHex = Math.random().toString(16).substring(2, 6).toUpperCase();
+      finalPatientRmNo = `REG-${todayStr}-${randomHex}`;
+    }
+
     const updateData: any = {
       currentRoomId: finalRoomId,
       doctorTicketNo: currentDoctorTicketNo,
+      patientRmNo: finalPatientRmNo,
     };
-    if (data.patientRmNo) updateData.patientRmNo = data.patientRmNo;
     if (data.patientName) updateData.patientName = data.patientName;
     if (data.patientDob) updateData.patientDob = new Date(data.patientDob);
 

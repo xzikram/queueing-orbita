@@ -106,8 +106,8 @@ export default function AdmissionPage() {
   };
 
   const finishService = async (ticket: any) => {
-    if (!ticket.visit?.patientRmNo || !ticket.visit?.selectedScheduleId) {
-      alert('⚠️ Anda harus mengisi No. RM dan memilih Dokter Tujuan sebelum menyelesaikan layanan.');
+    if (!ticket.visit?.selectedScheduleId) {
+      alert('⚠️ Anda harus memilih Dokter Tujuan sebelum menyelesaikan layanan.');
       openPatientModal(ticket);
       return;
     }
@@ -294,7 +294,9 @@ export default function AdmissionPage() {
                     <span>👨‍⚕️ {ticket.selectedDoctor?.doctorName || '-'}</span>
                     <span>🖥️ {session?.counter?.name || '-'}</span>
                     {ticket.visit?.patientName && <span>👤 {ticket.visit.patientName}</span>}
-                    {ticket.visit?.patientRmNo && <span>📋 RM: {ticket.visit.patientRmNo}</span>}
+                    {ticket.visit?.patientRmNo && !ticket.visit.patientRmNo.startsWith('REG-') && (
+                      <span>📋 RM: {ticket.visit.patientRmNo}</span>
+                    )}
                   </div>
                   <div className={styles.actionBtns}>
                     {isCalled && (
@@ -324,9 +326,8 @@ export default function AdmissionPage() {
         <div className={styles.modalOverlay} onClick={() => setPatientModal(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>👤 Data Pasien — {patientModal.ticketNo}</h3>
-            <div className="form-group"><label className="form-label">No. Rekam Medis *</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Wajib diisi (Contoh: 000123)" /></div>
             <div className="form-group">
-              <label className="form-label">Dokter Tujuan</label>
+              <label className="form-label">Dokter Tujuan *</label>
               <select
                 className="form-select"
                 value={patientForm.scheduleId}
