@@ -122,7 +122,6 @@ export default function FrontDeskPage() {
   
   const finishAdmisiService = async (ticket: any) => {
     if (!ticket.visit?.selectedScheduleId) {
-      alert('⚠️ Anda harus memilih Dokter Tujuan sebelum menyelesaikan layanan Admisi.');
       setCompletingTicket(ticket);
       openPatientModal(ticket);
       return;

@@ -108,7 +108,6 @@ export default function AdmissionPage() {
 
   const finishService = async (ticket: any) => {
     if (!ticket.visit?.selectedScheduleId) {
-      alert('⚠️ Anda harus memilih Dokter Tujuan sebelum menyelesaikan layanan.');
       setCompletingTicket(ticket);
       openPatientModal(ticket);
       return;
