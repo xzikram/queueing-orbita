@@ -624,11 +624,14 @@ export default function FrontDeskPage() {
             <div className="form-group">
               <select className="form-input" value={targetSyncVisit} onChange={e => setTargetSyncVisit(e.target.value)} style={{ padding: '10px' }}>
                 <option value="">-- Pilih Data Pasien --</option>
-                {cashWaiting.filter((w: any) => w.id !== syncModal).map((w: any) => (
-                  <option key={w.id} value={w.id}>
-                    {w.doctorTicketNo || w.queueTicket?.ticketNo} - {w.patientName || 'Tanpa Nama'}
-                  </option>
-                ))}
+                {cashWaiting
+                  .filter((w: any) => w.id !== syncModal && w.patientName)
+                  .map((w: any) => (
+                    <option key={w.id} value={w.id}>
+                      {w.doctorTicketNo || w.queueTicket?.ticketNo} - {w.patientName}
+                    </option>
+                  ))
+                }
               </select>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
