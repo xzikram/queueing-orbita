@@ -48,8 +48,8 @@ export default function FrontDeskPage() {
   const loadQueues = useCallback(async () => {
     try { 
       const [admRes, cashRes] = await Promise.all([
-        api.get('/admission/queue'),
-        api.get('/cashier/queue')
+        api.get('/admission/queue').catch(() => ({ data: [] })),
+        api.get('/cashier/queue').catch(() => ({ data: [] }))
       ]);
       setAdmissionQueue(admRes.data);
       setCashierQueue(cashRes.data);
