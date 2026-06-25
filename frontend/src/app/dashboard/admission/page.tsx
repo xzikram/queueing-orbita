@@ -326,9 +326,6 @@ export default function AdmissionPage() {
                         <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id}>🔁 Ulang</button>
                       </>
                     )}
-                    <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien">👤</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => openTimeModal(ticket)} title="Koreksi Waktu">⏱️</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => openTransferModal(ticket)} title="Transfer Pasien" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                     <button className="btn btn-warning btn-sm" onClick={() => holdTicket(ticket.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
                     <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444' }}>❌</button>
                   </div>

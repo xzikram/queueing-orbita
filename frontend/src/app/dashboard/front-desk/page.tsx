@@ -367,9 +367,6 @@ export default function FrontDeskPage() {
                           <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id, 'ADMISSION')} disabled={actionLoading === ticket.id} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
                         </>
                       )}
-                      <button className="btn btn-secondary btn-sm" onClick={() => openPatientModal(ticket)} title="Data Pasien" style={{ padding: '6px 10px' }}>👤</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => { setTimeForm({ field: 'calledAt', correctedTime: '', reason: '' }); setTimeModal(ticket); }} title="Koreksi Waktu" style={{ padding: '6px 10px' }}>⏱️</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket, type: 'ADMISSION' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }}>🔄</button>
                       <button className="btn btn-warning btn-sm" onClick={() => holdAction(ticket.id, 'ADMISSION')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }}>⏸️</button>
                       <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket, 'ADMISSION')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px' }}>❌</button>
                     </div>
