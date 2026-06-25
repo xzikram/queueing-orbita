@@ -77,8 +77,8 @@
 }
 
 .queueList {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   max-height: calc(100vh - 280px);
   overflow-y: auto;
@@ -258,15 +258,15 @@
 /* Compact Queue Card styles */
 .compactCard {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px;
   background: var(--gray-50);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   transition: all var(--transition-fast);
   animation: fadeIn 0.3s ease-out;
-  gap: 12px;
+  gap: 8px;
 }
 
 .compactCard:hover {
@@ -279,19 +279,21 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  flex: 1;
 }
 
 .cardRight {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  flex-shrink: 0;
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
 
 .ticketHeaderCompact {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
@@ -305,9 +307,8 @@
 .ticketInfoCompact {
   font-size: 0.75rem;
   color: var(--gray-500);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
 }
 
 .ticketTimeCompact {
