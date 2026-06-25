@@ -22,6 +22,7 @@ export default function AdmissionPage() {
   // Patient data modal
   const [patientModal, setPatientModal] = useState<any>(null);
   const [patientForm, setPatientForm] = useState({ patientRmNo: '', patientName: '', scheduleId: '', doctorTicketNo: '' });
+  const [completingTicket, setCompletingTicket] = useState<any>(null);
   const [schedules, setSchedules] = useState<any[]>([]);
   // Time correction modal
   const [timeModal, setTimeModal] = useState<any>(null);
@@ -108,6 +109,7 @@ export default function AdmissionPage() {
   const finishService = async (ticket: any) => {
     if (!ticket.visit?.selectedScheduleId) {
       alert('⚠️ Anda harus memilih Dokter Tujuan sebelum menyelesaikan layanan.');
+      setCompletingTicket(ticket);
       openPatientModal(ticket);
       return;
     }
@@ -136,11 +138,31 @@ export default function AdmissionPage() {
     setPatientModal(ticket);
   };
 
+  const closePatientModal = () => {
+    setPatientModal(null);
+    setCompletingTicket(null);
+  };
+
   const savePatientData = async () => {
     try {
       await api.put(`/admission/${patientModal.id}/patient-data`, patientForm);
+      const isFinishing = completingTicket && completingTicket.id === patientModal.id;
+      const savedTicket = patientModal;
+      
       setPatientModal(null);
+      setCompletingTicket(null);
       await loadQueue();
+
+      if (isFinishing) {
+        const updatedTicket = {
+          ...savedTicket,
+          visit: {
+            ...savedTicket.visit,
+            selectedScheduleId: patientForm.scheduleId,
+          }
+        };
+        setDestModal(updatedTicket);
+      }
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
   };
 
@@ -323,7 +345,7 @@ export default function AdmissionPage() {
 
       {/* Patient Data Modal */}
       {patientModal && (
-        <div className={styles.modalOverlay} onClick={() => setPatientModal(null)}>
+        <div className={styles.modalOverlay} onClick={closePatientModal}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>👤 Data Pasien — {patientModal.ticketNo}</h3>
             <div className="form-group">
@@ -357,7 +379,7 @@ export default function AdmissionPage() {
               <input className="form-input" value={patientForm.doctorTicketNo} onChange={e => setPatientForm({ ...patientForm, doctorTicketNo: e.target.value })} placeholder="Otomatis digenerate jika kosong" />
             </div>
             <div className={styles.modalActions}>
-              <button className="btn btn-secondary" onClick={() => setPatientModal(null)}>Batal</button>
+              <button className="btn btn-secondary" onClick={closePatientModal}>Batal</button>
               <button className="btn btn-primary" onClick={savePatientData}>💾 Simpan</button>
             </div>
           </div>
