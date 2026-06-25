@@ -84,8 +84,10 @@ export class VideoService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    return videos.filter(v => 
-      v.targets.length === 0 || v.targets.some(t => t.displayId === display.id)
+    return videos.filter(
+      (v) =>
+        v.targets.length === 0 ||
+        v.targets.some((t) => t.displayId === display.id),
     );
   }
 
@@ -97,7 +99,7 @@ export class VideoService {
 
     if (displayIds && displayIds.length > 0) {
       await this.prisma.videoDisplayTarget.createMany({
-        data: displayIds.map(id => ({
+        data: displayIds.map((id) => ({
           videoItemId: videoId,
           displayId: id,
         })),
@@ -114,7 +116,9 @@ export class VideoService {
 
   // Toggle video active/inactive
   async toggleVideoItem(id: string) {
-    const item = await this.prisma.videoPlaylistItem.findUnique({ where: { id } });
+    const item = await this.prisma.videoPlaylistItem.findUnique({
+      where: { id },
+    });
     if (!item) throw new Error('Video not found');
     const res = await this.prisma.videoPlaylistItem.update({
       where: { id },
@@ -147,12 +151,15 @@ export class VideoService {
     return this.prisma.videoPlaylist.delete({ where: { id } });
   }
 
-  async addVideoItem(playlistId: string, data: { title: string; fileUrl: string; duration?: number }) {
+  async addVideoItem(
+    playlistId: string,
+    data: { title: string; fileUrl: string; duration?: number },
+  ) {
     const lastItem = await this.prisma.videoPlaylistItem.findFirst({
       where: { playlistId },
       orderBy: { sortOrder: 'desc' },
     });
-    
+
     return this.prisma.videoPlaylistItem.create({
       data: {
         ...data,
@@ -163,7 +170,9 @@ export class VideoService {
   }
 
   async removeVideoItem(itemId: string) {
-    const res = await this.prisma.videoPlaylistItem.delete({ where: { id: itemId } });
+    const res = await this.prisma.videoPlaylistItem.delete({
+      where: { id: itemId },
+    });
     await this.notifyDisplays();
     return res;
   }
@@ -174,8 +183,8 @@ export class VideoService {
         this.prisma.videoPlaylistItem.update({
           where: { id: u.id },
           data: { sortOrder: u.sortOrder },
-        })
-      )
+        }),
+      ),
     );
   }
 }

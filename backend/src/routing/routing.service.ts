@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 
@@ -33,50 +37,115 @@ export class RoutingService {
    */
   private readonly destinationMap: Record<string, UnitDestination[]> = {
     ADMISSION: [
-      { unitType: 'ASSESSMENT', label: 'Pengkajian', icon: '📋', isDefault: true },
-      { unitType: 'DOCTOR', label: 'Dokter/Poli', icon: '👨‍⚕️', isDefault: false },
+      {
+        unitType: 'ASSESSMENT',
+        label: 'Pengkajian',
+        icon: '📋',
+        isDefault: true,
+      },
+      {
+        unitType: 'DOCTOR',
+        label: 'Dokter/Poli',
+        icon: '👨‍⚕️',
+        isDefault: false,
+      },
       { unitType: 'BDR', label: 'BDR', icon: '🏥', isDefault: false },
       { unitType: 'CDC', label: 'CDC', icon: '🔬', isDefault: false },
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: false,
+      },
     ],
     ASSESSMENT: [
       { unitType: 'BDR', label: 'BDR', icon: '🏥', isDefault: true },
-      { unitType: 'DOCTOR', label: 'Dokter/Poli', icon: '👨‍⚕️', isDefault: false },
+      {
+        unitType: 'DOCTOR',
+        label: 'Dokter/Poli',
+        icon: '👨‍⚕️',
+        isDefault: false,
+      },
       { unitType: 'CDC', label: 'CDC', icon: '🔬', isDefault: false },
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: false,
+      },
     ],
     BDR: [
       { unitType: 'DOCTOR', label: 'Dokter/Poli', icon: '👨‍⚕️', isDefault: true },
-      { unitType: 'ASSESSMENT', label: 'Pengkajian', icon: '📋', isDefault: false },
+      {
+        unitType: 'ASSESSMENT',
+        label: 'Pengkajian',
+        icon: '📋',
+        isDefault: false,
+      },
       { unitType: 'CDC', label: 'CDC', icon: '🔬', isDefault: false },
       { unitType: 'CASHIER', label: 'Kasir', icon: '💳', isDefault: false },
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: false,
+      },
     ],
     CDC: [
       { unitType: 'CASHIER', label: 'Kasir', icon: '💳', isDefault: true },
-      { unitType: 'DOCTOR', label: 'Dokter/Poli', icon: '👨‍⚕️', isDefault: false },
+      {
+        unitType: 'DOCTOR',
+        label: 'Dokter/Poli',
+        icon: '👨‍⚕️',
+        isDefault: false,
+      },
       { unitType: 'PHARMACY', label: 'Farmasi', icon: '💊', isDefault: false },
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: false,
+      },
     ],
     DOCTOR: [
       { unitType: 'CDC', label: 'CDC', icon: '🔬', isDefault: false },
       { unitType: 'CASHIER', label: 'Kasir', icon: '💳', isDefault: false },
       { unitType: 'PHARMACY', label: 'Farmasi', icon: '💊', isDefault: false },
       { unitType: 'OPTIC', label: 'Optik', icon: '👓', isDefault: false },
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: false,
+      },
     ],
     CASHIER: [
       { unitType: 'PHARMACY', label: 'Farmasi', icon: '💊', isDefault: false },
       { unitType: 'OPTIC', label: 'Optik', icon: '👓', isDefault: false },
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: false,
+      },
     ],
     PHARMACY: [
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: true },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: true,
+      },
       { unitType: 'CASHIER', label: 'Kasir', icon: '💳', isDefault: false },
       { unitType: 'OPTIC', label: 'Optik', icon: '👓', isDefault: false },
     ],
     OPTIC: [
-      { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: true },
+      {
+        unitType: 'FINISHED',
+        label: 'Selesai (Pulang)',
+        icon: '🏠',
+        isDefault: true,
+      },
       { unitType: 'CASHIER', label: 'Kasir', icon: '💳', isDefault: false },
       { unitType: 'PHARMACY', label: 'Farmasi', icon: '💊', isDefault: false },
     ],
@@ -87,14 +156,24 @@ export class RoutingService {
    */
   private readonly allUnits: UnitDestination[] = [
     { unitType: 'ADMISSION', label: 'Admisi', icon: '🏢', isDefault: false },
-    { unitType: 'ASSESSMENT', label: 'Pengkajian', icon: '📋', isDefault: false },
+    {
+      unitType: 'ASSESSMENT',
+      label: 'Pengkajian',
+      icon: '📋',
+      isDefault: false,
+    },
     { unitType: 'BDR', label: 'BDR', icon: '🏥', isDefault: false },
     { unitType: 'CDC', label: 'CDC', icon: '🔬', isDefault: false },
     { unitType: 'DOCTOR', label: 'Dokter/Poli', icon: '👨‍⚕️', isDefault: false },
     { unitType: 'CASHIER', label: 'Kasir', icon: '💳', isDefault: false },
     { unitType: 'PHARMACY', label: 'Farmasi', icon: '💊', isDefault: false },
     { unitType: 'OPTIC', label: 'Optik', icon: '👓', isDefault: false },
-    { unitType: 'FINISHED', label: 'Selesai (Pulang)', icon: '🏠', isDefault: false },
+    {
+      unitType: 'FINISHED',
+      label: 'Selesai (Pulang)',
+      icon: '🏠',
+      isDefault: false,
+    },
   ];
 
   /**
@@ -108,7 +187,7 @@ export class RoutingService {
    * Get all possible transfer destinations (excluding current unit)
    */
   getTransferDestinations(currentUnit: string): UnitDestination[] {
-    return this.allUnits.filter(u => u.unitType !== currentUnit);
+    return this.allUnits.filter((u) => u.unitType !== currentUnit);
   }
 
   /**
@@ -117,7 +196,7 @@ export class RoutingService {
   getDefaultNextUnit(fromUnit: string): string | null {
     const destinations = this.destinationMap[fromUnit];
     if (!destinations) return null;
-    const defaultDest = destinations.find(d => d.isDefault);
+    const defaultDest = destinations.find((d) => d.isDefault);
     return defaultDest?.unitType || null;
   }
 
@@ -138,7 +217,9 @@ export class RoutingService {
     },
     userId: string,
   ) {
-    const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+    });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
     if (nextUnitType === 'FINISHED') {
@@ -185,7 +266,9 @@ export class RoutingService {
       createdBy: userId,
     });
 
-    const destLabel = this.allUnits.find(u => u.unitType === nextUnitType)?.label || nextUnitType;
+    const destLabel =
+      this.allUnits.find((u) => u.unitType === nextUnitType)?.label ||
+      nextUnitType;
     return { message: `Pasien diarahkan ke ${destLabel}` };
   }
 
@@ -207,7 +290,8 @@ export class RoutingService {
       include: { queueTicket: true },
     });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
-    if (!visit.currentUnitType) throw new BadRequestException('Visit tidak memiliki unit aktif');
+    if (!visit.currentUnitType)
+      throw new BadRequestException('Visit tidak memiliki unit aktif');
 
     const fromUnit = visit.currentUnitType;
 
@@ -216,7 +300,10 @@ export class RoutingService {
     }
 
     // 1. Find and mark current active session as TRANSFERRED
-    const currentSession = await this.journeyService.findSessionByVisitAndUnit(visitId, fromUnit);
+    const currentSession = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      fromUnit,
+    );
     if (currentSession) {
       await this.journeyService.transferSession(currentSession.id, {
         reason,
@@ -270,8 +357,11 @@ export class RoutingService {
       createdBy: userId,
     });
 
-    const fromLabel = this.allUnits.find(u => u.unitType === fromUnit)?.label || fromUnit;
-    const toLabel = this.allUnits.find(u => u.unitType === targetUnitType)?.label || targetUnitType;
+    const fromLabel =
+      this.allUnits.find((u) => u.unitType === fromUnit)?.label || fromUnit;
+    const toLabel =
+      this.allUnits.find((u) => u.unitType === targetUnitType)?.label ||
+      targetUnitType;
     return { message: `Pasien ditransfer dari ${fromLabel} ke ${toLabel}` };
   }
 

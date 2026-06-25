@@ -1,11 +1,13 @@
 export interface IScheduleAdapter {
-  fetchSchedules(date: Date): Promise<{
-    doctorId: string;
-    roomId: string;
-    quota: number;
-    startTime: string;
-    endTime: string;
-  }[]>;
+  fetchSchedules(date: Date): Promise<
+    {
+      doctorId: string;
+      roomId: string;
+      quota: number;
+      startTime: string;
+      endTime: string;
+    }[]
+  >;
 }
 
 export class ExcelScheduleAdapter implements IScheduleAdapter {

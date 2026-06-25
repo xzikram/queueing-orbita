@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { CdcService } from './cdc.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -14,10 +22,14 @@ export class CdcController {
   constructor(private service: CdcService) {}
 
   @Get('queue')
-  getQueue() { return this.service.getQueue(); }
+  getQueue() {
+    return this.service.getQueue();
+  }
 
   @Get('destinations')
-  getDestinations() { return this.service.getDestinations(); }
+  getDestinations() {
+    return this.service.getDestinations();
+  }
 
   @Post(':visitId/start')
   start(@Param('visitId') visitId: string, @Request() req: any) {
@@ -30,7 +42,12 @@ export class CdcController {
     @Body() body: { nextUnitType?: string; serviceName?: string },
     @Request() req: any,
   ) {
-    return this.service.finishService(visitId, req.user.id, body?.nextUnitType, body?.serviceName);
+    return this.service.finishService(
+      visitId,
+      req.user.id,
+      body?.nextUnitType,
+      body?.serviceName,
+    );
   }
 
   @Post(':visitId/transfer')

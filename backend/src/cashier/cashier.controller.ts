@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { CashierService } from './cashier.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -15,13 +24,21 @@ export class CashierController {
   constructor(private service: CashierService) {}
 
   @Get('queue')
-  getQueue() { return this.service.getQueue(); }
+  getQueue() {
+    return this.service.getQueue();
+  }
 
   @Get('destinations')
-  getDestinations() { return this.service.getDestinations(); }
+  getDestinations() {
+    return this.service.getDestinations();
+  }
 
   @Post(':visitId/call')
-  call(@Param('visitId') visitId: string, @Body() body: { counterId: string }, @Request() req: any) {
+  call(
+    @Param('visitId') visitId: string,
+    @Body() body: { counterId: string },
+    @Request() req: any,
+  ) {
     return this.service.callPatient(visitId, body.counterId, req.user.id);
   }
 
@@ -36,8 +53,16 @@ export class CashierController {
   }
 
   @Post(':visitId/next-destination')
-  nextDestination(@Param('visitId') visitId: string, @Body() body: { destination: string }, @Request() req: any) {
-    return this.service.setNextDestination(visitId, body.destination, req.user.id);
+  nextDestination(
+    @Param('visitId') visitId: string,
+    @Body() body: { destination: string },
+    @Request() req: any,
+  ) {
+    return this.service.setNextDestination(
+      visitId,
+      body.destination,
+      req.user.id,
+    );
   }
 
   @Post(':visitId/transfer')
@@ -66,10 +91,7 @@ export class CashierController {
   }
 
   @Post(':visitId/hold')
-  hold(
-    @Param('visitId') visitId: string,
-    @Request() req: any,
-  ) {
+  hold(@Param('visitId') visitId: string, @Request() req: any) {
     return this.service.holdVisit(visitId, {
       userId: req.user.id,
     });
@@ -82,7 +104,11 @@ export class CashierController {
   }
 
   @Post(':visitId/sync')
-  syncTicket(@Param('visitId') visitId: string, @Body() body: { targetVisitId: string }, @Request() req: any) {
+  syncTicket(
+    @Param('visitId') visitId: string,
+    @Body() body: { targetVisitId: string },
+    @Request() req: any,
+  ) {
     return this.service.syncTicket(visitId, body.targetVisitId, req.user.id);
   }
 }

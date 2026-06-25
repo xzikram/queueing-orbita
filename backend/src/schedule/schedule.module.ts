@@ -7,7 +7,12 @@ import { ScheduleCronService } from './schedule-cron.service';
 
 @Module({
   controllers: [ScheduleController],
-  providers: [ScheduleService, ScheduleImportService, HisApiService, ScheduleCronService],
+  providers: [
+    ScheduleService,
+    ScheduleImportService,
+    HisApiService,
+    ScheduleCronService,
+  ],
   exports: [ScheduleService],
 })
 export class ScheduleModule {}

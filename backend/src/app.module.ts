@@ -31,7 +31,7 @@ import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
       rootPath: join(process.cwd(), 'public'),
       serveRoot: '/api',
       serveStaticOptions: {
-        index: false,  // Don't look for index.html as fallback
+        index: false, // Don't look for index.html as fallback
       },
     }),
     PrismaModule,
@@ -57,7 +57,8 @@ import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
   providers: [
     {
       provide: 'APP_INTERCEPTOR',
-      useClass: require('./common/interceptors/audit.interceptor').AuditInterceptor,
+      useClass: require('./common/interceptors/audit.interceptor')
+        .AuditInterceptor,
     },
   ],
 })

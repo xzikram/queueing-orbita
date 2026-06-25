@@ -1,4 +1,9 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSION_KEY } from '../decorators/permission.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -17,10 +22,10 @@ export class PermissionsGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const requiredPermission = this.reflector.getAllAndOverride<string>(PERMISSION_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredPermission = this.reflector.getAllAndOverride<string>(
+      PERMISSION_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     // If no @Permission() decorator is set, allow access
     if (!requiredPermission) {
@@ -43,12 +48,16 @@ export class PermissionsGuard implements CanActivate {
     });
 
     if (!accessGroup || !accessGroup.isActive) {
-      throw new ForbiddenException('Access group tidak aktif atau belum dikonfigurasi untuk role Anda');
+      throw new ForbiddenException(
+        'Access group tidak aktif atau belum dikonfigurasi untuk role Anda',
+      );
     }
 
     const permissions: string[] = JSON.parse(accessGroup.permissions);
     if (!permissions.includes(requiredPermission)) {
-      throw new ForbiddenException(`Anda tidak memiliki akses ke fitur "${requiredPermission}"`);
+      throw new ForbiddenException(
+        `Anda tidak memiliki akses ke fitur "${requiredPermission}"`,
+      );
     }
 
     return true;

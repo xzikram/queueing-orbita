@@ -68,18 +68,23 @@ export class DisplayGateway
   /**
    * Broadcast a queue call to a specific display channel
    */
-  broadcastCall(displayCode: string, payload: {
-    ticketNo: string;
-    patientType: string;
-    counterName?: string;
-    roomName?: string;
-    doctorName?: string;
-    unitType: string;
-    calledAt: Date;
-    visitId?: string;
-  }) {
+  broadcastCall(
+    displayCode: string,
+    payload: {
+      ticketNo: string;
+      patientType: string;
+      counterName?: string;
+      roomName?: string;
+      doctorName?: string;
+      unitType: string;
+      calledAt: Date;
+      visitId?: string;
+    },
+  ) {
     this.server.to(displayCode).emit('queueCall', payload);
-    this.logger.log(`Broadcast to ${displayCode}: ${payload.ticketNo} → ${payload.counterName || payload.roomName}`);
+    this.logger.log(
+      `Broadcast to ${displayCode}: ${payload.ticketNo} → ${payload.counterName || payload.roomName}`,
+    );
   }
 
   /**

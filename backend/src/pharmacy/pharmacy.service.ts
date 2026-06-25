@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { DisplayGateway } from '../websocket/display.gateway';
@@ -13,17 +17,24 @@ export class PharmacyService {
   ) {}
 
   async getQueue() {
+    const { today, tomorrow } = getLocalDateBoundaries();
     return this.prisma.visit.findMany({
       where: {
         currentUnitType: 'PHARMACY',
-        currentStatus: { in: ['WAITING', 'SERVING', 'CALLED', 'READY', 'PHARMACY_DONE'] },
+        currentStatus: {
+          in: ['WAITING', 'SERVING', 'CALLED', 'READY', 'PHARMACY_DONE'],
+        },
         finishedAt: null,
+        visitDate: { gte: today, lt: tomorrow },
       },
       include: {
         queueTicket: true,
         selectedDoctor: true,
         journeySessions: {
-          where: { unitType: 'PHARMACY', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+          where: {
+            unitType: 'PHARMACY',
+            status: { notIn: ['FINISHED', 'CANCELLED'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -45,16 +56,25 @@ export class PharmacyService {
   }
 
   async startProcess(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'PHARMACY');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'PHARMACY',
+    );
     if (!session) throw new BadRequestException('Sesi Farmasi tidak ditemukan');
     await this.journeyService.startService(session.id, { createdBy: userId });
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'SERVING' },
+    });
     this.displayGateway.triggerDashboardRefresh();
     return { message: 'Proses penyiapan obat dimulai' };
   }
 
   async markReady(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'PHARMACY');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'PHARMACY',
+    );
     if (!session) throw new BadRequestException('Sesi Farmasi tidak ditemukan');
 
     await this.prisma.journeyUnitSession.update({
@@ -62,7 +82,10 @@ export class PharmacyService {
       data: { readyAt: new Date() },
     });
 
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'READY' } });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'READY' },
+    });
 
     // Create READY event
     await this.prisma.journeyEvent.create({
@@ -87,14 +110,22 @@ export class PharmacyService {
     });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'PHARMACY');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'PHARMACY',
+    );
     if (!session) throw new BadRequestException('Sesi Farmasi tidak ditemukan');
 
     await this.journeyService.callSession(session.id, { createdBy: userId });
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'CALLED' } });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'CALLED' },
+    });
 
     // Broadcast to farmasi display
-    const farmasiDisplay = await this.prisma.display.findFirst({ where: { code: 'display_farmasi' } });
+    const farmasiDisplay = await this.prisma.display.findFirst({
+      where: { code: 'display_farmasi' },
+    });
     if (farmasiDisplay) {
       this.displayGateway.broadcastCall('display_farmasi', {
         ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
@@ -125,7 +156,10 @@ export class PharmacyService {
    * Finish pharmacy session — obat sudah diserahkan
    */
   async finishService(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'PHARMACY');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'PHARMACY',
+    );
     if (!session) throw new BadRequestException('Sesi Farmasi tidak ditemukan');
     await this.journeyService.finishService(session.id, { createdBy: userId });
     await this.prisma.visit.update({
@@ -156,7 +190,9 @@ export class PharmacyService {
     // Check pharmacy session is finished
     const pharmacySession = visit.journeySessions[0];
     if (!pharmacySession || pharmacySession.status !== 'FINISHED') {
-      throw new BadRequestException('Sesi farmasi belum selesai. Selesaikan penyerahan obat terlebih dahulu.');
+      throw new BadRequestException(
+        'Sesi farmasi belum selesai. Selesaikan penyerahan obat terlebih dahulu.',
+      );
     }
 
     // Finalize the visit

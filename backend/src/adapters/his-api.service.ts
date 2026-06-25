@@ -3,9 +3,15 @@ import { Injectable, Logger } from '@nestjs/common';
 @Injectable()
 export class HisApiService {
   private readonly logger = new Logger(HisApiService.name);
-  private readonly apiUrl = 'https://beam.jec.co.id/v1/alb/getParamedicSchedule';
+  private readonly apiUrl =
+    'https://beam.jec.co.id/v1/alb/getParamedicSchedule';
 
-  async getSchedule(paramedicId: string, periodStart: string, periodEnd: string, serviceUnitId: string): Promise<any[]> {
+  async getSchedule(
+    paramedicId: string,
+    periodStart: string,
+    periodEnd: string,
+    serviceUnitId: string,
+  ): Promise<any[]> {
     try {
       const body = {
         ServiceUnitID: serviceUnitId,
@@ -15,7 +21,8 @@ export class HisApiService {
         periodEnd,
       };
 
-      const token = process.env.HIS_API_TOKEN || '88d9e6dd754f742aa7ee7a775bade2c7';
+      const token =
+        process.env.HIS_API_TOKEN || '88d9e6dd754f742aa7ee7a775bade2c7';
 
       // Use global fetch (Node 18+)
       const response = await fetch(this.apiUrl, {
@@ -35,7 +42,7 @@ export class HisApiService {
       }
 
       const data = await response.json();
-      
+
       // If result is error or no data
       if (data.result === 'error' || !data.data || !Array.isArray(data.data)) {
         return [];
@@ -48,7 +55,9 @@ export class HisApiService {
 
       return [];
     } catch (error: any) {
-      this.logger.error(`Failed to fetch schedule for ${paramedicId}: ${error.message}`);
+      this.logger.error(
+        `Failed to fetch schedule for ${paramedicId}: ${error.message}`,
+      );
       return [];
     }
   }

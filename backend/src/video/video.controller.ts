@@ -1,5 +1,15 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { VideoService } from './video.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -45,7 +55,10 @@ export class VideoController {
   @Put('items/:id/targets')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async setVideoTargets(@Param('id') id: string, @Body() body: { displayIds: string[] }) {
+  async setVideoTargets(
+    @Param('id') id: string,
+    @Body() body: { displayIds: string[] },
+  ) {
     return this.videoService.setVideoTargets(id, body.displayIds);
   }
 
@@ -73,26 +86,27 @@ export class VideoController {
   @Post('upload')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: uploadDir,
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: uploadDir,
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
+        },
+      }),
+      limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB max
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('video/')) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Only video files are allowed!'), false);
+        }
       },
     }),
-    limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB max
-    fileFilter: (req, file, cb) => {
-      if (file.mimetype.startsWith('video/')) {
-        cb(null, true);
-      } else {
-        cb(new BadRequestException('Only video files are allowed!'), false);
-      }
-    },
-  }))
-  async uploadSimple(
-    @UploadedFile() file: Express.Multer.File,
-  ) {
+  )
+  async uploadSimple(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('Video file is required');
     const fileUrl = `/uploads/videos/${file.filename}`;
     const title = file.originalname.replace(/\.[^/.]+$/, ''); // Use filename as title
@@ -106,18 +120,20 @@ export class VideoController {
   @Post('upload-chunk')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @UseInterceptors(FileInterceptor('chunk', {
-    storage: diskStorage({
-      destination: chunksDir,
-      filename: (req, file, cb) => {
-        // Use uploadId + chunk index as filename
-        const uploadId = (req.body as any)?.uploadId || 'unknown';
-        const chunkIndex = (req.body as any)?.chunkIndex || '0';
-        cb(null, `${uploadId}_chunk_${chunkIndex}`);
-      },
+  @UseInterceptors(
+    FileInterceptor('chunk', {
+      storage: diskStorage({
+        destination: chunksDir,
+        filename: (req, file, cb) => {
+          // Use uploadId + chunk index as filename
+          const uploadId = req.body?.uploadId || 'unknown';
+          const chunkIndex = req.body?.chunkIndex || '0';
+          cb(null, `${uploadId}_chunk_${chunkIndex}`);
+        },
+      }),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per chunk max
     }),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB per chunk max
-  }))
+  )
   async uploadChunk(
     @UploadedFile() chunk: Express.Multer.File,
     @Body() body: { uploadId: string; chunkIndex: string; totalChunks: string },
@@ -153,7 +169,9 @@ export class VideoController {
         writeStream.close();
         // Clean up partial file
         if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
-        throw new BadRequestException(`Chunk ${i} not found. Upload mungkin terputus.`);
+        throw new BadRequestException(
+          `Chunk ${i} not found. Upload mungkin terputus.`,
+        );
       }
       const chunkData = fs.readFileSync(chunkPath);
       writeStream.write(chunkData);
@@ -178,31 +196,37 @@ export class VideoController {
   @Post('playlists/:id/items')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: uploadDir,
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: uploadDir,
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, 'video-' + uniqueSuffix + extname(file.originalname));
+        },
+      }),
+      limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB max
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype.match(/\/(mp4|webm|ogg)$/)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Only video files are allowed!'), false);
+        }
       },
     }),
-    limits: { fileSize: 1024 * 1024 * 1024 }, // 1 GB max
-    fileFilter: (req, file, cb) => {
-      if (file.mimetype.match(/\/(mp4|webm|ogg)$/)) {
-        cb(null, true);
-      } else {
-        cb(new BadRequestException('Only video files are allowed!'), false);
-      }
-    },
-  }))
+  )
   async uploadVideo(
     @Param('id') playlistId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { title: string }
+    @Body() body: { title: string },
   ) {
     if (!file) throw new BadRequestException('Video file is required');
     const fileUrl = `/uploads/videos/${file.filename}`;
-    return this.videoService.addVideoItem(playlistId, { title: body.title, fileUrl });
+    return this.videoService.addVideoItem(playlistId, {
+      title: body.title,
+      fileUrl,
+    });
   }
 
   // Toggle video on/off
@@ -223,7 +247,9 @@ export class VideoController {
   @Put('items/reorder')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async reorderItems(@Body() body: { items: { id: string; sortOrder: number }[] }) {
+  async reorderItems(
+    @Body() body: { items: { id: string; sortOrder: number }[] },
+  ) {
     return this.videoService.updateItemOrder(body.items);
   }
 }

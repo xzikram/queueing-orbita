@@ -27,29 +27,54 @@ function parseExcelTime(value: any): string {
 
 function findDoctorRobustly(searchName: string, doctors: any[]): any | null {
   const cleanSearch = searchName.toLowerCase().trim();
-  
+
   // 1. Exact match (case insensitive, trimmed)
-  const exact = doctors.find(d => d.doctorName.toLowerCase().trim() === cleanSearch);
+  const exact = doctors.find(
+    (d) => d.doctorName.toLowerCase().trim() === cleanSearch,
+  );
   if (exact) return exact;
 
   // 2. Exact match without common titles and punctuation
-  const cleanStr = (s: string) => s.toLowerCase()
-    .replace(/^(dr\.|dr|prof\.|prof|drs\.|drs)\s+/g, '')
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleanStr = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/^(dr\.|dr|prof\.|prof|drs\.|drs)\s+/g, '')
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   const cleanSearchStr = cleanStr(searchName);
-  const exactClean = doctors.find(d => cleanStr(d.doctorName) === cleanSearchStr);
+  const exactClean = doctors.find(
+    (d) => cleanStr(d.doctorName) === cleanSearchStr,
+  );
   if (exactClean) return exactClean;
 
   // 3. Token-based matching
-  const stopWords = new Set(['dr', 'prof', 'sp', 'spd', 'spm', 'spog', 'spa', 'spb', 'sps', 'spu', 'mkes', 'phd', 'mars', 'dan', 'y', 'de', 'la']);
-  const getTokens = (s: string) => 
-    s.toLowerCase()
-     .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
-     .split(/\s+/)
-     .map(t => t.trim())
-     .filter(t => t.length > 2 && !stopWords.has(t));
+  const stopWords = new Set([
+    'dr',
+    'prof',
+    'sp',
+    'spd',
+    'spm',
+    'spog',
+    'spa',
+    'spb',
+    'sps',
+    'spu',
+    'mkes',
+    'phd',
+    'mars',
+    'dan',
+    'y',
+    'de',
+    'la',
+  ]);
+  const getTokens = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 2 && !stopWords.has(t));
 
   const searchTokens = getTokens(searchName);
   if (searchTokens.length === 0) return null;
@@ -61,9 +86,11 @@ function findDoctorRobustly(searchName: string, doctors: any[]): any | null {
   for (const doc of doctors) {
     const docTokens = getTokens(doc.doctorName);
     let score = 0;
-    
+
     for (const sTok of searchTokens) {
-      const hasMatch = docTokens.some(dTok => dTok === sTok || dTok.includes(sTok) || sTok.includes(dTok));
+      const hasMatch = docTokens.some(
+        (dTok) => dTok === sTok || dTok.includes(sTok) || sTok.includes(dTok),
+      );
       if (hasMatch) {
         score++;
       }
@@ -102,7 +129,9 @@ export class ScheduleImportService {
     });
 
     const errors: string[] = [];
-    let success = 0, failed = 0, total = 0;
+    let success = 0,
+      failed = 0,
+      total = 0;
 
     // Expected columns: scheduleDate, doctorCode, roomCode, startTime, endTime, quota
     sheet.eachRow((row, rowNum) => {
@@ -112,8 +141,12 @@ export class ScheduleImportService {
 
     const doctors = await this.prisma.doctor.findMany();
     const rooms = await this.prisma.room.findMany({ include: { floor: true } });
-    const roomCodeMap = new Map(rooms.map(r => [r.code.toLowerCase().trim(), r]));
-    const roomNameMap = new Map(rooms.map(r => [r.name.toLowerCase().trim(), r]));
+    const roomCodeMap = new Map(
+      rooms.map((r) => [r.code.toLowerCase().trim(), r]),
+    );
+    const roomNameMap = new Map(
+      rooms.map((r) => [r.name.toLowerCase().trim(), r]),
+    );
 
     const rows: any[] = [];
     sheet.eachRow((row, rowNum) => {
@@ -138,25 +171,58 @@ export class ScheduleImportService {
 
         // Validate doctor by name robustly
         const doctor = findDoctorRobustly(r.doctorName, doctors);
-        if (!doctor) { errors.push(`Row ${r.rowNum}: Dokter "${r.doctorName}" tidak ditemukan`); failed++; continue; }
+        if (!doctor) {
+          errors.push(
+            `Row ${r.rowNum}: Dokter "${r.doctorName}" tidak ditemukan`,
+          );
+          failed++;
+          continue;
+        }
 
         // Validate room
         const roomQ = r.roomQuery.toLowerCase();
-        const room = roomCodeMap.get(roomQ) || roomNameMap.get(roomQ) || roomNameMap.get(`poli ${roomQ}`);
-        if (!room) { errors.push(`Row ${r.rowNum}: Ruangan "${r.roomQuery}" tidak ditemukan`); failed++; continue; }
+        const room =
+          roomCodeMap.get(roomQ) ||
+          roomNameMap.get(roomQ) ||
+          roomNameMap.get(`poli ${roomQ}`);
+        if (!room) {
+          errors.push(
+            `Row ${r.rowNum}: Ruangan "${r.roomQuery}" tidak ditemukan`,
+          );
+          failed++;
+          continue;
+        }
 
         // Parse date
         const date = parseLocalDate(r.scheduleDate);
-        if (isNaN(date.getTime())) { errors.push(`Row ${r.rowNum}: Tanggal tidak valid`); failed++; continue; }
+        if (isNaN(date.getTime())) {
+          errors.push(`Row ${r.rowNum}: Tanggal tidak valid`);
+          failed++;
+          continue;
+        }
 
-        const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+        const dayNames = [
+          'Minggu',
+          'Senin',
+          'Selasa',
+          'Rabu',
+          'Kamis',
+          'Jumat',
+          'Sabtu',
+        ];
         const dayName = dayNames[date.getDay()];
 
         // Check conflicts
         const existing = await this.prisma.doctorSchedule.findFirst({
           where: { doctorId: doctor.id, roomId: room.id, scheduleDate: date },
         });
-        if (existing) { errors.push(`Row ${r.rowNum}: Jadwal sudah ada (${r.doctorName} @ ${r.roomQuery} @ ${date.toISOString().slice(0,10)})`); failed++; continue; }
+        if (existing) {
+          errors.push(
+            `Row ${r.rowNum}: Jadwal sudah ada (${r.doctorName} @ ${r.roomQuery} @ ${date.toISOString().slice(0, 10)})`,
+          );
+          failed++;
+          continue;
+        }
 
         await this.prisma.doctorSchedule.create({
           data: {
@@ -184,7 +250,8 @@ export class ScheduleImportService {
         totalRows: total,
         successRows: success,
         failedRows: failed,
-        status: failed === 0 ? 'COMPLETED' : (success === 0 ? 'FAILED' : 'COMPLETED'),
+        status:
+          failed === 0 ? 'COMPLETED' : success === 0 ? 'FAILED' : 'COMPLETED',
         errorLog: errors.length > 0 ? errors.join('\n') : null,
       },
     });

@@ -97,7 +97,9 @@ export class AccessGroupService {
     });
 
     if (!existing) {
-      throw new NotFoundException(`Access group untuk role ${role} tidak ditemukan. Silakan sync terlebih dahulu.`);
+      throw new NotFoundException(
+        `Access group untuk role ${role} tidak ditemukan. Silakan sync terlebih dahulu.`,
+      );
     }
 
     const updated = await this.prisma.accessGroup.update({

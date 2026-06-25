@@ -4,7 +4,10 @@ import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
 export class MasterService {
-  constructor(private prisma: PrismaService, private displayGateway: DisplayGateway) {}
+  constructor(
+    private prisma: PrismaService,
+    private displayGateway: DisplayGateway,
+  ) {}
 
   // ==================
   // COUNTERS
@@ -19,7 +22,12 @@ export class MasterService {
     return counter;
   }
 
-  async createCounter(data: { code: string; name: string; canHandleAdmission?: boolean; canHandleCashier?: boolean }) {
+  async createCounter(data: {
+    code: string;
+    name: string;
+    canHandleAdmission?: boolean;
+    canHandleCashier?: boolean;
+  }) {
     return this.prisma.counter.create({ data: data as any });
   }
 
@@ -90,15 +98,19 @@ export class MasterService {
   async deleteAllRooms() {
     // Set defaultRoomId to null in all Doctors
     await this.prisma.doctor.updateMany({
-      data: { defaultRoomId: null }
+      data: { defaultRoomId: null },
     });
     // Delete all doctor schedules (since they require roomId)
     await this.prisma.doctorSchedule.deleteMany();
     // Set roomId/selectedRoomId/currentRoomId to null in other models to avoid constraint violations
     await this.prisma.journeyEvent.updateMany({ data: { roomId: null } });
     await this.prisma.journeyUnitSession.updateMany({ data: { roomId: null } });
-    await this.prisma.queueTicket.updateMany({ data: { selectedRoomId: null } });
-    await this.prisma.visit.updateMany({ data: { currentRoomId: null, selectedRoomId: null } });
+    await this.prisma.queueTicket.updateMany({
+      data: { selectedRoomId: null },
+    });
+    await this.prisma.visit.updateMany({
+      data: { currentRoomId: null, selectedRoomId: null },
+    });
 
     await this.prisma.room.deleteMany();
     return { message: 'Semua ruangan berhasil dihapus' };
@@ -150,7 +162,13 @@ export class MasterService {
   // ==================
   async findAllDisplays() {
     return this.prisma.display.findMany({
-      include: { floor: true, rooms: true, videoPlaylist: { include: { items: { orderBy: { sortOrder: 'asc' } } } } },
+      include: {
+        floor: true,
+        rooms: true,
+        videoPlaylist: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
+      },
       orderBy: { code: 'asc' },
     });
   }
@@ -158,7 +176,13 @@ export class MasterService {
   async findOneDisplay(id: string) {
     const display = await this.prisma.display.findUnique({
       where: { id },
-      include: { floor: true, rooms: true, videoPlaylist: { include: { items: { orderBy: { sortOrder: 'asc' } } } } },
+      include: {
+        floor: true,
+        rooms: true,
+        videoPlaylist: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
+      },
     });
     if (!display) throw new NotFoundException('Display tidak ditemukan');
     return display;
@@ -167,7 +191,13 @@ export class MasterService {
   async findDisplayByCode(code: string) {
     const display = await this.prisma.display.findUnique({
       where: { code },
-      include: { floor: true, rooms: true, videoPlaylist: { include: { items: { orderBy: { sortOrder: 'asc' } } } } },
+      include: {
+        floor: true,
+        rooms: true,
+        videoPlaylist: {
+          include: { items: { orderBy: { sortOrder: 'asc' } } },
+        },
+      },
     });
     if (!display) throw new NotFoundException('Display tidak ditemukan');
     return display;
@@ -176,21 +206,36 @@ export class MasterService {
   async updateDisplay(id: string, data: any) {
     const old = await this.findOneDisplay(id);
     const updated = await this.prisma.display.update({ where: { id }, data });
-    
+
     // Broadcast if running text changed
-    if (data.runningText !== undefined && data.runningText !== old.runningText) {
-      this.displayGateway.server.to(updated.code).emit('runningTextUpdate', updated.runningText);
+    if (
+      data.runningText !== undefined &&
+      data.runningText !== old.runningText
+    ) {
+      this.displayGateway.server
+        .to(updated.code)
+        .emit('runningTextUpdate', updated.runningText);
     }
-    
+
     // Broadcast if playlist changed
-    if (data.videoPlaylistId !== undefined && data.videoPlaylistId !== old.videoPlaylistId) {
+    if (
+      data.videoPlaylistId !== undefined &&
+      data.videoPlaylistId !== old.videoPlaylistId
+    ) {
       const playlistData = await this.findDisplayByCode(updated.code);
-      this.displayGateway.server.to(updated.code).emit('playlistUpdate', playlistData.videoPlaylist);
+      this.displayGateway.server
+        .to(updated.code)
+        .emit('playlistUpdate', playlistData.videoPlaylist);
     }
 
     // Broadcast if video volume changed
-    if (data.videoVolume !== undefined && data.videoVolume !== old.videoVolume) {
-      this.displayGateway.server.to(updated.code).emit('videoVolumeUpdate', updated.videoVolume);
+    if (
+      data.videoVolume !== undefined &&
+      data.videoVolume !== old.videoVolume
+    ) {
+      this.displayGateway.server
+        .to(updated.code)
+        .emit('videoVolumeUpdate', updated.videoVolume);
     }
 
     return updated;

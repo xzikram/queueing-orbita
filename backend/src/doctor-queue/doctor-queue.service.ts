@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
@@ -19,7 +23,9 @@ export class DoctorQueueService {
 
     const where: any = {
       currentUnitType: 'DOCTOR',
-      currentStatus: { in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'] },
+      currentStatus: {
+        in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'],
+      },
       finishedAt: null,
       visitDate: { gte: today, lt: tomorrow },
     };
@@ -34,7 +40,10 @@ export class DoctorQueueService {
         selectedRoom: { include: { floor: true } },
         selectedFloor: true,
         journeySessions: {
-          where: { unitType: 'DOCTOR', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          where: {
+            unitType: 'DOCTOR',
+            status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -46,15 +55,25 @@ export class DoctorQueueService {
   async callPatient(visitId: string, userId: string) {
     const visit = await this.prisma.visit.findUnique({
       where: { id: visitId },
-      include: { queueTicket: true, selectedRoom: { include: { floor: true } }, selectedDoctor: true },
+      include: {
+        queueTicket: true,
+        selectedRoom: { include: { floor: true } },
+        selectedDoctor: true,
+      },
     });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'DOCTOR');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'DOCTOR',
+    );
     if (!session) throw new BadRequestException('Sesi Dokter tidak ditemukan');
 
     await this.journeyService.callSession(session.id, { createdBy: userId });
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'CALLED' } });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'CALLED' },
+    });
 
     // Broadcast to floor display
     const floorNum = visit.selectedRoom?.floor?.floorNumber;
@@ -70,7 +89,9 @@ export class DoctorQueueService {
         visitId: visit.id,
       });
 
-      const display = await this.prisma.display.findFirst({ where: { code: displayCode } });
+      const display = await this.prisma.display.findFirst({
+        where: { code: displayCode },
+      });
       if (display) {
         await this.prisma.displayCallLog.create({
           data: {
@@ -91,17 +112,26 @@ export class DoctorQueueService {
   }
 
   async startService(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'DOCTOR');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'DOCTOR',
+    );
     if (!session) throw new BadRequestException('Sesi Dokter tidak ditemukan');
 
     await this.journeyService.startService(session.id, { createdBy: userId });
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'SERVING' },
+    });
     this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pemeriksaan dokter dimulai' };
   }
 
   async finishService(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'DOCTOR');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'DOCTOR',
+    );
     if (!session) throw new BadRequestException('Sesi Dokter tidak ditemukan');
 
     await this.journeyService.finishService(session.id, { createdBy: userId });
@@ -113,8 +143,14 @@ export class DoctorQueueService {
     return { message: 'Pemeriksaan selesai, pilih tujuan selanjutnya' };
   }
 
-  async setNextDestination(visitId: string, destination: string, userId: string) {
-    const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
+  async setNextDestination(
+    visitId: string,
+    destination: string,
+    userId: string,
+  ) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+    });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
     // Delegate to routing service
@@ -134,8 +170,16 @@ export class DoctorQueueService {
   /**
    * Transfer patient from doctor to another unit
    */
-  async transferPatient(visitId: string, data: { targetUnitType: string; reason: string; userId: string }) {
-    return this.routingService.transferPatient(visitId, data.targetUnitType, data.reason, data.userId);
+  async transferPatient(
+    visitId: string,
+    data: { targetUnitType: string; reason: string; userId: string },
+  ) {
+    return this.routingService.transferPatient(
+      visitId,
+      data.targetUnitType,
+      data.reason,
+      data.userId,
+    );
   }
 
   /**

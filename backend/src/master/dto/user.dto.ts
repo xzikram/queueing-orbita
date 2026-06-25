@@ -1,4 +1,10 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsNotEmpty,
+} from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -11,7 +17,19 @@ export class CreateUserDto {
   @IsString()
   password: string;
 
-  @IsEnum(['ADMIN', 'ADMISSION', 'CASHIER', 'ASSESSMENT', 'BDR', 'DOCTOR', 'CDC', 'PHARMACY', 'OPTIC', 'MANAGEMENT', 'QUEUE_OFFICER'])
+  @IsEnum([
+    'ADMIN',
+    'ADMISSION',
+    'CASHIER',
+    'ASSESSMENT',
+    'BDR',
+    'DOCTOR',
+    'CDC',
+    'PHARMACY',
+    'OPTIC',
+    'MANAGEMENT',
+    'QUEUE_OFFICER',
+  ])
   role: string;
 
   @IsOptional()
@@ -33,7 +51,19 @@ export class UpdateUserDto {
   password?: string;
 
   @IsOptional()
-  @IsEnum(['ADMIN', 'ADMISSION', 'CASHIER', 'ASSESSMENT', 'BDR', 'DOCTOR', 'CDC', 'PHARMACY', 'OPTIC', 'MANAGEMENT', 'QUEUE_OFFICER'])
+  @IsEnum([
+    'ADMIN',
+    'ADMISSION',
+    'CASHIER',
+    'ASSESSMENT',
+    'BDR',
+    'DOCTOR',
+    'CDC',
+    'PHARMACY',
+    'OPTIC',
+    'MANAGEMENT',
+    'QUEUE_OFFICER',
+  ])
   role?: string;
 
   @IsOptional()

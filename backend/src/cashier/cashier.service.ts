@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
@@ -20,7 +24,9 @@ export class CashierService {
     return this.prisma.visit.findMany({
       where: {
         currentUnitType: 'CASHIER',
-        currentStatus: { in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'] },
+        currentStatus: {
+          in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'],
+        },
         finishedAt: null,
         visitDate: { gte: today, lt: tomorrow },
       },
@@ -29,7 +35,10 @@ export class CashierService {
         selectedDoctor: true,
         selectedRoom: { include: { floor: true } },
         journeySessions: {
-          where: { unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          where: {
+            unitType: 'CASHIER',
+            status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
           include: { counter: true },
@@ -46,25 +55,42 @@ export class CashierService {
     });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
-    const counter = await this.prisma.counter.findUnique({ where: { id: counterId } });
+    const counter = await this.prisma.counter.findUnique({
+      where: { id: counterId },
+    });
     if (!counter) throw new NotFoundException('Counter tidak ditemukan');
 
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'CASHIER');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'CASHIER',
+    );
     if (!session) throw new BadRequestException('Sesi Kasir tidak ditemukan');
 
     // Check if the ticket is already being processed by another counter
     if (session.status === 'CALLED' || session.status === 'SERVING') {
       if (session.counterId && session.counterId !== counterId) {
-        const otherCounter = await this.prisma.counter.findUnique({ where: { id: session.counterId } });
-        throw new BadRequestException(`Tiket ini sedang diproses di ${otherCounter?.name || 'counter lain'}`);
+        const otherCounter = await this.prisma.counter.findUnique({
+          where: { id: session.counterId },
+        });
+        throw new BadRequestException(
+          `Tiket ini sedang diproses di ${otherCounter?.name || 'counter lain'}`,
+        );
       }
     }
 
-    await this.journeyService.callSession(session.id, { counterId, createdBy: userId });
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'CALLED' } });
+    await this.journeyService.callSession(session.id, {
+      counterId,
+      createdBy: userId,
+    });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'CALLED' },
+    });
 
     // Broadcast to kasir display
-    const kasirDisplay = await this.prisma.display.findFirst({ where: { code: 'display_kasir' } });
+    const kasirDisplay = await this.prisma.display.findFirst({
+      where: { code: 'display_kasir' },
+    });
     if (kasirDisplay) {
       this.displayGateway.broadcastCall('display_kasir', {
         ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
@@ -92,16 +118,25 @@ export class CashierService {
   }
 
   async startService(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'CASHIER');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'CASHIER',
+    );
     if (!session) throw new BadRequestException('Sesi Kasir tidak ditemukan');
     await this.journeyService.startService(session.id, { createdBy: userId });
-    await this.prisma.visit.update({ where: { id: visitId }, data: { currentStatus: 'SERVING' } });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'SERVING' },
+    });
     this.displayGateway.triggerDashboardRefresh();
     return { message: 'Pembayaran dimulai' };
   }
 
   async finishService(visitId: string, userId: string) {
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'CASHIER');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'CASHIER',
+    );
     if (!session) throw new BadRequestException('Sesi Kasir tidak ditemukan');
     await this.journeyService.finishService(session.id, { createdBy: userId });
     await this.prisma.visit.update({
@@ -112,8 +147,14 @@ export class CashierService {
     return { message: 'Pembayaran selesai, pilih tujuan selanjutnya' };
   }
 
-  async setNextDestination(visitId: string, destination: string, userId: string) {
-    const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
+  async setNextDestination(
+    visitId: string,
+    destination: string,
+    userId: string,
+  ) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+    });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
     // Delegate to routing service
@@ -133,8 +174,16 @@ export class CashierService {
   /**
    * Transfer patient from cashier to another unit
    */
-  async transferPatient(visitId: string, data: { targetUnitType: string; reason: string; userId: string }) {
-    return this.routingService.transferPatient(visitId, data.targetUnitType, data.reason, data.userId);
+  async transferPatient(
+    visitId: string,
+    data: { targetUnitType: string; reason: string; userId: string },
+  ) {
+    return this.routingService.transferPatient(
+      visitId,
+      data.targetUnitType,
+      data.reason,
+      data.userId,
+    );
   }
 
   /**
@@ -146,7 +195,10 @@ export class CashierService {
       include: {
         queueTicket: true,
         journeySessions: {
-          where: { unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          where: {
+            unitType: 'CASHIER',
+            status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -215,7 +267,10 @@ export class CashierService {
       include: {
         queueTicket: true,
         journeySessions: {
-          where: { unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          where: {
+            unitType: 'CASHIER',
+            status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -225,9 +280,12 @@ export class CashierService {
     if (!visit) throw new NotFoundException('Data kunjungan tidak ditemukan');
 
     const activeSession = visit.journeySessions?.[0];
-    if (!activeSession) throw new BadRequestException('Sesi aktif tidak ditemukan');
+    if (!activeSession)
+      throw new BadRequestException('Sesi aktif tidak ditemukan');
 
-    await this.journeyService.holdSession(activeSession.id, { createdBy: data.userId });
+    await this.journeyService.holdSession(activeSession.id, {
+      createdBy: data.userId,
+    });
 
     // Log audit
     await this.prisma.auditLog.create({
@@ -273,24 +331,42 @@ export class CashierService {
   /**
    * Sync a kiosk ticket (source) with an existing patient visit (target)
    */
-  async syncTicket(sourceVisitId: string, targetVisitId: string, userId: string) {
-    const sourceVisit = await this.prisma.visit.findUnique({ where: { id: sourceVisitId } });
-    const targetVisit = await this.prisma.visit.findUnique({ where: { id: targetVisitId } });
+  async syncTicket(
+    sourceVisitId: string,
+    targetVisitId: string,
+    userId: string,
+  ) {
+    const sourceVisit = await this.prisma.visit.findUnique({
+      where: { id: sourceVisitId },
+    });
+    const targetVisit = await this.prisma.visit.findUnique({
+      where: { id: targetVisitId },
+    });
 
-    if (!sourceVisit) throw new NotFoundException('Data tiket Kiosk tidak ditemukan');
-    if (!targetVisit) throw new NotFoundException('Data kunjungan pasien tidak ditemukan');
+    if (!sourceVisit)
+      throw new NotFoundException('Data tiket Kiosk tidak ditemukan');
+    if (!targetVisit)
+      throw new NotFoundException('Data kunjungan pasien tidak ditemukan');
 
     await this.prisma.$transaction(async (prisma) => {
       const sourceQueueTicketId = sourceVisit.queueTicketId;
 
       // 1. Delete source visit journey events and sessions
-      const sourceSessions = await prisma.journeyUnitSession.findMany({ where: { visitId: sourceVisitId } });
-      const sourceSessionIds = sourceSessions.map(s => s.id);
+      const sourceSessions = await prisma.journeyUnitSession.findMany({
+        where: { visitId: sourceVisitId },
+      });
+      const sourceSessionIds = sourceSessions.map((s) => s.id);
       if (sourceSessionIds.length > 0) {
-        await prisma.journeyEvent.deleteMany({ where: { journeyUnitSessionId: { in: sourceSessionIds } } });
+        await prisma.journeyEvent.deleteMany({
+          where: { journeyUnitSessionId: { in: sourceSessionIds } },
+        });
       }
-      await prisma.journeyEvent.deleteMany({ where: { visitId: sourceVisitId } });
-      await prisma.journeyUnitSession.deleteMany({ where: { visitId: sourceVisitId } });
+      await prisma.journeyEvent.deleteMany({
+        where: { visitId: sourceVisitId },
+      });
+      await prisma.journeyUnitSession.deleteMany({
+        where: { visitId: sourceVisitId },
+      });
 
       // 2. Delete source visit first to free up the unique constraint on queueTicketId
       await prisma.visit.delete({ where: { id: sourceVisitId } });
@@ -303,7 +379,11 @@ export class CashierService {
 
       // 4. Update target session ticket
       const targetSession = await prisma.journeyUnitSession.findFirst({
-        where: { visitId: targetVisitId, unitType: 'CASHIER', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } }
+        where: {
+          visitId: targetVisitId,
+          unitType: 'CASHIER',
+          status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] },
+        },
       });
       if (targetSession) {
         await prisma.journeyUnitSession.update({
@@ -311,7 +391,7 @@ export class CashierService {
           data: { queueTicketId: sourceQueueTicketId },
         });
       }
-      
+
       // Log audit
       await prisma.auditLog.create({
         data: {
@@ -320,7 +400,7 @@ export class CashierService {
           entity: 'Visit',
           entityId: targetVisitId,
           reason: `Merged Kiosk ticket into patient visit`,
-        }
+        },
       });
     });
 

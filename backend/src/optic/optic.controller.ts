@@ -1,4 +1,11 @@
-import { Controller, Get, Post, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { OpticService } from './optic.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -14,7 +21,9 @@ export class OpticController {
   constructor(private service: OpticService) {}
 
   @Get('queue')
-  getQueue() { return this.service.getQueue(); }
+  getQueue() {
+    return this.service.getQueue();
+  }
 
   @Post(':visitId/start')
   start(@Param('visitId') visitId: string, @Request() req: any) {

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DoctorQueueService } from './doctor-queue.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
+import { RoutingService } from '../routing/routing.service';
 import { DisplayGateway } from '../websocket/display.gateway';
 import { NotFoundException } from '@nestjs/common';
 
@@ -28,6 +29,12 @@ describe('DoctorQueueService Auto-Routing', () => {
     createSession: jest.fn(),
   };
 
+  const mockRoutingService = {
+    routeToNextUnit: jest.fn(),
+    transferPatient: jest.fn(),
+    getAvailableDestinations: jest.fn(),
+  };
+
   const mockDisplayGateway = {
     broadcastCall: jest.fn(),
   };
@@ -38,6 +45,7 @@ describe('DoctorQueueService Auto-Routing', () => {
         DoctorQueueService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JourneyService, useValue: mockJourneyService },
+        { provide: RoutingService, useValue: mockRoutingService },
         { provide: DisplayGateway, useValue: mockDisplayGateway },
       ],
     }).compile();
@@ -59,23 +67,25 @@ describe('DoctorQueueService Auto-Routing', () => {
       };
 
       mockPrismaService.visit.findUnique.mockResolvedValue(mockVisit);
-      mockPrismaService.visit.update.mockResolvedValue(mockVisit);
-      mockPrismaService.room.findFirst.mockResolvedValue({ id: 'room-pharmacy' });
-      mockJourneyService.createSession.mockResolvedValue({ id: 'new-session' });
+      mockRoutingService.routeToNextUnit.mockResolvedValue({ message: 'Pasien diarahkan ke PHARMACY' });
 
-      const result = await service.setNextDestination('visit-123', 'PHARMACY', 'Doctor A');
+      const result = await service.setNextDestination(
+        'visit-123',
+        'PHARMACY',
+        'Doctor A',
+      );
 
-      expect(mockPrismaService.visit.update).toHaveBeenCalledWith({
-        where: { id: 'visit-123' },
-        data: { currentUnitType: 'PHARMACY', currentStatus: 'WAITING' },
-      });
-      expect(journeyService.createSession).toHaveBeenCalledWith({
-        visitId: 'visit-123',
-        unitType: 'PHARMACY',
-        roomId: 'room-pharmacy',
-        queueTicketId: 'ticket-123',
-        createdBy: 'Doctor A',
-      });
+      expect(mockRoutingService.routeToNextUnit).toHaveBeenCalledWith(
+        'visit-123',
+        'PHARMACY',
+        {
+          roomId: undefined,
+          floorId: undefined,
+          doctorId: undefined,
+          queueTicketId: 'ticket-123',
+        },
+        'Doctor A',
+      );
       expect(result.message).toBe('Pasien diarahkan ke PHARMACY');
     });
 
@@ -83,19 +93,25 @@ describe('DoctorQueueService Auto-Routing', () => {
       const mockVisit = { id: 'visit-123' };
 
       mockPrismaService.visit.findUnique.mockResolvedValue(mockVisit);
-      mockPrismaService.visit.update.mockResolvedValue(mockVisit);
+      mockRoutingService.routeToNextUnit.mockResolvedValue({ message: 'Kunjungan selesai' });
 
-      const result = await service.setNextDestination('visit-123', 'FINISHED', 'Doctor B');
+      const result = await service.setNextDestination(
+        'visit-123',
+        'FINISHED',
+        'Doctor B',
+      );
 
-      expect(mockPrismaService.visit.update).toHaveBeenCalledWith({
-        where: { id: 'visit-123' },
-        data: {
-          currentUnitType: null,
-          currentStatus: 'FINISHED',
-          finishedAt: expect.any(Date),
+      expect(mockRoutingService.routeToNextUnit).toHaveBeenCalledWith(
+        'visit-123',
+        'FINISHED',
+        {
+          roomId: undefined,
+          floorId: undefined,
+          doctorId: undefined,
+          queueTicketId: undefined,
         },
-      });
-      expect(journeyService.createSession).not.toHaveBeenCalled();
+        'Doctor B',
+      );
       expect(result.message).toBe('Kunjungan selesai');
     });
   });

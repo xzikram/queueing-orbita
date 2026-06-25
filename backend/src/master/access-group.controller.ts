@@ -1,4 +1,12 @@
-import { Controller, Get, Put, Post, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
 import { AccessGroupService, ALL_PERMISSIONS } from './access-group.service';
 import { UpdateAccessGroupDto } from './dto/access-group.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';

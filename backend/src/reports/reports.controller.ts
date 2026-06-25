@@ -1,4 +1,12 @@
-import { Controller, Get, Query, Param, UseGuards, Res, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Param,
+  UseGuards,
+  Res,
+  BadRequestException,
+} from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -45,7 +53,10 @@ export class ReportsController {
 
   @Get('unit-detailed/:unitType')
   @Roles('ADMIN', 'MANAGEMENT')
-  async getUnitDetailedReport(@Param('unitType') unitType: string, @Query() query: any) {
+  async getUnitDetailedReport(
+    @Param('unitType') unitType: string,
+    @Query() query: any,
+  ) {
     return this.reportsService.getUnitDetailedReport(unitType, query);
   }
 
@@ -55,8 +66,11 @@ export class ReportsController {
     try {
       const buffer = await this.reportsService.exportExcel(query);
       const filename = `Laporan_Perjalanan_Pasien_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
       res.send(buffer);
     } catch (error: any) {
@@ -76,13 +90,17 @@ export class ReportsController {
     try {
       const buffer = await this.reportsService.exportPatientJourney(query);
       const filename = `Laporan_Tracking_Pasien_${new Date().toISOString().slice(0, 10)}.xlsx`;
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
       res.send(buffer);
     } catch (error: any) {
-      throw new BadRequestException('Gagal mengekspor data tracking: ' + error.message);
+      throw new BadRequestException(
+        'Gagal mengekspor data tracking: ' + error.message,
+      );
     }
   }
 }
-

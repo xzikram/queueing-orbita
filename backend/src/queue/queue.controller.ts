@@ -6,12 +6,24 @@ export class QueueController {
   constructor(private queueService: QueueService) {}
 
   @Post()
-  generateTicket(@Body() body: { patientType: 'UMUM' | 'ASURANSI' | 'BARU' | 'LAMA' | 'ONLINE'; scheduleId: string }) {
+  generateTicket(
+    @Body()
+    body: {
+      patientType: 'UMUM' | 'ASURANSI' | 'BARU' | 'LAMA' | 'ONLINE';
+      scheduleId: string;
+    },
+  ) {
     return this.queueService.generateTicket(body);
   }
 
   @Post('admission')
-  generateAdmissionTicket(@Body() body: { patientType: 'BARU' | 'LAMA' | 'ASURANSI' | 'ONLINE'; scheduleId?: string }) {
+  generateAdmissionTicket(
+    @Body()
+    body: {
+      patientType: 'BARU' | 'LAMA' | 'ASURANSI' | 'ONLINE';
+      scheduleId?: string;
+    },
+  ) {
     return this.queueService.generateAdmissionTicket(body);
   }
 

@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, UseInterceptors, UploadedFile, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MasterService } from './master.service';
 import { DoctorImportService } from './doctor-import.service';
@@ -17,7 +29,7 @@ export class MasterController {
   constructor(
     private masterService: MasterService,
     private doctorImportService: DoctorImportService,
-    private roomImportService: RoomImportService
+    private roomImportService: RoomImportService,
   ) {}
 
   // ==================
@@ -97,8 +109,10 @@ export class MasterController {
   async downloadRoomTemplate(@Res() res: Response) {
     const buffer = await this.roomImportService.generateTemplate();
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': 'attachment; filename=template-master-ruangan.xlsx',
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition':
+        'attachment; filename=template-master-ruangan.xlsx',
     });
     res.send(buffer);
   }
@@ -142,7 +156,8 @@ export class MasterController {
   async downloadDoctorTemplate(@Res() res: Response) {
     const buffer = await this.doctorImportService.generateTemplate();
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename=template-master-dokter.xlsx',
     });
     res.send(buffer);

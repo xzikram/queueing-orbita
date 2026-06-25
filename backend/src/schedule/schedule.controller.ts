@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, Request, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Request,
+  Res,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ScheduleService } from './schedule.service';
@@ -31,7 +45,8 @@ export class ScheduleController {
   async downloadTemplate(@Res() res: Response) {
     const buffer = await this.importService.generateTemplate();
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename=template_jadwal_dokter.xlsx',
     });
     res.send(buffer);
@@ -56,8 +71,13 @@ export class ScheduleController {
   @Post('import')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Permission('schedules')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
-  async importExcel(@UploadedFile() file: Express.Multer.File, @Request() req: any) {
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }),
+  )
+  async importExcel(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req: any,
+  ) {
     if (!file) throw new Error('File tidak ditemukan');
     return this.importService.importExcel(file, req.user.id);
   }

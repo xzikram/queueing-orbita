@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { DoctorQueueService } from './doctor-queue.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -14,7 +23,10 @@ export class DoctorQueueController {
   constructor(private service: DoctorQueueService) {}
 
   @Get('queue')
-  getQueue(@Query('roomId') roomId?: string, @Query('floorId') floorId?: string) {
+  getQueue(
+    @Query('roomId') roomId?: string,
+    @Query('floorId') floorId?: string,
+  ) {
     return this.service.getQueue(roomId, floorId);
   }
 
@@ -44,7 +56,11 @@ export class DoctorQueueController {
     @Body() body: { destination: string },
     @Request() req: any,
   ) {
-    return this.service.setNextDestination(visitId, body.destination, req.user.id);
+    return this.service.setNextDestination(
+      visitId,
+      body.destination,
+      req.user.id,
+    );
   }
 
   @Post(':visitId/transfer')

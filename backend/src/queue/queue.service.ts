@@ -35,7 +35,8 @@ export class QueueService {
     // Generate ticket number using Doctor Code as prefix
     const { today, tomorrow } = getLocalDateBoundaries();
 
-    const prefix = schedule.doctor.doctorCode || (data.patientType === 'UMUM' ? 'U' : 'A');
+    const prefix =
+      schedule.doctor.doctorCode || (data.patientType === 'UMUM' ? 'U' : 'A');
 
     const lastTicket = await this.prisma.queueTicket.findFirst({
       where: {
@@ -85,7 +86,10 @@ export class QueueService {
     return ticket;
   }
 
-  async generateAdmissionTicket(data: { patientType: 'BARU' | 'LAMA' | 'ASURANSI' | 'ONLINE'; scheduleId?: string }) {
+  async generateAdmissionTicket(data: {
+    patientType: 'BARU' | 'LAMA' | 'ASURANSI' | 'ONLINE';
+    scheduleId?: string;
+  }) {
     const { today, tomorrow } = getLocalDateBoundaries();
 
     let prefix = 'A';
@@ -101,9 +105,12 @@ export class QueueService {
         where: { id: data.scheduleId },
         include: { doctor: true, room: { include: { floor: true } } },
       });
-      if (!schedule) throw new BadRequestException('Jadwal dokter tidak ditemukan');
-      if (schedule.status !== 'ACTIVE') throw new BadRequestException('Jadwal dokter tidak aktif');
-      if (schedule.bookedCount >= schedule.quota) throw new BadRequestException('Kuota dokter sudah penuh');
+      if (!schedule)
+        throw new BadRequestException('Jadwal dokter tidak ditemukan');
+      if (schedule.status !== 'ACTIVE')
+        throw new BadRequestException('Jadwal dokter tidak aktif');
+      if (schedule.bookedCount >= schedule.quota)
+        throw new BadRequestException('Kuota dokter sudah penuh');
     }
 
     const lastTicket = await this.prisma.queueTicket.findFirst({
@@ -272,26 +279,34 @@ export class QueueService {
 
     const uniqueBdr: typeof recentCalls = [];
     const uniquePoli: typeof recentCalls = [];
-    
+
     for (const c of recentCalls) {
       // Tentukan apakah panggilan ini masih aktif di unit tersebut
       let isActiveAtUnit = true;
       if (c.visit) {
-        if (c.visit.currentStatus === 'FINISHED' || c.visit.currentStatus === 'CANCELLED') {
+        if (
+          c.visit.currentStatus === 'FINISHED' ||
+          c.visit.currentStatus === 'CANCELLED'
+        ) {
           isActiveAtUnit = false;
         } else if (c.unitType === 'BDR' && c.visit.currentUnitType !== 'BDR') {
           isActiveAtUnit = false;
-        } else if ((c.unitType === 'DOCTOR' || c.unitType === 'ASSESSMENT') && 
-                   c.visit.currentUnitType !== 'DOCTOR' && c.visit.currentUnitType !== 'ASSESSMENT') {
+        } else if (
+          (c.unitType === 'DOCTOR' || c.unitType === 'ASSESSMENT') &&
+          c.visit.currentUnitType !== 'DOCTOR' &&
+          c.visit.currentUnitType !== 'ASSESSMENT'
+        ) {
           isActiveAtUnit = false;
         }
       }
 
       if (isActiveAtUnit) {
         if (c.unitType === 'BDR') {
-          if (!uniqueBdr.some(x => x.ticketNo === c.ticketNo)) uniqueBdr.push(c);
+          if (!uniqueBdr.some((x) => x.ticketNo === c.ticketNo))
+            uniqueBdr.push(c);
         } else if (c.unitType === 'DOCTOR' || c.unitType === 'ASSESSMENT') {
-          if (!uniquePoli.some(x => x.ticketNo === c.ticketNo)) uniquePoli.push(c);
+          if (!uniquePoli.some((x) => x.ticketNo === c.ticketNo))
+            uniquePoli.push(c);
         }
       }
     }
@@ -343,9 +358,13 @@ export class QueueService {
     return {
       recentBdr: bdrCalls,
       recentPoli: poliCalls,
-      waitingBdr: waitingBdr.map(v => v.doctorTicketNo || v.queueTicket?.ticketNo),
-      waitingPoli: waitingPoli.map(v => v.doctorTicketNo || v.queueTicket?.ticketNo),
-      waitingList: waitingList.map(v => ({
+      waitingBdr: waitingBdr.map(
+        (v) => v.doctorTicketNo || v.queueTicket?.ticketNo,
+      ),
+      waitingPoli: waitingPoli.map(
+        (v) => v.doctorTicketNo || v.queueTicket?.ticketNo,
+      ),
+      waitingList: waitingList.map((v) => ({
         ticketNo: v.doctorTicketNo || v.queueTicket?.ticketNo,
         unitType: v.currentUnitType,
         roomName: v.selectedRoom?.name,

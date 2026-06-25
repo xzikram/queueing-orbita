@@ -1,4 +1,10 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor, Logger } from '@nestjs/common';
+import {
+  CallHandler,
+  ExecutionContext,
+  Injectable,
+  NestInterceptor,
+  Logger,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -24,10 +30,16 @@ export class AuditInterceptor implements NestInterceptor {
         next: async (resBody) => {
           try {
             // Extract contextual info
-            let ticketNo = resBody?.ticketNo || resBody?.queueTicket?.ticketNo || body?.ticketNo;
-            let patientName = resBody?.patientName || resBody?.visit?.patientName || body?.patientName;
+            const ticketNo =
+              resBody?.ticketNo ||
+              resBody?.queueTicket?.ticketNo ||
+              body?.ticketNo;
+            const patientName =
+              resBody?.patientName ||
+              resBody?.visit?.patientName ||
+              body?.patientName;
             const entity = this.extractEntityFromUrl(url);
-            
+
             // Build human description
             let humanDesc = `Melakukan aksi ${method} pada ${entity}`;
             let unitType: string | null = null;
@@ -72,7 +84,9 @@ export class AuditInterceptor implements NestInterceptor {
           }
         },
         error: (err) => {
-          this.logger.warn(`Mutation failed for ${method} ${url}: ${err.message}`);
+          this.logger.warn(
+            `Mutation failed for ${method} ${url}: ${err.message}`,
+          );
         },
       }),
     );

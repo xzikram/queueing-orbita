@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
@@ -33,7 +37,10 @@ export class AssessmentService {
         selectedRoom: { include: { floor: true } },
         selectedFloor: true,
         journeySessions: {
-          where: { unitType: 'ASSESSMENT', status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] } },
+          where: {
+            unitType: 'ASSESSMENT',
+            status: { notIn: ['FINISHED', 'CANCELLED', 'TRANSFERRED'] },
+          },
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
@@ -43,11 +50,17 @@ export class AssessmentService {
   }
 
   async startService(visitId: string, userId: string) {
-    const visit = await this.prisma.visit.findUnique({ where: { id: visitId } });
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+    });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'ASSESSMENT');
-    if (!session) throw new BadRequestException('Sesi pengkajian tidak ditemukan');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'ASSESSMENT',
+    );
+    if (!session)
+      throw new BadRequestException('Sesi pengkajian tidak ditemukan');
 
     await this.journeyService.startService(session.id, { createdBy: userId });
     await this.prisma.visit.update({
@@ -66,13 +79,20 @@ export class AssessmentService {
     });
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
-    const session = await this.journeyService.findSessionByVisitAndUnit(visitId, 'ASSESSMENT');
-    if (!session) throw new BadRequestException('Sesi pengkajian tidak ditemukan');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'ASSESSMENT',
+    );
+    if (!session)
+      throw new BadRequestException('Sesi pengkajian tidak ditemukan');
 
     await this.journeyService.finishService(session.id, { createdBy: userId });
 
     // Dynamic routing — use provided nextUnitType or default (BDR)
-    const nextUnit = nextUnitType || this.routingService.getDefaultNextUnit('ASSESSMENT') || 'BDR';
+    const nextUnit =
+      nextUnitType ||
+      this.routingService.getDefaultNextUnit('ASSESSMENT') ||
+      'BDR';
 
     await this.routingService.routeToNextUnit(
       visitId,
@@ -94,8 +114,16 @@ export class AssessmentService {
   /**
    * Transfer patient from assessment to another unit
    */
-  async transferPatient(visitId: string, data: { targetUnitType: string; reason: string; userId: string }) {
-    return this.routingService.transferPatient(visitId, data.targetUnitType, data.reason, data.userId);
+  async transferPatient(
+    visitId: string,
+    data: { targetUnitType: string; reason: string; userId: string },
+  ) {
+    return this.routingService.transferPatient(
+      visitId,
+      data.targetUnitType,
+      data.reason,
+      data.userId,
+    );
   }
 
   /**

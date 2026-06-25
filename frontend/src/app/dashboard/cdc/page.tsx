@@ -18,7 +18,9 @@ export default function CdcPage() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [transferModal, setTransferModal] = useState<string | null>(null);
   const [transferReason, setTransferReason] = useState('');
-  const [serviceName, setServiceName] = useState('');
+  const [selectedExams, setSelectedExams] = useState<string[]>([]);
+  const [isOtherChecked, setIsOtherChecked] = useState(false);
+  const [otherExam, setOtherExam] = useState('');
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/cdc/queue'); setQueue(res.data); }
@@ -40,14 +42,22 @@ export default function CdcPage() {
   };
 
   const finishWithDest = async (visitId: string, nextUnitType: string) => {
-    if (!serviceName) {
+    const list = [...selectedExams];
+    if (isOtherChecked && otherExam.trim()) {
+      list.push(otherExam.trim());
+    } else if (isOtherChecked) {
+      list.push('Lainnya');
+    }
+    
+    const finalServiceName = list.join(', ');
+    if (!finalServiceName) {
       alert('Mohon pilih Jenis Pemeriksaan terlebih dahulu!');
       return;
     }
     setDestModal(null);
     setActionLoading(visitId);
     try {
-      await api.post(`/cdc/${visitId}/finish`, { nextUnitType, serviceName });
+      await api.post(`/cdc/${visitId}/finish`, { nextUnitType, serviceName: finalServiceName });
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
@@ -92,7 +102,7 @@ export default function CdcPage() {
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-success">SERVING</span></div>
                 <div className={styles.actionBtns}>
-                  <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setServiceName(''); setDestModal(v.id); }} disabled={actionLoading === v.id}>✅ Selesai</button>
+                  <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { setSelectedExams([]); setIsOtherChecked(false); setOtherExam(''); setDestModal(v.id); }} disabled={actionLoading === v.id}>✅ Selesai</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                 </div>
               </div>
@@ -109,22 +119,58 @@ export default function CdcPage() {
             
             <div className="form-group" style={{ marginBottom: '20px' }}>
               <label className="form-label" style={{ fontWeight: 'bold' }}>Jenis Pemeriksaan *</label>
-              <select 
-                className="form-input" 
-                value={serviceName} 
-                onChange={(e) => setServiceName(e.target.value)}
-              >
-                <option value="">-- Pilih Jenis Pemeriksaan --</option>
-                <option value="OCT">OCT</option>
-                <option value="Foto Fundus">Foto Fundus</option>
-                <option value="Foto Fundus Non Midriaticum">Foto Fundus Non Midriaticum</option>
-                <option value="BIOMETRI">BIOMETRI</option>
-                <option value="Humphrey Visual Field">Humphrey Visual Field</option>
-                <option value="USG">USG</option>
-                <option value="Pentacam">Pentacam</option>
-                <option value="Robo Pachymetry">Robo Pachymetry</option>
-                <option value="Lainnya">Lainnya</option>
-              </select>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '10px 16px', 
+                maxHeight: '180px', 
+                overflowY: 'auto', 
+                padding: '12px', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 'var(--radius-md)', 
+                background: '#f8fafc',
+                marginBottom: '8px' 
+              }}>
+                {['OCT', 'Foto Fundus', 'Foto Fundus Non Midriaticum', 'BIOMETRI', 'Humphrey Visual Field', 'USG', 'Pentacam', 'Robo Pachymetry'].map(exam => {
+                  const isChecked = selectedExams.includes(exam);
+                  return (
+                    <label key={exam} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--gray-700)', userSelect: 'none' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedExams([...selectedExams, exam]);
+                          } else {
+                            setSelectedExams(selectedExams.filter(item => item !== exam));
+                          }
+                        }}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--primary-500)' }}
+                      />
+                      {exam}
+                    </label>
+                  );
+                })}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--gray-700)', userSelect: 'none' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isOtherChecked}
+                    onChange={(e) => setIsOtherChecked(e.target.checked)}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--primary-500)' }}
+                  />
+                  Lainnya
+                </label>
+              </div>
+              {isOtherChecked && (
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Ketik pemeriksaan lainnya..." 
+                  value={otherExam}
+                  onChange={(e) => setOtherExam(e.target.value)}
+                  style={{ marginTop: '8px' }}
+                />
+              )}
             </div>
 
             <h4 style={{ marginBottom: '10px', color: '#1e293b' }}>Pilih Tujuan Selanjutnya:</h4>

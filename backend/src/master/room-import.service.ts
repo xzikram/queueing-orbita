@@ -13,7 +13,9 @@ export class RoomImportService {
     if (!sheet) throw new BadRequestException('File Excel kosong');
 
     const errors: string[] = [];
-    let success = 0, failed = 0, total = 0;
+    let success = 0,
+      failed = 0,
+      total = 0;
 
     const rows: any[] = [];
     sheet.eachRow((row, rowNum) => {
@@ -23,27 +25,44 @@ export class RoomImportService {
         rowNum,
         code: String(row.getCell(2).value || '').trim(),
         name: String(row.getCell(3).value || '').trim(),
-        roomType: String(row.getCell(4).value || 'DOCTOR').trim().toUpperCase(),
+        roomType: String(row.getCell(4).value || 'DOCTOR')
+          .trim()
+          .toUpperCase(),
         floorNum: parseInt(String(row.getCell(5).value || '')) || null,
       });
     });
 
     // Valid Room Types
-    const validTypes = ['BDR', 'DOCTOR', 'DOCTOR_CHILD', 'CDC', 'ADMISSION', 'CASHIER', 'PHARMACY', 'OPTIC'];
+    const validTypes = [
+      'BDR',
+      'DOCTOR',
+      'DOCTOR_CHILD',
+      'CDC',
+      'ADMISSION',
+      'CASHIER',
+      'PHARMACY',
+      'OPTIC',
+    ];
 
     for (const r of rows) {
       try {
         if (!r.code || !r.name) {
-          errors.push(`Baris ${r.rowNum}: Kode Ruangan dan Nama Ruangan wajib diisi`);
+          errors.push(
+            `Baris ${r.rowNum}: Kode Ruangan dan Nama Ruangan wajib diisi`,
+          );
           failed++;
           continue;
         }
 
-        const roomType = validTypes.includes(r.roomType) ? r.roomType : 'DOCTOR';
+        const roomType = validTypes.includes(r.roomType)
+          ? r.roomType
+          : 'DOCTOR';
 
         let floorId: string | null = null;
         if (r.floorNum !== null) {
-          let floor = await this.prisma.floor.findUnique({ where: { floorNumber: r.floorNum } });
+          let floor = await this.prisma.floor.findUnique({
+            where: { floorNumber: r.floorNum },
+          });
           if (!floor) {
             floor = await this.prisma.floor.create({
               data: {
@@ -59,14 +78,14 @@ export class RoomImportService {
           where: { code: r.code },
           update: {
             name: r.name,
-            roomType: roomType as any,
+            roomType: roomType,
             floorId,
             isActive: true,
           },
           create: {
             code: r.code,
             name: r.name,
-            roomType: roomType as any,
+            roomType: roomType,
             floorId,
             isActive: true,
           },
@@ -86,27 +105,48 @@ export class RoomImportService {
     const errors: string[] = [];
 
     // Ensure Floor 1 exists
-    let floor1 = await this.prisma.floor.findUnique({ where: { floorNumber: 1 } });
+    let floor1 = await this.prisma.floor.findUnique({
+      where: { floorNumber: 1 },
+    });
     if (!floor1) {
-      floor1 = await this.prisma.floor.create({ data: { floorNumber: 1, name: 'Lantai 1' } });
+      floor1 = await this.prisma.floor.create({
+        data: { floorNumber: 1, name: 'Lantai 1' },
+      });
     }
 
     // Ensure floor 5, 6 & 7 exist
-    let floor5 = await this.prisma.floor.findUnique({ where: { floorNumber: 5 } });
+    let floor5 = await this.prisma.floor.findUnique({
+      where: { floorNumber: 5 },
+    });
     if (!floor5) {
-      floor5 = await this.prisma.floor.create({ data: { floorNumber: 5, name: 'Lantai 5' } });
+      floor5 = await this.prisma.floor.create({
+        data: { floorNumber: 5, name: 'Lantai 5' },
+      });
     }
-    let floor6 = await this.prisma.floor.findUnique({ where: { floorNumber: 6 } });
+    let floor6 = await this.prisma.floor.findUnique({
+      where: { floorNumber: 6 },
+    });
     if (!floor6) {
-      floor6 = await this.prisma.floor.create({ data: { floorNumber: 6, name: 'Lantai 6' } });
+      floor6 = await this.prisma.floor.create({
+        data: { floorNumber: 6, name: 'Lantai 6' },
+      });
     }
-    let floor7 = await this.prisma.floor.findUnique({ where: { floorNumber: 7 } });
+    let floor7 = await this.prisma.floor.findUnique({
+      where: { floorNumber: 7 },
+    });
     if (!floor7) {
-      floor7 = await this.prisma.floor.create({ data: { floorNumber: 7, name: 'Lantai 7' } });
+      floor7 = await this.prisma.floor.create({
+        data: { floorNumber: 7, name: 'Lantai 7' },
+      });
     }
 
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const allRooms: { code: string; name: string; floorId: string; roomType: string }[] = [];
+    const allRooms: {
+      code: string;
+      name: string;
+      floorId: string;
+      roomType: string;
+    }[] = [];
 
     // Floor 5: A1-501 to A1-506 (Poli 5A s/d Poli 5F)
     for (let i = 1; i <= 6; i++) {
@@ -180,7 +220,12 @@ export class RoomImportService {
       }
     }
 
-    return { total: allRooms.length, success, failed: allRooms.length - success, errors };
+    return {
+      total: allRooms.length,
+      success,
+      failed: allRooms.length - success,
+      errors,
+    };
   }
 
   async generateTemplate() {
@@ -193,11 +238,29 @@ export class RoomImportService {
       { header: 'Tipe Ruangan', key: 'roomType', width: 20 },
       { header: 'Nomor Lantai (Angka)', key: 'floorNum', width: 25 },
     ];
-    
+
     // Sample rows
-    sheet.addRow({ no: 1, code: 'A1-501', name: 'Poli 5A', roomType: 'DOCTOR', floorNum: 5 });
-    sheet.addRow({ no: 2, code: 'A1-602', name: 'Poli 6B', roomType: 'DOCTOR', floorNum: 6 });
-    sheet.addRow({ no: 3, code: 'ADMISI', name: 'Admisi Utama', roomType: 'ADMISSION', floorNum: 1 });
+    sheet.addRow({
+      no: 1,
+      code: 'A1-501',
+      name: 'Poli 5A',
+      roomType: 'DOCTOR',
+      floorNum: 5,
+    });
+    sheet.addRow({
+      no: 2,
+      code: 'A1-602',
+      name: 'Poli 6B',
+      roomType: 'DOCTOR',
+      floorNum: 6,
+    });
+    sheet.addRow({
+      no: 3,
+      code: 'ADMISI',
+      name: 'Admisi Utama',
+      roomType: 'ADMISSION',
+      floorNum: 1,
+    });
 
     return workbook.xlsx.writeBuffer();
   }

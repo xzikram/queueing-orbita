@@ -6,7 +6,7 @@ export interface IPatientAdapter {
     gender: string;
     patientType: string;
   } | null>;
-  
+
   syncPatient(patientData: any): Promise<boolean>;
 }
 

@@ -51,7 +51,10 @@ export class JourneyService {
   /**
    * Record a call event (patient called to counter/room)
    */
-  async callSession(sessionId: string, data: { counterId?: string; createdBy?: string }) {
+  async callSession(
+    sessionId: string,
+    data: { counterId?: string; createdBy?: string },
+  ) {
     const session = await this.prisma.journeyUnitSession.update({
       where: { id: sessionId },
       data: {
@@ -82,7 +85,9 @@ export class JourneyService {
    */
   async startService(sessionId: string, data: { createdBy?: string }) {
     const now = new Date();
-    const session = await this.prisma.journeyUnitSession.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.journeyUnitSession.findUnique({
+      where: { id: sessionId },
+    });
 
     const waitingDuration = session?.waitingStartedAt
       ? Math.round((now.getTime() - session.waitingStartedAt.getTime()) / 1000)
@@ -116,9 +121,14 @@ export class JourneyService {
   /**
    * Finish service
    */
-  async finishService(sessionId: string, data: { createdBy?: string; serviceName?: string }) {
+  async finishService(
+    sessionId: string,
+    data: { createdBy?: string; serviceName?: string },
+  ) {
     const now = new Date();
-    const session = await this.prisma.journeyUnitSession.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.journeyUnitSession.findUnique({
+      where: { id: sessionId },
+    });
 
     const serviceDuration = session?.serviceStartedAt
       ? Math.round((now.getTime() - session.serviceStartedAt.getTime()) / 1000)
@@ -158,7 +168,9 @@ export class JourneyService {
     data: { reason: string; targetUnitType: string; createdBy?: string },
   ) {
     const now = new Date();
-    const session = await this.prisma.journeyUnitSession.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.journeyUnitSession.findUnique({
+      where: { id: sessionId },
+    });
     if (!session) return null;
 
     const serviceDuration = session.serviceStartedAt
@@ -273,13 +285,18 @@ export class JourneyService {
       editedAt: new Date(),
     };
 
-    if (data.waitingStartedAt) updateData.waitingStartedAt = data.waitingStartedAt;
+    if (data.waitingStartedAt)
+      updateData.waitingStartedAt = data.waitingStartedAt;
     if (data.calledAt) updateData.calledAt = data.calledAt;
-    if (data.serviceStartedAt) updateData.serviceStartedAt = data.serviceStartedAt;
-    if (data.serviceFinishedAt) updateData.serviceFinishedAt = data.serviceFinishedAt;
+    if (data.serviceStartedAt)
+      updateData.serviceStartedAt = data.serviceStartedAt;
+    if (data.serviceFinishedAt)
+      updateData.serviceFinishedAt = data.serviceFinishedAt;
 
     // Recalculate durations
-    const session = await this.prisma.journeyUnitSession.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.journeyUnitSession.findUnique({
+      where: { id: sessionId },
+    });
     const wsAt = data.waitingStartedAt || session?.waitingStartedAt;
     const ssAt = data.serviceStartedAt || session?.serviceStartedAt;
     const sfAt = data.serviceFinishedAt || session?.serviceFinishedAt;

@@ -17,10 +17,10 @@ export class ReportsService {
       const y = parseInt(parts[0], 10);
       const m = parseInt(parts[1], 10) - 1;
       const d = parseInt(parts[2], 10);
-      
-      let ms = Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000);
+
+      let ms = Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000;
       if (isEndOfDay) {
-        ms += (24 * 60 * 60 * 1000) - 1; // 23:59:59.999 of local day
+        ms += 24 * 60 * 60 * 1000 - 1; // 23:59:59.999 of local day
       }
       return new Date(ms);
     }
@@ -49,10 +49,10 @@ export class ReportsService {
     }
 
     if (query.patientType) {
-      where.visit = { patientType: query.patientType as any };
+      where.visit = { patientType: query.patientType };
     }
     if (query.floorId) where.floorId = query.floorId;
-    if (query.unitType) where.unitType = query.unitType as any;
+    if (query.unitType) where.unitType = query.unitType;
     if (query.doctorId) where.doctorId = query.doctorId;
     if (query.roomId) where.roomId = query.roomId;
     if (query.counterId) where.counterId = query.counterId;
@@ -62,7 +62,7 @@ export class ReportsService {
 
   async getJourneySummary(query: any) {
     const where = this.buildWhereClause(query);
-    
+
     const aggregations = await this.prisma.journeyUnitSession.aggregate({
       where,
       _count: { id: true },
@@ -93,7 +93,7 @@ export class ReportsService {
 
   async getUnitSummary(query: any) {
     const where = this.buildWhereClause(query);
-    
+
     const groupBy = await this.prisma.journeyUnitSession.groupBy({
       by: ['unitType'],
       where,
@@ -115,7 +115,7 @@ export class ReportsService {
   async getDoctorSummary(query: any) {
     const where = this.buildWhereClause(query);
     where.doctorId = { not: null };
-    
+
     const groupBy = await this.prisma.journeyUnitSession.groupBy({
       by: ['doctorId'],
       where,
@@ -127,9 +127,13 @@ export class ReportsService {
     });
 
     const doctors = await this.prisma.doctor.findMany({
-      where: { id: { in: groupBy.map(g => g.doctorId).filter(id => id !== null) as string[] } }
+      where: {
+        id: {
+          in: groupBy.map((g) => g.doctorId).filter((id) => id !== null),
+        },
+      },
     });
-    const docMap = new Map(doctors.map(d => [d.id, d.doctorName]));
+    const docMap = new Map(doctors.map((d) => [d.id, d.doctorName]));
 
     return groupBy.map((item) => ({
       doctorId: item.doctorId,
@@ -176,7 +180,7 @@ export class ReportsService {
 
   async exportExcel(query: any) {
     const where = this.buildWhereClause(query);
-    
+
     const [data, users] = await Promise.all([
       this.prisma.journeyUnitSession.findMany({
         where,
@@ -189,14 +193,21 @@ export class ReportsService {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.user.findMany()
+      this.prisma.user.findMany(),
     ]);
 
-    const userMap = new Map(users.map(u => [u.id, u.name]));
+    const userMap = new Map(users.map((u) => [u.id, u.name]));
 
     const workbook = new ExcelJS.Workbook();
     const sheetsData: Record<string, any[]> = {
-      Admission: [], Kaji: [], BDR: [], CDC: [], Doctor: [], Cashier: [], Pharmacy: [], Optic: []
+      Admission: [],
+      Kaji: [],
+      BDR: [],
+      CDC: [],
+      Doctor: [],
+      Cashier: [],
+      Pharmacy: [],
+      Optic: [],
     };
 
     const formatDuration = (seconds: number | null) => {
@@ -208,42 +219,77 @@ export class ReportsService {
     };
 
     data.forEach((row) => {
-      const ticketNo = row.visit?.doctorTicketNo || row.visit?.queueTicket?.ticketNo || '-';
+      const ticketNo =
+        row.visit?.doctorTicketNo || row.visit?.queueTicket?.ticketNo || '-';
       const patientType = row.visit?.patientType || '-';
-      const date = row.createdAt.toLocaleDateString('id-ID'); 
-      const waitStart = row.waitingStartedAt ? row.waitingStartedAt.toLocaleTimeString('id-ID', { hour12: false }) : '';
-      const calledAt = row.calledAt ? row.calledAt.toLocaleTimeString('id-ID', { hour12: false }) : '';
-      const serveStart = row.serviceStartedAt ? row.serviceStartedAt.toLocaleTimeString('id-ID', { hour12: false }) : '';
-      const serveEnd = row.serviceFinishedAt ? row.serviceFinishedAt.toLocaleTimeString('id-ID', { hour12: false }) : '';
-      
+      const date = row.createdAt.toLocaleDateString('id-ID');
+      const waitStart = row.waitingStartedAt
+        ? row.waitingStartedAt.toLocaleTimeString('id-ID', { hour12: false })
+        : '';
+      const calledAt = row.calledAt
+        ? row.calledAt.toLocaleTimeString('id-ID', { hour12: false })
+        : '';
+      const serveStart = row.serviceStartedAt
+        ? row.serviceStartedAt.toLocaleTimeString('id-ID', { hour12: false })
+        : '';
+      const serveEnd = row.serviceFinishedAt
+        ? row.serviceFinishedAt.toLocaleTimeString('id-ID', { hour12: false })
+        : '';
+
       const waitTime = formatDuration(row.waitingDurationSeconds);
       const serveTime = formatDuration(row.serviceDurationSeconds);
-      
-      const rmNo = row.visit?.patientRmNo || '-';
-      let step = '-';
-      let user = row.updatedBy ? (userMap.get(row.updatedBy) || row.updatedBy) : '-';
 
-      const baseData = { Date: date, 'Patient ID': ticketNo, 'RM Pasien': rmNo, Step: step, 'User Input': user, 'Wait. Time': waitTime, 'Serv. Time': serveTime };
+      const rmNo = row.visit?.patientRmNo || '-';
+      const step = '-';
+      const user = row.updatedBy
+        ? userMap.get(row.updatedBy) || row.updatedBy
+        : '-';
+
+      const baseData = {
+        Date: date,
+        'Patient ID': ticketNo,
+        'RM Pasien': rmNo,
+        Step: step,
+        'User Input': user,
+        'Wait. Time': waitTime,
+        'Serv. Time': serveTime,
+      };
 
       switch (row.unitType) {
         case 'ADMISSION':
           sheetsData.Admission.push({
-            q_number: ticketNo, rm_pasien: rmNo, q_jenisPatient: patientType, q_date: date, q_dateTime: waitStart,
-            q_callingTime: calledAt, q_startTime: serveStart, q_doneTime: serveEnd,
-            ServiceTime: serveTime, WaitingTime: waitTime, q_admin_Counter: row.counter?.name || '-', userInput: user
+            q_number: ticketNo,
+            rm_pasien: rmNo,
+            q_jenisPatient: patientType,
+            q_date: date,
+            q_dateTime: waitStart,
+            q_callingTime: calledAt,
+            q_startTime: serveStart,
+            q_doneTime: serveEnd,
+            ServiceTime: serveTime,
+            WaitingTime: waitTime,
+            q_admin_Counter: row.counter?.name || '-',
+            userInput: user,
           });
           break;
         case 'ASSESSMENT':
           sheetsData.Kaji.push({ ...baseData, Step: '1-Nurse Assessment' });
           break;
         case 'BDR':
-          sheetsData.BDR.push({ ...baseData, Step: row.floor?.name ? `BDR ${row.floor.name}` : 'BDR' });
+          sheetsData.BDR.push({
+            ...baseData,
+            Step: row.floor?.name ? `BDR ${row.floor.name}` : 'BDR',
+          });
           break;
         case 'CDC':
           sheetsData.CDC.push({ ...baseData, Step: row.serviceName || 'CDC' });
           break;
         case 'DOCTOR':
-          sheetsData.Doctor.push({ ...baseData, Step: row.doctor?.doctorName || 'Dokter', 'User Input': row.doctor?.doctorName || user });
+          sheetsData.Doctor.push({
+            ...baseData,
+            Step: row.doctor?.doctorName || 'Dokter',
+            'User Input': row.doctor?.doctorName || user,
+          });
           break;
         case 'CASHIER':
           sheetsData.Cashier.push({ ...baseData, Step: 'Cashier' });
@@ -260,23 +306,32 @@ export class ReportsService {
     // Helper to add standard sheet
     const addStandardSheet = (name: string, rows: any[]) => {
       const sheet = workbook.addWorksheet(name);
-      
+
       if (name === 'Admission') {
         sheet.columns = [
-          { header: 'q_number', key: 'q_number', width: 15 }, { header: 'RM Pasien', key: 'rm_pasien', width: 15 }, { header: 'q_jenisPatient', key: 'q_jenisPatient', width: 15 },
-          { header: 'q_date', key: 'q_date', width: 15 }, { header: 'q_dateTime', key: 'q_dateTime', width: 15 },
-          { header: 'q_callingTime', key: 'q_callingTime', width: 15 }, { header: 'q_startTime', key: 'q_startTime', width: 15 },
-          { header: 'q_doneTime', key: 'q_doneTime', width: 15 }, { header: 'ServiceTime', key: 'ServiceTime', width: 15 },
-          { header: 'WaitingTime', key: 'WaitingTime', width: 15 }, { header: 'q_admin_Counter', key: 'q_admin_Counter', width: 15 },
+          { header: 'q_number', key: 'q_number', width: 15 },
+          { header: 'RM Pasien', key: 'rm_pasien', width: 15 },
+          { header: 'q_jenisPatient', key: 'q_jenisPatient', width: 15 },
+          { header: 'q_date', key: 'q_date', width: 15 },
+          { header: 'q_dateTime', key: 'q_dateTime', width: 15 },
+          { header: 'q_callingTime', key: 'q_callingTime', width: 15 },
+          { header: 'q_startTime', key: 'q_startTime', width: 15 },
+          { header: 'q_doneTime', key: 'q_doneTime', width: 15 },
+          { header: 'ServiceTime', key: 'ServiceTime', width: 15 },
+          { header: 'WaitingTime', key: 'WaitingTime', width: 15 },
+          { header: 'q_admin_Counter', key: 'q_admin_Counter', width: 15 },
           { header: 'User Input', key: 'userInput', width: 25 },
         ];
         sheet.addRows(rows);
       } else {
         sheet.columns = [
-          { header: 'Date', key: 'Date', width: 15 }, { header: 'Patient ID', key: 'Patient ID', width: 20 },
+          { header: 'Date', key: 'Date', width: 15 },
+          { header: 'Patient ID', key: 'Patient ID', width: 20 },
           { header: 'RM Pasien', key: 'RM Pasien', width: 15 },
-          { header: 'Step', key: 'Step', width: 30 }, { header: 'User Input', key: 'User Input', width: 30 },
-          { header: 'Wait. Time', key: 'Wait. Time', width: 15 }, { header: 'Serv. Time', key: 'Serv. Time', width: 15 }
+          { header: 'Step', key: 'Step', width: 30 },
+          { header: 'User Input', key: 'User Input', width: 30 },
+          { header: 'Wait. Time', key: 'Wait. Time', width: 15 },
+          { header: 'Serv. Time', key: 'Serv. Time', width: 15 },
         ];
         sheet.addRows(rows);
       }
@@ -302,26 +357,31 @@ export class ReportsService {
     else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
 
     const now = new Date();
-    const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+    const localTime = now.getTime() + tzOffset * 60 * 60 * 1000;
     const localDate = new Date(localTime);
-    
+
     const year = localDate.getUTCFullYear();
     const month = localDate.getUTCMonth();
     const day = localDate.getUTCDate();
-    
-    const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
 
-    const [totalTickets, totalVisits, finishedVisits, activeSessions] = await Promise.all([
-      this.prisma.queueTicket.count({ where: { queueDate: { gte: today } } }),
-      this.prisma.visit.count({ where: { visitDate: { gte: today } } }),
-      this.prisma.visit.count({ where: { visitDate: { gte: today }, finishedAt: { not: null } } }),
-      this.prisma.journeyUnitSession.findMany({
-        where: {
-          createdAt: { gte: today },
-          status: { in: ['WAITING', 'CALLED', 'SERVING'] },
-        },
-      }),
-    ]);
+    const today = new Date(
+      Date.UTC(year, month, day) - tzOffset * 60 * 60 * 1000,
+    );
+
+    const [totalTickets, totalVisits, finishedVisits, activeSessions] =
+      await Promise.all([
+        this.prisma.queueTicket.count({ where: { queueDate: { gte: today } } }),
+        this.prisma.visit.count({ where: { visitDate: { gte: today } } }),
+        this.prisma.visit.count({
+          where: { visitDate: { gte: today }, finishedAt: { not: null } },
+        }),
+        this.prisma.journeyUnitSession.findMany({
+          where: {
+            createdAt: { gte: today },
+            status: { in: ['WAITING', 'CALLED', 'SERVING'] },
+          },
+        }),
+      ]);
 
     const unitCounts: Record<string, number> = {
       ADMISSION: 0,
@@ -337,13 +397,16 @@ export class ReportsService {
     const waitingPerUnit: Record<string, number> = { ...unitCounts };
     const servingPerUnit: Record<string, number> = { ...unitCounts };
 
-    activeSessions.forEach(session => {
+    activeSessions.forEach((session) => {
       const key = session.unitType as string;
       if (unitCounts[key] !== undefined) {
         unitCounts[key]++;
         if (session.status === 'WAITING') {
           waitingPerUnit[key]++;
-        } else if (session.status === 'SERVING' || session.status === 'CALLED') {
+        } else if (
+          session.status === 'SERVING' ||
+          session.status === 'CALLED'
+        ) {
           servingPerUnit[key]++;
         }
       }
@@ -385,14 +448,17 @@ export class ReportsService {
     });
 
     const totalPatients = sessions.length;
-    let totalWait = 0, totalServe = 0;
-    let minWait = Infinity, maxWait = 0;
-    let minServe = Infinity, maxServe = 0;
+    let totalWait = 0,
+      totalServe = 0;
+    let minWait = Infinity,
+      maxWait = 0;
+    let minServe = Infinity,
+      maxServe = 0;
 
     const hourlyDistribution: Record<number, number> = {};
     for (let i = 0; i < 24; i++) hourlyDistribution[i] = 0;
 
-    sessions.forEach(s => {
+    sessions.forEach((s) => {
       const wait = s.waitingDurationSeconds || 0;
       const serve = s.serviceDurationSeconds || 0;
 
@@ -419,7 +485,9 @@ export class ReportsService {
       avgWaitSeconds: totalPatients ? Math.round(totalWait / totalPatients) : 0,
       minWaitSeconds: minWait,
       maxWaitSeconds: maxWait,
-      avgServeSeconds: totalPatients ? Math.round(totalServe / totalPatients) : 0,
+      avgServeSeconds: totalPatients
+        ? Math.round(totalServe / totalPatients)
+        : 0,
       minServeSeconds: minServe,
       maxServeSeconds: maxServe,
       hourlyDistribution,
@@ -451,20 +519,26 @@ export class ReportsService {
       else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
 
       const now = new Date();
-      const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+      const localTime = now.getTime() + tzOffset * 60 * 60 * 1000;
       const localDate = new Date(localTime);
-      
+
       const year = localDate.getUTCFullYear();
       const month = localDate.getUTCMonth();
       const day = localDate.getUTCDate();
-      
-      const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
+
+      const today = new Date(
+        Date.UTC(year, month, day) - tzOffset * 60 * 60 * 1000,
+      );
       where.visitDate = { gte: today };
     }
 
     if (query.search) {
       where.OR = [
-        { queueTicket: { ticketNo: { contains: query.search, mode: 'insensitive' } } },
+        {
+          queueTicket: {
+            ticketNo: { contains: query.search, mode: 'insensitive' },
+          },
+        },
         { patientRmNo: { contains: query.search, mode: 'insensitive' } },
         { patientName: { contains: query.search, mode: 'insensitive' } },
         { doctorTicketNo: { contains: query.search, mode: 'insensitive' } },
@@ -501,16 +575,30 @@ export class ReportsService {
       this.prisma.visit.count({ where }),
     ]);
 
-    const unitOrder = ['ADMISSION', 'ASSESSMENT', 'BDR', 'DOCTOR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'];
+    const unitOrder = [
+      'ADMISSION',
+      'ASSESSMENT',
+      'BDR',
+      'DOCTOR',
+      'CDC',
+      'CASHIER',
+      'PHARMACY',
+      'OPTIC',
+    ];
     const unitLabels: Record<string, string> = {
-      ADMISSION: 'Admisi', ASSESSMENT: 'Pengkajian', BDR: 'BDR',
-      DOCTOR: 'Dokter/Poli', CDC: 'CDC', CASHIER: 'Kasir',
-      PHARMACY: 'Farmasi', OPTIC: 'Optik',
+      ADMISSION: 'Admisi',
+      ASSESSMENT: 'Pengkajian',
+      BDR: 'BDR',
+      DOCTOR: 'Dokter/Poli',
+      CDC: 'CDC',
+      CASHIER: 'Kasir',
+      PHARMACY: 'Farmasi',
+      OPTIC: 'Optik',
     };
 
-    const result = data.map(visit => {
+    const result = data.map((visit) => {
       const sessions = visit.journeySessions;
-      
+
       // Calculate total journey time (from first session waiting to last session finish or now)
       let journeyStartTime: Date | null = null;
       let journeyEndTime: Date | null = null;
@@ -531,11 +619,13 @@ export class ReportsService {
       let totalJourneySeconds: number | null = null;
       if (journeyStartTime) {
         const end = journeyEndTime || new Date();
-        totalJourneySeconds = Math.round((end.getTime() - journeyStartTime.getTime()) / 1000);
+        totalJourneySeconds = Math.round(
+          (end.getTime() - journeyStartTime.getTime()) / 1000,
+        );
       }
 
       // Build steps
-      const steps = sessions.map(s => ({
+      const steps = sessions.map((s) => ({
         unitType: s.unitType,
         unitLabel: unitLabels[s.unitType] || s.unitType,
         status: s.status,
@@ -612,20 +702,26 @@ export class ReportsService {
       else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
 
       const now = new Date();
-      const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+      const localTime = now.getTime() + tzOffset * 60 * 60 * 1000;
       const localDate = new Date(localTime);
-      
+
       const year = localDate.getUTCFullYear();
       const month = localDate.getUTCMonth();
       const day = localDate.getUTCDate();
-      
-      const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
+
+      const today = new Date(
+        Date.UTC(year, month, day) - tzOffset * 60 * 60 * 1000,
+      );
       where.visitDate = { gte: today };
     }
 
     if (query.search) {
       where.OR = [
-        { queueTicket: { ticketNo: { contains: query.search, mode: 'insensitive' } } },
+        {
+          queueTicket: {
+            ticketNo: { contains: query.search, mode: 'insensitive' },
+          },
+        },
         { patientRmNo: { contains: query.search, mode: 'insensitive' } },
         { patientName: { contains: query.search, mode: 'insensitive' } },
         { doctorTicketNo: { contains: query.search, mode: 'insensitive' } },
@@ -665,34 +761,38 @@ export class ReportsService {
       { header: 'Datang', key: 'arrived', width: 12 },
       { header: 'Pulang', key: 'finished', width: 12 },
       { header: 'Total Waktu', key: 'totalTime', width: 15 },
-      
+
       { header: 'Tunggu Admisi', key: 'w_adm', width: 15 },
       { header: 'Layan Admisi', key: 's_adm', width: 15 },
-      
+
       { header: 'Tunggu Kaji', key: 'w_ass', width: 15 },
       { header: 'Layan Kaji', key: 's_ass', width: 15 },
-      
+
       { header: 'Tunggu BDR', key: 'w_bdr', width: 15 },
       { header: 'Layan BDR', key: 's_bdr', width: 15 },
-      
+
       { header: 'Tunggu Poli', key: 'w_doc', width: 15 },
       { header: 'Layan Poli', key: 's_doc', width: 15 },
-      
+
       { header: 'Tunggu CDC', key: 'w_cdc', width: 15 },
       { header: 'Layan CDC', key: 's_cdc', width: 15 },
-      
+
       { header: 'Tunggu Kasir', key: 'w_csh', width: 15 },
       { header: 'Layan Kasir', key: 's_csh', width: 15 },
-      
+
       { header: 'Tunggu Farmasi', key: 'w_phr', width: 15 },
       { header: 'Layan Farmasi', key: 's_phr', width: 15 },
-      
+
       { header: 'Tunggu Optik', key: 'w_opt', width: 15 },
       { header: 'Layan Optik', key: 's_opt', width: 15 },
     ];
 
     sheet.getRow(1).font = { bold: true };
-    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+    sheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE2E8F0' },
+    };
 
     const formatDuration = (seconds: number | null | undefined) => {
       if (!seconds || seconds <= 0) return '-';
@@ -711,31 +811,46 @@ export class ReportsService {
       let journeyStartTime: Date | null = null;
       let journeyEndTime: Date | null = null;
 
-      const sessionsByUnit: Record<string, { w: number, s: number }> = {
-        ADMISSION: { w: 0, s: 0 }, ASSESSMENT: { w: 0, s: 0 }, BDR: { w: 0, s: 0 },
-        DOCTOR: { w: 0, s: 0 }, CDC: { w: 0, s: 0 }, CASHIER: { w: 0, s: 0 },
-        PHARMACY: { w: 0, s: 0 }, OPTIC: { w: 0, s: 0 }
+      const sessionsByUnit: Record<string, { w: number; s: number }> = {
+        ADMISSION: { w: 0, s: 0 },
+        ASSESSMENT: { w: 0, s: 0 },
+        BDR: { w: 0, s: 0 },
+        DOCTOR: { w: 0, s: 0 },
+        CDC: { w: 0, s: 0 },
+        CASHIER: { w: 0, s: 0 },
+        PHARMACY: { w: 0, s: 0 },
+        OPTIC: { w: 0, s: 0 },
       };
 
       for (const s of visit.journeySessions) {
-        if (s.waitingStartedAt && (!journeyStartTime || s.waitingStartedAt < journeyStartTime)) {
+        if (
+          s.waitingStartedAt &&
+          (!journeyStartTime || s.waitingStartedAt < journeyStartTime)
+        ) {
           journeyStartTime = s.waitingStartedAt;
         }
-        if (s.serviceFinishedAt && (!journeyEndTime || s.serviceFinishedAt > journeyEndTime)) {
+        if (
+          s.serviceFinishedAt &&
+          (!journeyEndTime || s.serviceFinishedAt > journeyEndTime)
+        ) {
           journeyEndTime = s.serviceFinishedAt;
         }
 
         if (sessionsByUnit[s.unitType]) {
-          sessionsByUnit[s.unitType].w += (s.waitingDurationSeconds || 0);
-          sessionsByUnit[s.unitType].s += (s.serviceDurationSeconds || 0);
+          sessionsByUnit[s.unitType].w += s.waitingDurationSeconds || 0;
+          sessionsByUnit[s.unitType].s += s.serviceDurationSeconds || 0;
         }
       }
 
       let totalJourneySeconds = 0;
       if (journeyStartTime && visit.finishedAt) {
-        totalJourneySeconds = Math.round((visit.finishedAt.getTime() - journeyStartTime.getTime()) / 1000);
+        totalJourneySeconds = Math.round(
+          (visit.finishedAt.getTime() - journeyStartTime.getTime()) / 1000,
+        );
       } else if (journeyStartTime) {
-        totalJourneySeconds = Math.round((new Date().getTime() - journeyStartTime.getTime()) / 1000);
+        totalJourneySeconds = Math.round(
+          (new Date().getTime() - journeyStartTime.getTime()) / 1000,
+        );
       }
 
       sheet.addRow({
@@ -749,15 +864,23 @@ export class ReportsService {
         arrived: formatTime(journeyStartTime),
         finished: formatTime(visit.finishedAt),
         totalTime: formatDuration(totalJourneySeconds),
-        
-        w_adm: formatDuration(sessionsByUnit.ADMISSION.w), s_adm: formatDuration(sessionsByUnit.ADMISSION.s),
-        w_ass: formatDuration(sessionsByUnit.ASSESSMENT.w), s_ass: formatDuration(sessionsByUnit.ASSESSMENT.s),
-        w_bdr: formatDuration(sessionsByUnit.BDR.w), s_bdr: formatDuration(sessionsByUnit.BDR.s),
-        w_doc: formatDuration(sessionsByUnit.DOCTOR.w), s_doc: formatDuration(sessionsByUnit.DOCTOR.s),
-        w_cdc: formatDuration(sessionsByUnit.CDC.w), s_cdc: formatDuration(sessionsByUnit.CDC.s),
-        w_csh: formatDuration(sessionsByUnit.CASHIER.w), s_csh: formatDuration(sessionsByUnit.CASHIER.s),
-        w_phr: formatDuration(sessionsByUnit.PHARMACY.w), s_phr: formatDuration(sessionsByUnit.PHARMACY.s),
-        w_opt: formatDuration(sessionsByUnit.OPTIC.w), s_opt: formatDuration(sessionsByUnit.OPTIC.s),
+
+        w_adm: formatDuration(sessionsByUnit.ADMISSION.w),
+        s_adm: formatDuration(sessionsByUnit.ADMISSION.s),
+        w_ass: formatDuration(sessionsByUnit.ASSESSMENT.w),
+        s_ass: formatDuration(sessionsByUnit.ASSESSMENT.s),
+        w_bdr: formatDuration(sessionsByUnit.BDR.w),
+        s_bdr: formatDuration(sessionsByUnit.BDR.s),
+        w_doc: formatDuration(sessionsByUnit.DOCTOR.w),
+        s_doc: formatDuration(sessionsByUnit.DOCTOR.s),
+        w_cdc: formatDuration(sessionsByUnit.CDC.w),
+        s_cdc: formatDuration(sessionsByUnit.CDC.s),
+        w_csh: formatDuration(sessionsByUnit.CASHIER.w),
+        s_csh: formatDuration(sessionsByUnit.CASHIER.s),
+        w_phr: formatDuration(sessionsByUnit.PHARMACY.w),
+        s_phr: formatDuration(sessionsByUnit.PHARMACY.s),
+        w_opt: formatDuration(sessionsByUnit.OPTIC.w),
+        s_opt: formatDuration(sessionsByUnit.OPTIC.s),
       });
     }
 

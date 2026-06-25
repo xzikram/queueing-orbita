@@ -12,8 +12,13 @@ import { RoomImportService } from './room-import.service';
 @Module({
   imports: [WebsocketModule],
   controllers: [MasterController, UsersController, AccessGroupController],
-  providers: [MasterService, UsersService, AccessGroupService, DoctorImportService, RoomImportService],
+  providers: [
+    MasterService,
+    UsersService,
+    AccessGroupService,
+    DoctorImportService,
+    RoomImportService,
+  ],
   exports: [MasterService, UsersService, AccessGroupService],
 })
 export class MasterModule {}
-

@@ -9,7 +9,7 @@ export class ScheduleService {
 
   constructor(
     private prisma: PrismaService,
-    private hisApiService: HisApiService
+    private hisApiService: HisApiService,
   ) {}
 
   async findActiveToday() {
@@ -18,15 +18,17 @@ export class ScheduleService {
     else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
 
     const now = new Date();
-    const localTime = now.getTime() + (tzOffset * 60 * 60 * 1000);
+    const localTime = now.getTime() + tzOffset * 60 * 60 * 1000;
     const localDate = new Date(localTime);
-    
+
     const year = localDate.getUTCFullYear();
     const month = localDate.getUTCMonth();
     const day = localDate.getUTCDate();
-    
-    const today = new Date(Date.UTC(year, month, day) - (tzOffset * 60 * 60 * 1000));
-    const tomorrow = new Date(today.getTime() + (24 * 60 * 60 * 1000));
+
+    const today = new Date(
+      Date.UTC(year, month, day) - tzOffset * 60 * 60 * 1000,
+    );
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
     return this.prisma.doctorSchedule.findMany({
       where: {
@@ -47,7 +49,7 @@ export class ScheduleService {
 
     if (query?.date) {
       const date = parseLocalDate(query.date);
-      const nextDay = new Date(date.getTime() + (24 * 60 * 60 * 1000));
+      const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
       where.scheduleDate = { gte: date, lt: nextDay };
     }
 
@@ -85,7 +87,12 @@ export class ScheduleService {
     });
   }
 
-  async update(id: string, data: any, reason?: string, username: string = 'System') {
+  async update(
+    id: string,
+    data: any,
+    reason?: string,
+    username: string = 'System',
+  ) {
     const old = await this.findOne(id);
     const updateData = { ...data };
     if (updateData.scheduleDate) {
@@ -109,7 +116,7 @@ export class ScheduleService {
           reason,
           oldValue: JSON.stringify(old),
           newValue: JSON.stringify(updated),
-        }
+        },
       });
     }
 
@@ -131,7 +138,7 @@ export class ScheduleService {
           humanDescription: `Hapus Jadwal dr. ${old.doctor?.doctorName} pada ${old.scheduleDate.toLocaleDateString()}. Alasan: ${reason}`,
           reason,
           oldValue: JSON.stringify(old),
-        }
+        },
       });
     }
 
@@ -147,13 +154,13 @@ export class ScheduleService {
 
   async syncDailySchedules(targetDateStr?: string) {
     this.logger.log('Starting daily HIS schedule sync...');
-    
+
     let tzOffset = 8;
     if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
     else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
 
     let today = new Date();
-    const localTime = today.getTime() + (tzOffset * 60 * 60 * 1000);
+    const localTime = today.getTime() + tzOffset * 60 * 60 * 1000;
     const localDate = new Date(localTime);
 
     let dateStr = targetDateStr;
@@ -165,14 +172,14 @@ export class ScheduleService {
         const y = parseInt(normalized.substring(0, 4), 10);
         const m = parseInt(normalized.substring(4, 6), 10) - 1;
         const d = parseInt(normalized.substring(6, 8), 10);
-        today = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
+        today = new Date(Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000);
       } else if (dateStr.length === 10 && dateStr.includes('-')) {
         const parts = dateStr.split('-');
         const y = parseInt(parts[0], 10);
         const m = parseInt(parts[1], 10) - 1;
         const d = parseInt(parts[2], 10);
         dateStr = `${parts[0]}${parts[1]}${parts[2]}`;
-        today = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
+        today = new Date(Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000);
       } else {
         dateStr = undefined;
       }
@@ -183,48 +190,60 @@ export class ScheduleService {
       const mm = (localDate.getUTCMonth() + 1).toString().padStart(2, '0');
       const dd = localDate.getUTCDate().toString().padStart(2, '0');
       dateStr = `${yyyy}${mm}${dd}`;
-      
+
       const y = localDate.getUTCFullYear();
       const m = localDate.getUTCMonth();
       const d = localDate.getUTCDate();
-      today = new Date(Date.UTC(y, m, d) - (tzOffset * 60 * 60 * 1000));
+      today = new Date(Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000);
     }
 
-    const serviceUnitIdsStr = process.env.HIS_SERVICE_UNIT_IDS || 'A101,A110,A112,A201';
-    const serviceUnitIds = serviceUnitIdsStr.split(',').map(s => s.trim());
+    const serviceUnitIdsStr =
+      process.env.HIS_SERVICE_UNIT_IDS || 'A101,A110,A112,A201';
+    const serviceUnitIds = serviceUnitIdsStr.split(',').map((s) => s.trim());
 
     // Fetch all active doctors
-    const doctors = await this.prisma.doctor.findMany({ where: { isActive: true } });
+    const doctors = await this.prisma.doctor.findMany({
+      where: { isActive: true },
+    });
     let totalSynced = 0;
 
     // Fetch default floor
     let defaultFloor = await this.prisma.floor.findFirst();
     if (!defaultFloor) {
       defaultFloor = await this.prisma.floor.create({
-        data: { floorNumber: 1, name: 'Lantai 1' }
+        data: { floorNumber: 1, name: 'Lantai 1' },
       });
     }
 
     for (const doc of doctors) {
       for (const unitId of serviceUnitIds) {
         try {
-          const hisSchedules = await this.hisApiService.getSchedule(doc.doctorCode, dateStr, dateStr, unitId);
-          
+          const hisSchedules = await this.hisApiService.getSchedule(
+            doc.doctorCode,
+            dateStr,
+            dateStr,
+            unitId,
+          );
+
           for (const s of hisSchedules) {
             // Find or create room based on RoomID from API
             // Example HIS RoomID: "A1-501". Let's name it Poli 5A.
             // We just store RoomID as code and name.
-            let room = await this.prisma.room.findUnique({ where: { code: s.RoomID } });
+            let room = await this.prisma.room.findUnique({
+              where: { code: s.RoomID },
+            });
             if (!room) {
               let floorId = defaultFloor.id;
               if (s.RoomID === 'B3-102') {
-                let targetFloor = await this.prisma.floor.findUnique({ where: { floorNumber: 7 } });
+                let targetFloor = await this.prisma.floor.findUnique({
+                  where: { floorNumber: 7 },
+                });
                 if (!targetFloor) {
                   targetFloor = await this.prisma.floor.create({
                     data: {
                       floorNumber: 7,
                       name: 'Lantai 7',
-                    }
+                    },
                   });
                 }
                 floorId = targetFloor.id;
@@ -233,16 +252,21 @@ export class ScheduleService {
                 if (match) {
                   const roomDigits = match[1];
                   if (roomDigits.length >= 3) {
-                    const floorStr = roomDigits.substring(0, roomDigits.length - 2);
+                    const floorStr = roomDigits.substring(
+                      0,
+                      roomDigits.length - 2,
+                    );
                     const floorNum = parseInt(floorStr, 10);
                     if (!isNaN(floorNum)) {
-                      let targetFloor = await this.prisma.floor.findUnique({ where: { floorNumber: floorNum } });
+                      let targetFloor = await this.prisma.floor.findUnique({
+                        where: { floorNumber: floorNum },
+                      });
                       if (!targetFloor) {
                         targetFloor = await this.prisma.floor.create({
                           data: {
                             floorNumber: floorNum,
                             name: `Lantai ${floorNum}`,
-                          }
+                          },
                         });
                       }
                       floorId = targetFloor.id;
@@ -258,16 +282,28 @@ export class ScheduleService {
                   name: friendlyName,
                   roomType: 'DOCTOR' as any,
                   floorId,
-                }
+                },
               });
-              this.logger.log(`Created new room from HIS: ${friendlyName} (${s.RoomID})`);
+              this.logger.log(
+                `Created new room from HIS: ${friendlyName} (${s.RoomID})`,
+              );
             }
 
             // Convert startTime and endTime to Dates based on target/today's date
             const scheduleDate = today;
-            
-            const daysId = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const localScheduleDate = new Date(scheduleDate.getTime() + (tzOffset * 60 * 60 * 1000));
+
+            const daysId = [
+              'Minggu',
+              'Senin',
+              'Selasa',
+              'Rabu',
+              'Kamis',
+              'Jumat',
+              'Sabtu',
+            ];
+            const localScheduleDate = new Date(
+              scheduleDate.getTime() + tzOffset * 60 * 60 * 1000,
+            );
             const dayName = daysId[localScheduleDate.getUTCDay()];
 
             const startTimeStr = s.StartTime1 || '08:00';
@@ -279,8 +315,8 @@ export class ScheduleService {
               where: {
                 doctorId: doc.id,
                 roomId: room.id,
-                scheduleDate: scheduleDate
-              }
+                scheduleDate: scheduleDate,
+              },
             });
 
             if (existing) {
@@ -290,7 +326,7 @@ export class ScheduleService {
                   startTime: startTimeStr,
                   endTime: endTimeStr,
                   quota: parseInt(s.Slot || '0') || existing.quota,
-                }
+                },
               });
             } else {
               await this.prisma.doctorSchedule.create({
@@ -303,19 +339,23 @@ export class ScheduleService {
                   startTime: startTimeStr,
                   endTime: endTimeStr,
                   quota: parseInt(s.Slot || '0') || 50,
-                  status: 'ACTIVE'
-                }
+                  status: 'ACTIVE',
+                },
               });
             }
             totalSynced++;
           }
         } catch (e) {
-          this.logger.error(`Error syncing schedule for ${doc.doctorCode} unit ${unitId}: ${e.message}`);
+          this.logger.error(
+            `Error syncing schedule for ${doc.doctorCode} unit ${unitId}: ${e.message}`,
+          );
         }
       }
     }
 
-    this.logger.log(`Daily sync finished. Synced ${totalSynced} schedule entries.`);
+    this.logger.log(
+      `Daily sync finished. Synced ${totalSynced} schedule entries.`,
+    );
     return { success: true, totalSynced };
   }
 

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+} from '@nestjs/common';
 import { AdmissionService } from './admission.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -38,13 +48,21 @@ export class AdmissionController {
 
   @Post(':ticketId/start')
   startService(@Param('ticketId') ticketId: string, @Request() req: any) {
-    return this.admissionService.startService(ticketId, { userId: req.user.id });
+    return this.admissionService.startService(ticketId, {
+      userId: req.user.id,
+    });
   }
 
   @Post(':ticketId/finish')
   finishService(
     @Param('ticketId') ticketId: string,
-    @Body() body: { patientRmNo?: string; patientName?: string; patientDob?: string; nextUnitType?: string },
+    @Body()
+    body: {
+      patientRmNo?: string;
+      patientName?: string;
+      patientDob?: string;
+      nextUnitType?: string;
+    },
     @Request() req: any,
   ) {
     return this.admissionService.finishService(ticketId, {
@@ -79,10 +97,7 @@ export class AdmissionController {
   }
 
   @Post(':ticketId/hold')
-  holdTicket(
-    @Param('ticketId') ticketId: string,
-    @Request() req: any,
-  ) {
+  holdTicket(@Param('ticketId') ticketId: string, @Request() req: any) {
     return this.admissionService.holdTicket(ticketId, {
       userId: req.user.id,
     });
@@ -96,7 +111,13 @@ export class AdmissionController {
   @Put(':ticketId/patient-data')
   updatePatientData(
     @Param('ticketId') ticketId: string,
-    @Body() body: { patientRmNo?: string; patientName?: string; patientDob?: string; doctorTicketNo?: string },
+    @Body()
+    body: {
+      patientRmNo?: string;
+      patientName?: string;
+      patientDob?: string;
+      doctorTicketNo?: string;
+    },
   ) {
     return this.admissionService.updatePatientData(ticketId, body);
   }

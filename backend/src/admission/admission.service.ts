@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 import { RoutingService } from '../routing/routing.service';
@@ -57,7 +61,10 @@ export class AdmissionService {
   /**
    * Call a patient to a counter
    */
-  async callPatient(ticketId: string, data: { counterId: string; userId: string }) {
+  async callPatient(
+    ticketId: string,
+    data: { counterId: string; userId: string },
+  ) {
     const ticket = await this.prisma.queueTicket.findUnique({
       where: { id: ticketId },
       include: {
@@ -66,7 +73,10 @@ export class AdmissionService {
         visit: {
           include: {
             journeySessions: {
-              where: { unitType: 'ADMISSION', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+              where: {
+                unitType: 'ADMISSION',
+                status: { notIn: ['FINISHED', 'CANCELLED'] },
+              },
               orderBy: { createdAt: 'desc' },
               take: 1,
             },
@@ -77,14 +87,24 @@ export class AdmissionService {
 
     if (!ticket) throw new NotFoundException('Ticket tidak ditemukan');
 
-    const counter = await this.prisma.counter.findUnique({ where: { id: data.counterId } });
+    const counter = await this.prisma.counter.findUnique({
+      where: { id: data.counterId },
+    });
     if (!counter) throw new NotFoundException('Counter tidak ditemukan');
 
     // Check if the ticket is already being processed by another counter
     const activeSession = ticket.visit?.journeySessions?.[0];
-    if (activeSession && activeSession.counterId && activeSession.counterId !== data.counterId) {
-      const otherCounter = await this.prisma.counter.findUnique({ where: { id: activeSession.counterId } });
-      throw new BadRequestException(`Tiket ini sedang diproses di ${otherCounter?.name || 'counter lain'}`);
+    if (
+      activeSession &&
+      activeSession.counterId &&
+      activeSession.counterId !== data.counterId
+    ) {
+      const otherCounter = await this.prisma.counter.findUnique({
+        where: { id: activeSession.counterId },
+      });
+      throw new BadRequestException(
+        `Tiket ini sedang diproses di ${otherCounter?.name || 'counter lain'}`,
+      );
     }
 
     // If no visit yet, create one
@@ -95,7 +115,9 @@ export class AdmissionService {
       // Pre-generate doctor ticket number if a doctor is already selected from the kiosk
       let doctorTicketNo: string | null = null;
       if (ticket.selectedDoctorId) {
-        doctorTicketNo = await this.generateDoctorTicketNo(ticket.selectedDoctorId);
+        doctorTicketNo = await this.generateDoctorTicketNo(
+          ticket.selectedDoctorId,
+        );
       }
 
       visit = await this.prisma.visit.create({
@@ -133,7 +155,10 @@ export class AdmissionService {
     }
 
     // Get the admission session
-    let session = await this.journeyService.findSessionByVisitAndUnit(visit.id, 'ADMISSION');
+    let session = await this.journeyService.findSessionByVisitAndUnit(
+      visit.id,
+      'ADMISSION',
+    );
     if (!session) {
       session = await this.journeyService.createSession({
         visitId: visit.id,
@@ -212,9 +237,12 @@ export class AdmissionService {
       ticket.visit.id,
       'ADMISSION',
     );
-    if (!session) throw new BadRequestException('Sesi admission tidak ditemukan');
+    if (!session)
+      throw new BadRequestException('Sesi admission tidak ditemukan');
 
-    await this.journeyService.startService(session.id, { createdBy: data.userId });
+    await this.journeyService.startService(session.id, {
+      createdBy: data.userId,
+    });
 
     await this.prisma.visit.update({
       where: { id: ticket.visit.id },
@@ -252,20 +280,30 @@ export class AdmissionService {
       ticket.visit.id,
       'ADMISSION',
     );
-    if (!session) throw new BadRequestException('Sesi admission tidak ditemukan');
+    if (!session)
+      throw new BadRequestException('Sesi admission tidak ditemukan');
 
     // Finish admission session
-    await this.journeyService.finishService(session.id, { createdBy: data.userId });
+    await this.journeyService.finishService(session.id, {
+      createdBy: data.userId,
+    });
 
     // Re-fetch visit and ticket to get the latest data
     // (updatePatientData may have changed doctor/schedule/room/floor during admission)
-    const freshVisit = await this.prisma.visit.findUnique({ where: { id: ticket.visit.id } });
-    const freshTicket = await this.prisma.queueTicket.findUnique({ where: { id: ticketId } });
+    const freshVisit = await this.prisma.visit.findUnique({
+      where: { id: ticket.visit.id },
+    });
+    const freshTicket = await this.prisma.queueTicket.findUnique({
+      where: { id: ticketId },
+    });
 
     // Always prefer visit data (most up-to-date), then fall back to ticket
-    let finalDoctorId = freshVisit?.selectedDoctorId || freshTicket?.selectedDoctorId || null;
-    let finalRoomId = freshVisit?.selectedRoomId || freshTicket?.selectedRoomId || null;
-    let finalFloorId = freshVisit?.selectedFloorId || freshTicket?.selectedFloorId || null;
+    const finalDoctorId =
+      freshVisit?.selectedDoctorId || freshTicket?.selectedDoctorId || null;
+    const finalRoomId =
+      freshVisit?.selectedRoomId || freshTicket?.selectedRoomId || null;
+    const finalFloorId =
+      freshVisit?.selectedFloorId || freshTicket?.selectedFloorId || null;
     let currentDoctorTicketNo = freshVisit?.doctorTicketNo || null;
 
     // Generate doctorTicketNo if not exists and doctor is selected
@@ -287,7 +325,10 @@ export class AdmissionService {
     });
 
     // Dynamic routing — use provided nextUnitType or default (ASSESSMENT)
-    const nextUnit = data.nextUnitType || this.routingService.getDefaultNextUnit('ADMISSION') || 'ASSESSMENT';
+    const nextUnit =
+      data.nextUnitType ||
+      this.routingService.getDefaultNextUnit('ADMISSION') ||
+      'ASSESSMENT';
 
     await this.routingService.routeToNextUnit(
       ticket.visit.id,
@@ -302,14 +343,18 @@ export class AdmissionService {
     );
 
     this.displayGateway.triggerDashboardRefresh();
-    const destLabel = nextUnit === 'ASSESSMENT' ? 'pengkajian' : nextUnit.toLowerCase();
+    const destLabel =
+      nextUnit === 'ASSESSMENT' ? 'pengkajian' : nextUnit.toLowerCase();
     return { message: `Admisi selesai, pasien diarahkan ke ${destLabel}` };
   }
 
   /**
    * Transfer patient from admission to another unit
    */
-  async transferPatient(ticketId: string, data: { targetUnitType: string; reason: string; userId: string }) {
+  async transferPatient(
+    ticketId: string,
+    data: { targetUnitType: string; reason: string; userId: string },
+  ) {
     const ticket = await this.prisma.queueTicket.findUnique({
       where: { id: ticketId },
       include: { visit: true },
@@ -327,14 +372,20 @@ export class AdmissionService {
   /**
    * Cancel / Drop a queue ticket
    */
-  async cancelTicket(ticketId: string, data: { reason: string; userId: string }) {
+  async cancelTicket(
+    ticketId: string,
+    data: { reason: string; userId: string },
+  ) {
     const ticket = await this.prisma.queueTicket.findUnique({
       where: { id: ticketId },
       include: {
         visit: {
           include: {
             journeySessions: {
-              where: { unitType: 'ADMISSION', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+              where: {
+                unitType: 'ADMISSION',
+                status: { notIn: ['FINISHED', 'CANCELLED'] },
+              },
               orderBy: { createdAt: 'desc' },
               take: 1,
             },
@@ -407,7 +458,10 @@ export class AdmissionService {
         visit: {
           include: {
             journeySessions: {
-              where: { unitType: 'ADMISSION', status: { notIn: ['FINISHED', 'CANCELLED'] } },
+              where: {
+                unitType: 'ADMISSION',
+                status: { notIn: ['FINISHED', 'CANCELLED'] },
+              },
               orderBy: { createdAt: 'desc' },
               take: 1,
             },
@@ -417,12 +471,18 @@ export class AdmissionService {
     });
 
     if (!ticket) throw new NotFoundException('Ticket tidak ditemukan');
-    if (!ticket.visit) throw new BadRequestException('Visit belum dibuat/pasien belum dipanggil');
+    if (!ticket.visit)
+      throw new BadRequestException(
+        'Visit belum dibuat/pasien belum dipanggil',
+      );
 
     const activeSession = ticket.visit.journeySessions?.[0];
-    if (!activeSession) throw new BadRequestException('Sesi aktif tidak ditemukan');
+    if (!activeSession)
+      throw new BadRequestException('Sesi aktif tidak ditemukan');
 
-    await this.journeyService.holdSession(activeSession.id, { createdBy: data.userId });
+    await this.journeyService.holdSession(activeSession.id, {
+      createdBy: data.userId,
+    });
 
     // Log audit
     await this.prisma.auditLog.create({
@@ -451,7 +511,16 @@ export class AdmissionService {
   /**
    * Update patient data on a visit
    */
-  async updatePatientData(ticketId: string, data: { patientRmNo?: string; patientName?: string; patientDob?: string; scheduleId?: string; doctorTicketNo?: string }) {
+  async updatePatientData(
+    ticketId: string,
+    data: {
+      patientRmNo?: string;
+      patientName?: string;
+      patientDob?: string;
+      scheduleId?: string;
+      doctorTicketNo?: string;
+    },
+  ) {
     const ticket = await this.prisma.queueTicket.findUnique({
       where: { id: ticketId },
       include: { visit: true },
@@ -459,10 +528,16 @@ export class AdmissionService {
     if (!ticket?.visit) throw new BadRequestException('Visit belum dibuat');
 
     const updateData: any = {};
-    if (data.patientRmNo !== undefined) updateData.patientRmNo = data.patientRmNo;
-    if (data.patientName !== undefined) updateData.patientName = data.patientName;
-    if (data.patientDob !== undefined) updateData.patientDob = data.patientDob ? new Date(data.patientDob) : null;
-    if (data.doctorTicketNo !== undefined) updateData.doctorTicketNo = data.doctorTicketNo || null;
+    if (data.patientRmNo !== undefined)
+      updateData.patientRmNo = data.patientRmNo;
+    if (data.patientName !== undefined)
+      updateData.patientName = data.patientName;
+    if (data.patientDob !== undefined)
+      updateData.patientDob = data.patientDob
+        ? new Date(data.patientDob)
+        : null;
+    if (data.doctorTicketNo !== undefined)
+      updateData.doctorTicketNo = data.doctorTicketNo || null;
 
     if (data.scheduleId) {
       const schedule = await this.prisma.doctorSchedule.findUnique({
@@ -488,48 +563,73 @@ export class AdmissionService {
       }
     }
 
-    await this.prisma.visit.update({ where: { id: ticket.visit.id }, data: updateData });
+    await this.prisma.visit.update({
+      where: { id: ticket.visit.id },
+      data: updateData,
+    });
     return { message: 'Data pasien diperbarui' };
   }
 
   /**
    * Correct time on a journey session ("Lupa klik")
    */
-  async correctTime(ticketId: string, data: {
-    field: 'calledAt' | 'serviceStartedAt' | 'serviceFinishedAt';
-    correctedTime: string;
-    reason: string;
-    userId: string;
-  }) {
+  async correctTime(
+    ticketId: string,
+    data: {
+      field: 'calledAt' | 'serviceStartedAt' | 'serviceFinishedAt';
+      correctedTime: string;
+      reason: string;
+      userId: string;
+    },
+  ) {
     const ticket = await this.prisma.queueTicket.findUnique({
       where: { id: ticketId },
       include: { visit: true },
     });
     if (!ticket?.visit) throw new BadRequestException('Visit belum dibuat');
 
-    const session = await this.journeyService.findSessionByVisitAndUnit(ticket.visit.id, 'ADMISSION');
-    if (!session) throw new BadRequestException('Sesi admission tidak ditemukan');
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      ticket.visit.id,
+      'ADMISSION',
+    );
+    if (!session)
+      throw new BadRequestException('Sesi admission tidak ditemukan');
 
     const corrected = new Date(data.correctedTime);
-    const updatePayload: any = { isTimeEdited: true, editedReason: data.reason, editedBy: data.userId, editedAt: new Date() };
+    const updatePayload: any = {
+      isTimeEdited: true,
+      editedReason: data.reason,
+      editedBy: data.userId,
+      editedAt: new Date(),
+    };
     updatePayload[data.field] = corrected;
 
     // Recalculate durations
     if (data.field === 'calledAt' || data.field === 'serviceStartedAt') {
-      const s = await this.prisma.journeyUnitSession.findUnique({ where: { id: session.id } });
+      const s = await this.prisma.journeyUnitSession.findUnique({
+        where: { id: session.id },
+      });
       if (s) {
         const called = data.field === 'calledAt' ? corrected : s.calledAt;
-        const started = data.field === 'serviceStartedAt' ? corrected : s.serviceStartedAt;
+        const started =
+          data.field === 'serviceStartedAt' ? corrected : s.serviceStartedAt;
         if (called && s.waitingStartedAt) {
-          updatePayload.waitingDurationSeconds = Math.round((called.getTime() - s.waitingStartedAt.getTime()) / 1000);
+          updatePayload.waitingDurationSeconds = Math.round(
+            (called.getTime() - s.waitingStartedAt.getTime()) / 1000,
+          );
         }
         if (started && s.serviceFinishedAt) {
-          updatePayload.serviceDurationSeconds = Math.round((s.serviceFinishedAt.getTime() - started.getTime()) / 1000);
+          updatePayload.serviceDurationSeconds = Math.round(
+            (s.serviceFinishedAt.getTime() - started.getTime()) / 1000,
+          );
         }
       }
     }
 
-    await this.prisma.journeyUnitSession.update({ where: { id: session.id }, data: updatePayload });
+    await this.prisma.journeyUnitSession.update({
+      where: { id: session.id },
+      data: updatePayload,
+    });
 
     // Log event
     await this.prisma.journeyEvent.create({
@@ -569,7 +669,9 @@ export class AdmissionService {
   async generateDoctorTicketNo(doctorId: string): Promise<string> {
     const { today, tomorrow } = getLocalDateBoundaries();
 
-    const doctor = await this.prisma.doctor.findUnique({ where: { id: doctorId } });
+    const doctor = await this.prisma.doctor.findUnique({
+      where: { id: doctorId },
+    });
     if (!doctor) throw new NotFoundException('Dokter tidak ditemukan');
 
     const prefix = doctor.doctorInitials || doctor.doctorCode || 'DOC';
@@ -603,7 +705,9 @@ export class AdmissionService {
     });
     if (!schedule) throw new NotFoundException('Jadwal tidak ditemukan');
 
-    const nextDoctorTicketNo = await this.generateDoctorTicketNo(schedule.doctorId);
+    const nextDoctorTicketNo = await this.generateDoctorTicketNo(
+      schedule.doctorId,
+    );
     return { nextDoctorTicketNo };
   }
 }

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { PharmacyService } from './pharmacy.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -14,7 +22,9 @@ export class PharmacyController {
   constructor(private service: PharmacyService) {}
 
   @Get('queue')
-  getQueue() { return this.service.getQueue(); }
+  getQueue() {
+    return this.service.getQueue();
+  }
 
   @Get('recent-calls')
   getRecentCalls(@Query('limit') limit?: string) {

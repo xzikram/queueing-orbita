@@ -13,7 +13,9 @@ export class DoctorImportService {
     if (!sheet) throw new BadRequestException('File Excel kosong');
 
     const errors: string[] = [];
-    let success = 0, failed = 0, total = 0;
+    let success = 0,
+      failed = 0,
+      total = 0;
 
     // Expected columns: doctorCode, doctorName, specialty, defaultRoomCode
     sheet.eachRow((row, rowNum) => {
@@ -22,7 +24,7 @@ export class DoctorImportService {
     });
 
     const rooms = await this.prisma.room.findMany();
-    const roomMap = new Map(rooms.map(r => [r.code, r]));
+    const roomMap = new Map(rooms.map((r) => [r.code, r]));
 
     const rows: any[] = [];
     sheet.eachRow((row, rowNum) => {
@@ -37,7 +39,9 @@ export class DoctorImportService {
     for (const r of rows) {
       try {
         if (!r.doctorCode || !r.doctorName) {
-          errors.push(`Row ${r.rowNum}: Kode Dokter dan Nama Dokter wajib diisi`);
+          errors.push(
+            `Row ${r.rowNum}: Kode Dokter dan Nama Dokter wajib diisi`,
+          );
           failed++;
           continue;
         }
@@ -73,10 +77,18 @@ export class DoctorImportService {
       { header: 'Singkatan', key: 'doctorCode', width: 20 },
       { header: 'Nama Dokter', key: 'doctorName', width: 40 },
     ];
-    
+
     // Sample rows
-    sheet.addRow({ no: 1, doctorCode: 'AB', doctorName: 'dr. Muh. Abrar Ismail, Sp.M(K), M.Kes' });
-    sheet.addRow({ no: 2, doctorCode: 'AJ', doctorName: 'dr. Azizah M. Junus, Sp.M' });
+    sheet.addRow({
+      no: 1,
+      doctorCode: 'AB',
+      doctorName: 'dr. Muh. Abrar Ismail, Sp.M(K), M.Kes',
+    });
+    sheet.addRow({
+      no: 2,
+      doctorCode: 'AJ',
+      doctorName: 'dr. Azizah M. Junus, Sp.M',
+    });
 
     return workbook.xlsx.writeBuffer();
   }
