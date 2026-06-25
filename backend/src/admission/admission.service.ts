@@ -540,7 +540,7 @@ export class AdmissionService {
 
     const updateData: any = {};
     if (data.patientRmNo !== undefined)
-      updateData.patientRmNo = data.patientRmNo;
+      updateData.patientRmNo = data.patientRmNo?.trim() || null;
     if (data.patientName !== undefined)
       updateData.patientName = data.patientName;
     if (data.patientDob !== undefined)

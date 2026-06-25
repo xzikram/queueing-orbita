@@ -120,8 +120,8 @@ export default function FrontDeskPage() {
   // --- ADMISI SPECIFIC ---
   
   const finishAdmisiService = async (ticket: any) => {
-    if (!ticket.visit?.patientRmNo || !ticket.visit?.selectedScheduleId) {
-      alert('⚠️ Anda harus mengisi No. RM dan memilih Dokter Tujuan sebelum menyelesaikan layanan Admisi.');
+    if (!ticket.visit?.selectedScheduleId) {
+      alert('⚠️ Anda harus memilih Dokter Tujuan sebelum menyelesaikan layanan Admisi.');
       openPatientModal(ticket);
       return;
     }
@@ -466,7 +466,7 @@ export default function FrontDeskPage() {
         <div className={styles.modalOverlay} onClick={() => setPatientModal(null)}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>👤 Data Pasien — {patientModal.ticketNo}</h3>
-            <div className="form-group"><label className="form-label">No. Rekam Medis *</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Wajib diisi (Contoh: 000123)" /></div>
+            <div className="form-group"><label className="form-label">No. Rekam Medis (Opsional)</label><input className="form-input" value={patientForm.patientRmNo} onChange={e => setPatientForm({ ...patientForm, patientRmNo: e.target.value })} placeholder="Otomatis digenerate jika kosong" /></div>
             <div className="form-group">
               <label className="form-label">Dokter Tujuan</label>
               <select
