@@ -341,7 +341,6 @@ export default function DisplayAdmisiKasirBaruPage() {
 
             return (
               <div key={c.id} className={cardClass}>
-                <div className={styles.cardPattern} />
                 <div className={styles.counterHeader}>{c.name}</div>
                 
                 {isBusy ? (
@@ -349,7 +348,7 @@ export default function DisplayAdmisiKasirBaruPage() {
                 ) : hasTicket ? (
                   <div className={styles.counterNumber}>{c.activeTicketNo}</div>
                 ) : (
-                  <div className={`${styles.counterStatus} ${styles.statusStandby}`}>-</div>
+                  <div className={styles.counterNumber} style={{ opacity: 0 }}>-</div>
                 )}
               </div>
             );
@@ -358,9 +357,8 @@ export default function DisplayAdmisiKasirBaruPage() {
           {/* Fill remaining boxes if less than 6 counters found in db */}
           {Array.from({ length: Math.max(0, 6 - counters.length) }).map((_, idx) => (
             <div key={`empty-${idx}`} className={styles.counterCard}>
-              <div className={styles.cardPattern} />
               <div className={styles.counterHeader}>Counter {counters.length + idx + 1}</div>
-              <div className={`${styles.counterStatus} ${styles.statusStandby}`}>-</div>
+              <div className={styles.counterNumber} style={{ opacity: 0 }}>-</div>
             </div>
           ))}
         </div>
