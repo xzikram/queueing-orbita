@@ -23,7 +23,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 40px;
+  padding: 0 20px;
   z-index: 10;
   flex-shrink: 0;
 }
@@ -31,17 +31,17 @@
 .headerLeft {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
 }
 
 .logoContainer {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  height: 50px;
-  padding: 6px 14px;
+  height: 42px;
+  padding: 4px 10px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
+  border-radius: 10px;
   backdrop-filter: blur(8px);
 }
 
@@ -53,13 +53,13 @@
 }
 
 .titleWrapper h1 {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 900;
   margin: 0;
   color: #ffffff;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding-left: 16px;
+  padding-left: 12px;
   border-left: 2px solid rgba(255, 255, 255, 0.25);
   white-space: nowrap;
 }
@@ -74,18 +74,18 @@
 .timeRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .clock {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #ffffff;
   letter-spacing: 0.05em;
 }
 
 .connectionDot {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   line-height: 1;
 }
 
@@ -102,7 +102,7 @@
 }
 
 .date {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
   margin-top: 4px;
