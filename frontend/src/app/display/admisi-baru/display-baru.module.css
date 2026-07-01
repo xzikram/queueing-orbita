@@ -53,14 +53,15 @@
 }
 
 .titleWrapper h1 {
-  font-size: 1.6rem;
+  font-size: 1.35rem;
   font-weight: 900;
   margin: 0;
   color: #ffffff;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding-left: 20px;
+  padding-left: 16px;
   border-left: 2px solid rgba(255, 255, 255, 0.25);
+  white-space: nowrap;
 }
 
 .headerRight {
