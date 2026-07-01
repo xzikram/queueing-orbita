@@ -184,7 +184,7 @@ export default function CashierPage() {
         <div className={`glass-card ${styles.filterBar}`} style={{ background: '#ecfdf5', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span className={styles.filterLabel} style={{ color: '#047857', display: 'flex', alignItems: 'center', gap: '8px' }}>
             📍 Counter Aktif: <strong>{counters.find(c => c.id === selectedCounter)?.name}</strong>
-            {counterStatus === 'BUSY' && <span className="badge" style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>SIBUK</span>}
+            {counterStatus === 'BUSY' && <span className="badge" style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>SEDANG MELAYANI</span>}
           </span>
           <button 
             className={`btn ${counterStatus === 'BUSY' ? 'btn-success' : 'btn-danger'} btn-sm`} 

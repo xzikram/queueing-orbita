@@ -344,7 +344,7 @@ export default function DisplayAdmisiKasirBaruPage() {
                 <div className={styles.counterHeader}>{c.name}</div>
                 
                 {isBusy ? (
-                  <div className={`${styles.counterStatus} ${styles.statusBusy}`}>SIBUK</div>
+                  <div className={`${styles.counterStatus} ${styles.statusBusy}`}>SEDANG MELAYANI</div>
                 ) : hasTicket ? (
                   <div className={styles.counterNumber}>{c.activeTicketNo}</div>
                 ) : (

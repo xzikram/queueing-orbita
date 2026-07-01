@@ -237,6 +237,7 @@
 .statusBusy {
   color: #dc2626;
   animation: pulseAlert 2s ease-in-out infinite;
+  font-size: 1.55rem;
 }
 
 .statusStandby {
