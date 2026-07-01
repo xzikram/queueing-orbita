@@ -41,6 +41,7 @@ const menuItems = [
   ]},
   { label: 'Kiosk Admisi', path: '/kiosk', icon: '🎫', permissionKey: 'admission', external: true },
   { label: 'Kiosk Kasir', path: '/kiosk/kasir', icon: '🧾', permissionKey: 'cashier', external: true },
+  { label: 'Kiosk Gabungan', path: '/kiosk/gabungan', icon: '🏪', permissionKeys: ['admission', 'cashier'], external: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
