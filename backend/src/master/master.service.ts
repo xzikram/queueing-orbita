@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DisplayGateway } from '../websocket/display.gateway';
+import { getLocalDateBoundaries } from '../common/timezone.utils';
 
 @Injectable()
 export class MasterService {
@@ -14,6 +15,7 @@ export class MasterService {
   // ==================
   async findAllCounters() {
     const counters = await this.prisma.counter.findMany({ orderBy: { code: 'asc' } });
+    const { today } = getLocalDateBoundaries();
     
     return Promise.all(
       counters.map(async (counter) => {
@@ -21,6 +23,7 @@ export class MasterService {
           where: {
             counterId: counter.id,
             status: { in: ['CALLED', 'SERVING'] },
+            createdAt: { gte: today },
           },
           include: {
             queueTicket: true,
