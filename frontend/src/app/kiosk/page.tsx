@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import styles from './kiosk.module.css';
 import Logo from '@/components/Logo';
@@ -24,7 +25,11 @@ const categories: { type: PatientType; code: string; label: string; desc: string
   { type: 'ONLINE', code: 'D', label: 'ONLINE', desc: 'Sudah Daftar Online', color: '#ea580c' },
 ];
 
-export default function KioskPage() {
+function KioskPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const fromGabungan = searchParams.get('from') === 'gabungan';
+
   const [selectedType, setSelectedType] = useState<PatientType | null>(null);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [ticket, setTicket] = useState<any>(null);
@@ -110,17 +115,26 @@ export default function KioskPage() {
     setTicket(null);
   }, []);
 
+  const handleFinish = useCallback(() => {
+    if (fromGabungan) {
+      router.push('/kiosk/gabungan');
+    } else {
+      reset();
+    }
+  }, [fromGabungan, router, reset]);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (ticket) {
+      const timeoutDuration = fromGabungan ? 5000 : 15000;
       timer = setTimeout(() => {
-        reset();
-      }, 15000);
+        handleFinish();
+      }, timeoutDuration);
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [ticket, reset]);
+  }, [ticket, fromGabungan, handleFinish]);
 
   const selectedCat = categories.find(c => c.type === selectedType);
 
@@ -163,11 +177,11 @@ export default function KioskPage() {
           <div style={{ display: 'flex', gap: '12px', width: '100%', maxWidth: '400px', marginTop: '24px' }}>
             <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={() => {
               window.print();
-              setTimeout(reset, 2000);
+              setTimeout(handleFinish, 2000);
             }}>
               🖨️ Cetak Tiket
             </button>
-            <button className="btn btn-secondary btn-lg" style={{ flex: 1 }} onClick={reset}>
+            <button className="btn btn-secondary btn-lg" style={{ flex: 1 }} onClick={handleFinish}>
               🏠 Selesai
             </button>
           </div>
@@ -238,6 +252,30 @@ export default function KioskPage() {
       {/* Header */}
       <div className={`no-print ${styles.header}`}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {fromGabungan && (
+            <button
+              onClick={() => router.push('/kiosk/gabungan')}
+              className="btn"
+              style={{
+                padding: '10px 18px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                marginRight: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)' }}
+              onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)' }}
+            >
+              <span>⬅️</span> Kembali
+            </button>
+          )}
           <div className={styles.headerLogoWrap} style={{ background: 'white', padding: '5px 15px', borderRadius: '8px', height: '60px' }}>
             <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
           </div>
@@ -365,5 +403,25 @@ export default function KioskPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function KioskPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: '#f1f5f9',
+        fontSize: '1.25rem',
+        color: '#1e293b'
+      }}>
+        Loading...
+      </div>
+    }>
+      <KioskPageContent />
+    </Suspense>
   );
 }

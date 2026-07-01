@@ -1,11 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import Logo from '@/components/Logo';
 import styles from './kasir.module.css';
 
-export default function KioskKasirPage() {
+function KioskKasirPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const fromGabungan = searchParams.get('from') === 'gabungan';
+
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -13,17 +18,26 @@ export default function KioskKasirPage() {
     setTicket(null);
   }, []);
 
+  const handleFinish = useCallback(() => {
+    if (fromGabungan) {
+      router.push('/kiosk/gabungan');
+    } else {
+      reset();
+    }
+  }, [fromGabungan, router, reset]);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (ticket) {
+      const timeoutDuration = fromGabungan ? 5000 : 15000;
       timer = setTimeout(() => {
-        reset();
-      }, 15000); // 15 seconds auto-reset
+        handleFinish();
+      }, timeoutDuration); // 5 or 15 seconds auto-reset
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [ticket, reset]);
+  }, [ticket, fromGabungan, handleFinish]);
 
   const generateTicket = async (patientType: 'UMUM' | 'ASURANSI') => {
     setLoading(true);
@@ -70,7 +84,7 @@ export default function KioskKasirPage() {
               style={{ flex: 1, padding: '14px 20px' }}
               onClick={() => {
                 window.print();
-                setTimeout(reset, 2000);
+                setTimeout(handleFinish, 2000);
               }}
             >
               🖨️ Cetak Tiket
@@ -78,7 +92,7 @@ export default function KioskKasirPage() {
             <button
               className="btn btn-secondary btn-lg"
               style={{ flex: 1, padding: '14px 20px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', borderColor: 'rgba(255, 255, 255, 0.2)' }}
-              onClick={reset}
+              onClick={handleFinish}
             >
               🏠 Selesai
             </button>
@@ -139,6 +153,29 @@ export default function KioskKasirPage() {
   return (
     <div className={styles.container}>
       <div className={styles.glassHeader}>
+        {fromGabungan && (
+          <button
+            onClick={() => router.push('/kiosk/gabungan')}
+            style={{
+              padding: '10px 18px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: 'white',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '30px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              backdropFilter: 'blur(5px)',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)' }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)' }}
+          >
+            <span>⬅️</span> Kembali
+          </button>
+        )}
         <div className={styles.logoWrapper}>
           <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
         </div>
@@ -190,5 +227,25 @@ export default function KioskKasirPage() {
         <p>© {new Date().getFullYear()} RS JEC ORBITA. Hak Cipta Dilindungi.</p>
       </div>
     </div>
+  );
+}
+
+export default function KioskKasirPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: '#0f172a',
+        fontSize: '1.25rem',
+        color: '#ffffff'
+      }}>
+        Loading...
+      </div>
+    }>
+      <KioskKasirPageContent />
+    </Suspense>
   );
 }

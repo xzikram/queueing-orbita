@@ -1,0 +1,326 @@
+/* ══════════════════════════════════════════════
+   PREMIUM COMBINED KIOSK LAYOUT
+   Glassmorphism + Harmony Blue & Orange
+   ══════════════════════════════════════════════ */
+
+.container {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, #1e3a8a 0%, #0b0f19 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #ffffff;
+  overflow: hidden;
+  position: relative;
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
+  animation: slowPulse 20s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* ── Header ── */
+.glassHeader {
+  width: 100%;
+  padding: 30px 40px;
+  background: rgba(11, 15, 25, 0.5);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.logoWrapper {
+  display: flex;
+  align-items: center;
+  height: 60px;
+  background: white;
+  padding: 10px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.headerText {
+  text-align: right;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff, #93c5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: #94a3b8;
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ── Main Content ── */
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1100px;
+  padding: 40px;
+  z-index: 10;
+}
+
+.promptArea {
+  text-align: center;
+  margin-bottom: 50px;
+  animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.promptArea h2 {
+  font-size: 3.25rem;
+  font-weight: 850;
+  margin: 0 0 16px;
+  color: #ffffff;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.03em;
+}
+
+.promptArea p {
+  font-size: 1.25rem;
+  color: #cbd5e1;
+  max-width: 650px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Card Grid ── */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 40px;
+  width: 100%;
+  animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.selectionCard {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 36px;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.25);
+  color: white;
+}
+
+.selectionCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: var(--accent-color, #ffffff);
+  opacity: 0.8;
+  transition: all 0.3s ease;
+}
+
+.cardPendaftaran {
+  --accent-color: #2563eb; /* Blue */
+}
+
+.cardPembayaran {
+  --accent-color: #ea580c; /* Orange/Red */
+}
+
+.selectionCard:hover {
+  transform: translateY(-12px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.selectionCard:hover::before {
+  height: 12px;
+}
+
+.selectionCard:active {
+  transform: translateY(2px);
+  transition: all 0.1s;
+}
+
+.cardHoverEffect {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.5);
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: screen;
+}
+
+.selectionCard:hover .cardHoverEffect {
+  opacity: 0.18;
+  transform: translate(-50%, -50%) scale(1.5);
+}
+
+.cardIcon {
+  font-size: 5rem;
+  margin-bottom: 28px;
+  z-index: 1;
+  position: relative;
+  filter: drop-shadow(0 6px 15px rgba(0, 0, 0, 0.3));
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.selectionCard:hover .cardIcon {
+  transform: scale(1.15) rotate(5deg);
+}
+
+.cardCode {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  font-size: 4rem;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.03);
+  line-height: 1;
+  z-index: 0;
+}
+
+.cardLabel {
+  font-size: 2rem;
+  font-weight: 850;
+  margin: 0 0 14px;
+  z-index: 1;
+  position: relative;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.cardDesc {
+  font-size: 1.15rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.6;
+  z-index: 1;
+  position: relative;
+  max-width: 320px;
+}
+
+/* ── Footer ── */
+.footer {
+  width: 100%;
+  text-align: center;
+  padding: 24px;
+  color: #64748b;
+  font-size: 0.875rem;
+  z-index: 10;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Animations ── */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slowPulse {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(5%, 5%); }
+}
+
+/* ── Responsive adjustments for smaller screens/viewports ── */
+@media (max-width: 900px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .promptArea h2 {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-height: 850px), (max-width: 1280px) {
+  .glassHeader {
+    padding: 15px 30px;
+  }
+  .logoWrapper {
+    height: 45px;
+    padding: 6px 15px;
+  }
+  .title {
+    font-size: 1.5rem;
+  }
+  .subtitle {
+    font-size: 0.8rem;
+  }
+  .mainContent {
+    padding: 20px;
+  }
+  .promptArea {
+    margin-bottom: 25px;
+  }
+  .promptArea h2 {
+    font-size: 2.25rem;
+    margin-bottom: 8px;
+  }
+  .promptArea p {
+    font-size: 1.1rem;
+  }
+  .cardGrid {
+    gap: 24px;
+    max-width: 850px;
+  }
+  .selectionCard {
+    padding: 40px 24px;
+    border-radius: 28px;
+  }
+  .cardIcon {
+    font-size: 3.5rem;
+    margin-bottom: 16px;
+  }
+  .cardLabel {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+  }
+  .cardDesc {
+    font-size: 1rem;
+  }
+  .footer {
+    padding: 12px;
+  }
+}
