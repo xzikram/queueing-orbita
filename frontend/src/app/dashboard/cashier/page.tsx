@@ -10,6 +10,7 @@ export default function CashierPage() {
   const [counters, setCounters] = useState<any[]>([]);
   const [selectedCounter, setSelectedCounter] = useState('');
   const [isLocked, setIsLocked] = useState(false);
+  const [counterStatus, setCounterStatus] = useState('STANDBY');
   const [tempCounter, setTempCounter] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [destModal, setDestModal] = useState<string | null>(null);
@@ -26,6 +27,15 @@ export default function CashierPage() {
     catch (err) { console.error(err); }
   }, []);
 
+  const fetchCounterStatus = useCallback(async (counterId: string) => {
+    try {
+      const res = await api.get(`/counters/${counterId}`);
+      setCounterStatus(res.data.status || 'STANDBY');
+    } catch (err) {
+      console.error('Failed to fetch counter status', err);
+    }
+  }, []);
+
   const loadCounters = useCallback(async () => {
     try {
       const res = await api.get('/counters');
@@ -36,17 +46,30 @@ export default function CashierPage() {
       if (saved) {
         setSelectedCounter(saved);
         setIsLocked(true);
+        fetchCounterStatus(saved);
       }
     } catch (err) {
       console.error('Failed to load counters:', err);
     }
-  }, []);
+  }, [fetchCounterStatus]);
 
   const saveCounterLock = () => {
     if (!tempCounter) return alert('Silakan pilih counter');
     localStorage.setItem('activeCashierCounter', tempCounter);
     setSelectedCounter(tempCounter);
     setIsLocked(true);
+    fetchCounterStatus(tempCounter);
+  };
+
+  const toggleCounterStatus = async () => {
+    if (!selectedCounter) return;
+    const newStatus = counterStatus === 'BUSY' ? 'STANDBY' : 'BUSY';
+    try {
+      await api.put(`/counters/${selectedCounter}/status`, { status: newStatus });
+      setCounterStatus(newStatus);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah status counter');
+    }
   };
 
   useEffect(() => {
@@ -158,10 +181,27 @@ export default function CashierPage() {
       )}
 
       {isLocked && (
-        <div className={`glass-card ${styles.filterBar}`} style={{ background: '#ecfdf5', borderColor: '#10b981' }}>
-          <span className={styles.filterLabel} style={{ color: '#047857' }}>
+        <div className={`glass-card ${styles.filterBar}`} style={{ background: '#ecfdf5', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span className={styles.filterLabel} style={{ color: '#047857', display: 'flex', alignItems: 'center', gap: '8px' }}>
             📍 Counter Aktif: <strong>{counters.find(c => c.id === selectedCounter)?.name}</strong>
+            {counterStatus === 'BUSY' && <span className="badge" style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>SIBUK</span>}
           </span>
+          <button 
+            className={`btn ${counterStatus === 'BUSY' ? 'btn-success' : 'btn-danger'} btn-sm`} 
+            style={{ 
+              padding: '6px 14px', 
+              fontSize: '0.85rem', 
+              fontWeight: '600',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              border: 'none',
+              color: 'white',
+              background: counterStatus === 'BUSY' ? '#10b981' : '#ef4444'
+            }}
+            onClick={toggleCounterStatus}
+          >
+            {counterStatus === 'BUSY' ? '🟢 Set Aktif (Standby)' : '🔴 Set Sibuk (Melayani)'}
+          </button>
           <span style={{ fontSize: '0.85rem', color: '#059669', marginLeft: 'auto' }}>
             (Untuk pindah counter, silakan Logout lalu Login kembali)
           </span>

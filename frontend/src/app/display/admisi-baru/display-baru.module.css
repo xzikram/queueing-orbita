@@ -1,0 +1,378 @@
+/* ══════════════════════════════════════════════
+   PREMIUM PORTRAIT GRID DISPLAY LAYOUT
+   Glassmorphism + Dynamic Serving Animations
+   ══════════════════════════════════════════════ */
+
+.container {
+  height: 100vh;
+  background: radial-gradient(circle at 50% 0%, #1e3a8a 0%, #080b11 100%);
+  display: flex;
+  flex-direction: column;
+  color: white;
+  overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+  animation: slowPulse 25s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* ── Header ── */
+.header {
+  height: 90px;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logoContainer {
+  height: 50px;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.logoImage {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.titleWrapper h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff, #93c5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.headerRight {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.clock {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+}
+
+.connectionDot {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.connected {
+  color: #10b981;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  animation: pulseGreen 2s infinite;
+}
+
+.disconnected {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+  animation: pulseRed 1s infinite;
+}
+
+.date {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* ── Main Content Area ── */
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  gap: 24px;
+  min-height: 0;
+  z-index: 10;
+}
+
+/* ── Video Area ── */
+.videoArea {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #000000;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.videoPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+}
+
+.videoIcon {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+}
+
+.videoText {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.videoSub {
+  font-size: 0.9rem;
+  color: #475569;
+  margin-top: 6px;
+}
+
+/* ── Counter Grid (2 Columns x 3 Rows) ── */
+.counterGrid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 20px;
+  min-height: 0;
+}
+
+/* ── Counter Card ── */
+.counterCard {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(25px);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Card States classes */
+.counterCardActive {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 12px 35px rgba(59, 130, 246, 0.15);
+}
+
+.counterCardBusy {
+  background: rgba(239, 68, 68, 0.03);
+  border-color: rgba(239, 68, 68, 0.2);
+  box-shadow: 0 12px 35px rgba(239, 68, 68, 0.1);
+}
+
+/* Text styles */
+.counterHeader {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  z-index: 1;
+}
+
+.counterCardActive .counterHeader {
+  color: #93c5fd;
+}
+
+.counterCardBusy .counterHeader {
+  color: #fca5a5;
+}
+
+.counterNumber {
+  font-size: 4.5rem;
+  font-weight: 900;
+  color: #3b82f6;
+  text-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  z-index: 1;
+}
+
+.counterStatus {
+  font-size: 2.25rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  z-index: 1;
+}
+
+.statusBusy {
+  color: #ef4444;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: pulseAlert 2s ease-in-out infinite;
+}
+
+.statusStandby {
+  color: rgba(255, 255, 255, 0.1);
+  font-size: 3.5rem;
+  font-weight: 500;
+}
+
+/* Decorative grid pattern in background */
+.cardPattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0);
+  background-size: 16px 16px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Blink Call Animation ── */
+.blink {
+  animation: blinkPulse 0.8s ease-in-out 6 alternate !important;
+}
+
+/* ── Running Text / Ticker ── */
+.ticker {
+  height: 50px;
+  background: #ea580c;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  z-index: 10;
+  flex-shrink: 0;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.tickerContent {
+  display: inline-block;
+  white-space: nowrap;
+  padding-left: 100%;
+  animation: tickerWalk 25s linear infinite;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+}
+
+/* ── Keyframes ── */
+@keyframes blinkPulse {
+  0% {
+    background-color: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.4);
+    border-color: rgba(59, 130, 246, 1);
+    transform: scale(1.03);
+    box-shadow: 0 15px 45px rgba(59, 130, 246, 0.6), 0 0 20px rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    background-color: rgba(59, 130, 246, 0.05);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: scale(1);
+  }
+}
+
+@keyframes pulseAlert {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes pulseGreen {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulseRed {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes tickerWalk {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}
+
+@keyframes slowPulse {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(5%, 5%) scale(1.05); }
+}
+
+/* ── Responsive adjustments for height ── */
+@media (max-height: 800px) {
+  .header {
+    height: 70px;
+    padding: 0 20px;
+  }
+  .mainContent {
+    padding: 16px;
+    gap: 16px;
+  }
+  .counterGrid {
+    gap: 12px;
+  }
+  .counterCard {
+    padding: 12px;
+    border-radius: 20px;
+  }
+  .counterHeader {
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+  }
+  .counterNumber {
+    font-size: 3.25rem;
+  }
+  .counterStatus {
+    font-size: 1.75rem;
+  }
+}

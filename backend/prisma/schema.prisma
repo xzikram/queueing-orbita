@@ -28,6 +28,7 @@ model Counter {
   canHandleAdmission Boolean              @default(true) @map("can_handle_admission")
   canHandleCashier   Boolean              @default(true) @map("can_handle_cashier")
   isActive           Boolean              @default(true) @map("is_active")
+  status             String               @default("STANDBY")
   createdAt          DateTime             @default(now()) @map("created_at")
   updatedAt          DateTime             @updatedAt @map("updated_at")
   journeySessions    JourneyUnitSession[]

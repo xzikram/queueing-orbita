@@ -13,7 +13,56 @@ export class MasterService {
   // COUNTERS
   // ==================
   async findAllCounters() {
-    return this.prisma.counter.findMany({ orderBy: { code: 'asc' } });
+    const counters = await this.prisma.counter.findMany({ orderBy: { code: 'asc' } });
+    
+    return Promise.all(
+      counters.map(async (counter) => {
+        const activeSession = await this.prisma.journeyUnitSession.findFirst({
+          where: {
+            counterId: counter.id,
+            status: { in: ['CALLED', 'SERVING'] },
+          },
+          include: {
+            queueTicket: true,
+            visit: {
+              include: {
+                queueTicket: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+
+        const activeTicketNo = activeSession
+          ? activeSession.visit?.doctorTicketNo ||
+            activeSession.visit?.queueTicket?.ticketNo ||
+            activeSession.queueTicket?.ticketNo ||
+            null
+          : null;
+
+        return {
+          ...counter,
+          activeTicketNo,
+        };
+      }),
+    );
+  }
+
+  async updateCounterStatus(id: string, status: string) {
+    await this.findOneCounter(id);
+    const updated = await this.prisma.counter.update({
+      where: { id },
+      data: { status },
+    });
+
+    this.displayGateway.server.emit('counterStatusChanged', {
+      counterId: id,
+      status: status,
+    });
+
+    return updated;
   }
 
   async findOneCounter(id: string) {

@@ -34,6 +34,7 @@ const menuItems = [
   { type: 'divider' },
   { label: 'TV Display', icon: '📺', permissionKey: 'master', children: [
     { label: 'TV Admisi & Kasir', path: '/display/admisi', icon: '📺', external: true },
+    { label: 'TV Admisi Grid (Baru)', path: '/display/admisi-baru', icon: '📺', external: true },
     { label: 'TV Lantai 5', path: '/display/lantai/5', icon: '📺', external: true },
     { label: 'TV Lantai 6', path: '/display/lantai/6', icon: '📺', external: true },
     { label: 'TV Lantai 7', path: '/display/lantai/7', icon: '📺', external: true },

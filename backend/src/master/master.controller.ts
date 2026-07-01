@@ -58,6 +58,13 @@ export class MasterController {
     return this.masterService.updateCounter(id, body);
   }
 
+  @Put('counters/:id/status')
+  @Permission('')
+  @Roles('ADMIN', 'ADMISSION', 'CASHIER')
+  updateCounterStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    return this.masterService.updateCounterStatus(id, body.status);
+  }
+
   @Delete('counters/:id')
   @Roles('ADMIN')
   deleteCounter(@Param('id') id: string) {
