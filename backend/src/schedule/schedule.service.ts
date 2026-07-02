@@ -226,67 +226,89 @@ export class ScheduleService {
           );
 
           for (const s of hisSchedules) {
-            // Find or create room based on RoomID from API
-            // Example HIS RoomID: "A1-501". Let's name it Poli 5A.
-            // We just store RoomID as code and name.
-            let room = await this.prisma.room.findUnique({
-              where: { code: s.RoomID },
-            });
-            if (!room) {
-              let floorId = defaultFloor.id;
-              if (s.RoomID === 'B3-102') {
-                let targetFloor = await this.prisma.floor.findUnique({
-                  where: { floorNumber: 7 },
-                });
-                if (!targetFloor) {
-                  targetFloor = await this.prisma.floor.create({
-                    data: {
-                      floorNumber: 7,
-                      name: 'Lantai 7',
-                    },
+            let room: any = null;
+            if (s.RoomID) {
+              room = await this.prisma.room.findUnique({
+                where: { code: s.RoomID },
+              });
+              if (!room) {
+                let floorId = defaultFloor.id;
+                if (s.RoomID === 'B3-102') {
+                  let targetFloor = await this.prisma.floor.findUnique({
+                    where: { floorNumber: 7 },
                   });
-                }
-                floorId = targetFloor.id;
-              } else {
-                const match = s.RoomID.match(/^[A-Z0-9]+-(\d+)$/i);
-                if (match) {
-                  const roomDigits = match[1];
-                  if (roomDigits.length >= 3) {
-                    const floorStr = roomDigits.substring(
-                      0,
-                      roomDigits.length - 2,
-                    );
-                    const floorNum = parseInt(floorStr, 10);
-                    if (!isNaN(floorNum)) {
-                      let targetFloor = await this.prisma.floor.findUnique({
-                        where: { floorNumber: floorNum },
-                      });
-                      if (!targetFloor) {
-                        targetFloor = await this.prisma.floor.create({
-                          data: {
-                            floorNumber: floorNum,
-                            name: `Lantai ${floorNum}`,
-                          },
+                  if (!targetFloor) {
+                    targetFloor = await this.prisma.floor.create({
+                      data: {
+                        floorNumber: 7,
+                        name: 'Lantai 7',
+                      },
+                    });
+                  }
+                  floorId = targetFloor.id;
+                } else {
+                  const match = s.RoomID.match(/^[A-Z0-9]+-(\d+)$/i);
+                  if (match) {
+                    const roomDigits = match[1];
+                    if (roomDigits.length >= 3) {
+                      const floorStr = roomDigits.substring(
+                        0,
+                        roomDigits.length - 2,
+                      );
+                      const floorNum = parseInt(floorStr, 10);
+                      if (!isNaN(floorNum)) {
+                        let targetFloor = await this.prisma.floor.findUnique({
+                          where: { floorNumber: floorNum },
                         });
+                        if (!targetFloor) {
+                          targetFloor = await this.prisma.floor.create({
+                            data: {
+                              floorNumber: floorNum,
+                              name: `Lantai ${floorNum}`,
+                            },
+                          });
+                        }
+                        floorId = targetFloor.id;
                       }
-                      floorId = targetFloor.id;
                     }
                   }
                 }
-              }
 
-              const friendlyName = this.formatRoomName(s.RoomID);
-              room = await this.prisma.room.create({
-                data: {
-                  code: s.RoomID,
-                  name: friendlyName,
-                  roomType: 'DOCTOR' as any,
-                  floorId,
-                },
+                const friendlyName = this.formatRoomName(s.RoomID);
+                room = await this.prisma.room.create({
+                  data: {
+                    code: s.RoomID,
+                    name: friendlyName,
+                    roomType: 'DOCTOR' as any,
+                    floorId,
+                  },
+                });
+                this.logger.log(
+                  `Created new room from HIS: ${friendlyName} (${s.RoomID})`,
+                );
+              }
+            } else if (doc.defaultRoomId) {
+              room = await this.prisma.room.findUnique({
+                where: { id: doc.defaultRoomId },
               });
-              this.logger.log(
-                `Created new room from HIS: ${friendlyName} (${s.RoomID})`,
-              );
+            }
+
+            if (!room) {
+              const fallbackCode = 'DEFAULT-ROOM';
+              room = await this.prisma.room.findUnique({
+                where: { code: fallbackCode },
+              });
+              if (!room) {
+                room = await this.prisma.room.create({
+                  data: {
+                    code: fallbackCode,
+                    name: 'Poli Default',
+                    roomType: 'DOCTOR' as any,
+                    floorId: defaultFloor.id,
+                  },
+                });
+                this.logger.log(`Created fallback DEFAULT-ROOM`);
+              }
             }
 
             // Convert startTime and endTime to Dates based on target/today's date

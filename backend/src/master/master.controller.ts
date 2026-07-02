@@ -20,6 +20,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Permission } from '../common/decorators/permission.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import type { Response } from 'express';
 
 @Controller()
@@ -35,6 +36,7 @@ export class MasterController {
   // ==================
   // COUNTERS
   // ==================
+  @Public()
   @Get('counters')
   @Permission('')
   findAllCounters() {
@@ -215,6 +217,7 @@ export class MasterController {
     return this.masterService.findAllDisplays();
   }
 
+  @Public()
   @Get('displays/code/:code')
   @Permission('')
   findDisplayByCode(@Param('code') code: string) {

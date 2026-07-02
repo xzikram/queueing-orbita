@@ -9,7 +9,7 @@ export default function DoctorsPage() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<'create'|'edit'|'delete'|null>(null);
   const [selected, setSelected] = useState<any>(null);
-  const [form, setForm] = useState({doctorCode:'',doctorName:'',doctorInitials:'',isActive:true});
+  const [form, setForm] = useState({doctorCode:'',doctorName:'',doctorInitials:'',defaultRoomId:'',isActive:true});
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -18,13 +18,20 @@ export default function DoctorsPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const openCreate = () => { setForm({doctorCode:'',doctorName:'',doctorInitials:'',isActive:true}); setModal('create'); };
-  const openEdit = (d:any) => { setSelected(d); setForm({doctorCode:d.doctorCode,doctorName:d.doctorName,doctorInitials:d.doctorInitials||'',isActive:d.isActive}); setModal('edit'); };
+  const openCreate = () => { setForm({doctorCode:'',doctorName:'',doctorInitials:'',defaultRoomId:'',isActive:true}); setModal('create'); };
+  const openEdit = (d:any) => { setSelected(d); setForm({doctorCode:d.doctorCode,doctorName:d.doctorName,doctorInitials:d.doctorInitials||'',defaultRoomId:d.defaultRoomId||'',isActive:d.isActive}); setModal('edit'); };
 
   const save = async () => {
     setLoading(true);
     try {
-      const data = {...form, specialty: '-'};
+      const data = {
+        doctorCode: form.doctorCode,
+        doctorName: form.doctorName,
+        doctorInitials: form.doctorInitials || null,
+        defaultRoomId: form.defaultRoomId || null,
+        isActive: form.isActive,
+        specialty: '-'
+      };
       modal==='create' ? await api.post('/doctors',data) : await api.put(`/doctors/${selected.id}`,data);
       setModal(null); await load();
     } catch(e:any){alert(e.response?.data?.message||'Gagal');}
@@ -96,10 +103,15 @@ export default function DoctorsPage() {
         </div>
       </div>
       <div className={`glass-card ${styles.tableCard}`}><div className={styles.tableWrap}>
-        <table className="data-table"><thead><tr><th>Kode/Singkatan</th><th>Nama Dokter</th><th>Status</th><th>Aksi</th></tr></thead>
+        <table className="data-table"><thead><tr><th>Kode/Singkatan</th><th>Nama Dokter</th><th>Ruangan Default</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>{filtered.map(d=>(
-          <tr key={d.id}><td><code style={{color:'var(--primary-300)'}}>{d.doctorCode}{d.doctorInitials ? ` / ${d.doctorInitials}` : ''}</code></td><td><strong>{d.doctorName}</strong></td><td><span className={styles.statusDot+' '+(d.isActive?styles.statusActive:styles.statusInactive)}/>{d.isActive?'Aktif':'Nonaktif'}</td>
-          <td><div style={{display:'flex',gap:6}}><button className="btn btn-secondary btn-sm" onClick={()=>openEdit(d)}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>{setSelected(d);setModal('delete')}}>Hapus</button></div></td></tr>
+          <tr key={d.id}>
+            <td><code style={{color:'var(--primary-300)'}}>{d.doctorCode}{d.doctorInitials ? ` / ${d.doctorInitials}` : ''}</code></td>
+            <td><strong>{d.doctorName}</strong></td>
+            <td>{d.defaultRoom ? `${d.defaultRoom.name} (${d.defaultRoom.code})` : '-'}</td>
+            <td><span className={styles.statusDot+' '+(d.isActive?styles.statusActive:styles.statusInactive)}/>{d.isActive?'Aktif':'Nonaktif'}</td>
+            <td><div style={{display:'flex',gap:6}}><button className="btn btn-secondary btn-sm" onClick={()=>openEdit(d)}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>{setSelected(d);setModal('delete')}}>Hapus</button></div></td>
+          </tr>
         ))}</tbody></table>
       </div></div>
 
@@ -108,6 +120,19 @@ export default function DoctorsPage() {
         <div className="form-group"><label className="form-label">Kode HIS (Paramedic ID)</label><input className="form-input" value={form.doctorCode} onChange={e=>setForm({...form,doctorCode:e.target.value})}/></div>
         <div className="form-group"><label className="form-label">Singkatan (Inisial)</label><input className="form-input" value={form.doctorInitials} onChange={e=>setForm({...form,doctorInitials:e.target.value})}/></div>
         <div className="form-group"><label className="form-label">Nama Dokter</label><input className="form-input" value={form.doctorName} onChange={e=>setForm({...form,doctorName:e.target.value})}/></div>
+        <div className="form-group">
+          <label className="form-label">Ruangan Default</label>
+          <select 
+            className="form-input" 
+            value={form.defaultRoomId} 
+            onChange={e=>setForm({...form,defaultRoomId:e.target.value})}
+          >
+            <option value="">-- Tanpa Ruangan Default --</option>
+            {rooms.map(r => (
+              <option key={r.id} value={r.id}>{r.name} (Lt. {r.floor?.name || r.floor?.floorNumber})</option>
+            ))}
+          </select>
+        </div>
         <div className={styles.modalActions}><button className="btn btn-secondary" onClick={()=>setModal(null)}>Batal</button><button className="btn btn-primary" onClick={save} disabled={loading}>{loading?'...':'Simpan'}</button></div>
       </div></div>}
 
