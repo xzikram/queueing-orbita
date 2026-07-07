@@ -216,4 +216,106 @@ export class PharmacyService {
     this.displayGateway.triggerDashboardRefresh();
     return { message: 'Kunjungan selesai, pasien pulang' };
   }
+
+  async getReadyList() {
+    const { today, tomorrow } = getLocalDateBoundaries();
+    return this.prisma.visit.findMany({
+      where: {
+        currentUnitType: 'PHARMACY',
+        currentStatus: { in: ['READY', 'CALLED'] },
+        finishedAt: null,
+        visitDate: { gte: today, lt: tomorrow },
+      },
+      select: {
+        id: true,
+        patientName: true,
+        doctorTicketNo: true,
+        queueTicket: {
+          select: {
+            ticketNo: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async generatePharmacyTicketNo(): Promise<string> {
+    const { today, tomorrow } = getLocalDateBoundaries();
+    const lastTicket = await this.prisma.queueTicket.findFirst({
+      where: {
+        queueDate: { gte: today, lt: tomorrow },
+        ticketNo: { startsWith: 'F' },
+      },
+      orderBy: { ticketNo: 'desc' },
+    });
+
+    let nextNumber = 1;
+    if (lastTicket) {
+      const numberPart = lastTicket.ticketNo.substring(1);
+      const lastNum = parseInt(numberPart) || 0;
+      nextNumber = lastNum + 1;
+    }
+
+    return `F${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  async createManualVisit(patientName: string, customTicketNo: string | undefined, userId: string) {
+    const { today } = getLocalDateBoundaries();
+    
+    let ticketNo = customTicketNo?.trim();
+    if (!ticketNo) {
+      ticketNo = await this.generatePharmacyTicketNo();
+    }
+
+    const existingTicket = await this.prisma.queueTicket.findFirst({
+      where: {
+        queueDate: today,
+        ticketNo,
+      },
+    });
+    if (existingTicket) {
+      throw new BadRequestException(`Nomor antrean ${ticketNo} sudah terpakai hari ini`);
+    }
+
+    return this.prisma.$transaction(async (prisma) => {
+      const ticket = await prisma.queueTicket.create({
+        data: {
+          ticketNo,
+          queueDate: today,
+          patientType: 'UMUM',
+          status: 'WAITING',
+        },
+      });
+
+      const visitCode = `V${Date.now().toString(36).toUpperCase()}`;
+      const visit = await prisma.visit.create({
+        data: {
+          visitCode,
+          queueTicketId: ticket.id,
+          visitDate: new Date(),
+          patientName,
+          patientType: 'UMUM',
+          currentUnitType: 'PHARMACY',
+          currentStatus: 'WAITING',
+          createdBy: userId,
+        },
+      });
+
+      await prisma.journeyUnitSession.create({
+        data: {
+          visitId: visit.id,
+          unitType: 'PHARMACY',
+          status: 'WAITING',
+          waitingStartedAt: new Date(),
+          queueTicketId: ticket.id,
+          createdBy: userId,
+        },
+      });
+
+      this.displayGateway.triggerDashboardRefresh();
+
+      return { ticket, visit };
+    });
+  }
 }

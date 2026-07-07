@@ -15,6 +15,7 @@ interface CallData {
 export default function DisplayFarmasiPage() {
   const [currentCall, setCurrentCall] = useState<CallData | null>(null);
   const [recentCalls, setRecentCalls] = useState<CallData[]>([]);
+  const [readyList, setReadyList] = useState<any[]>([]);
   const [runningText, setRunningText] = useState('Obat Anda sedang disiapkan. Silakan tunggu hingga nomor antrian dipanggil.');
   const [playlist, setPlaylist] = useState<any[]>([]);
   const [currentVideoIdx, setCurrentVideoIdx] = useState(0);
@@ -117,10 +118,11 @@ export default function DisplayFarmasiPage() {
 
   const loadInitialData = useCallback(async () => {
     try {
-      const [callsRes, displayRes, videosRes] = await Promise.all([
+      const [callsRes, displayRes, videosRes, readyRes] = await Promise.all([
         api.get('/pharmacy/recent-calls?limit=8').catch(() => ({ data: [] })),
         api.get('/displays/code/display_farmasi').catch(() => ({ data: null })),
         api.get('/video/active/display_farmasi').catch(() => ({ data: [] })),
+        api.get('/pharmacy/ready-list').catch(() => ({ data: [] })),
       ]);
 
       const calls = (callsRes.data || []).map((c: any) => ({
@@ -133,6 +135,8 @@ export default function DisplayFarmasiPage() {
         setCurrentCall(calls[0]);
         setRecentCalls(calls.slice(1, 7));
       }
+
+      setReadyList(readyRes.data || []);
 
       if (displayRes.data) {
         if (displayRes.data.runningText) setRunningText(displayRes.data.runningText);
@@ -305,18 +309,23 @@ export default function DisplayFarmasiPage() {
           </div>
 
           <div className={styles.recentSection}>
-            <h3 className={styles.recentTitle}>Riwayat Panggilan</h3>
-            <div className={styles.recentList}>
-              {recentCalls.length === 0 ? (
-                <div className={styles.recentEmpty}>Belum ada riwayat</div>
+            <h3 className={styles.recentTitle}>Obat Siap Ambil</h3>
+            <div className={styles.recentList} style={{ overflowY: 'auto', flex: 1 }}>
+              {readyList.length === 0 ? (
+                <div className={styles.recentEmpty}>Belum ada antrean obat siap</div>
               ) : (
-                recentCalls.map((call, idx) => (
-                  <div key={idx} className={styles.recentItem}>
-                    <span className={styles.recentNo}>{call.ticketNo}</span>
-                    <span className={styles.recentArrow}>→</span>
-                    <span className={styles.recentCounter}>Farmasi</span>
-                  </div>
-                ))
+                readyList.map((item: any, idx) => {
+                  const tNo = item.doctorTicketNo || item.queueTicket?.ticketNo || '-';
+                  return (
+                    <div key={idx} className={styles.recentItem}>
+                      <span className={styles.recentNo}>{tNo}</span>
+                      <span className={styles.recentArrow}>→</span>
+                      <span className={styles.recentCounter} style={{ fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
+                        {item.patientName || 'Pasien'}
+                      </span>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

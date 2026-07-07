@@ -7,6 +7,29 @@ import styles from '../unit-queue.module.css';
 export default function PharmacyPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [manualName, setManualName] = useState('');
+  const [manualTicket, setManualTicket] = useState('');
+  const [submittingManual, setSubmittingManual] = useState(false);
+
+  const handleAddManual = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualName.trim()) return alert('Nama pasien wajib diisi');
+    
+    setSubmittingManual(true);
+    try {
+      await api.post('/pharmacy/manual', {
+        patientName: manualName,
+        ticketNo: manualTicket || undefined
+      });
+      setManualName('');
+      setManualTicket('');
+      await loadQueue();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal menambahkan antrean');
+    } finally {
+      setSubmittingManual(false);
+    }
+  };
 
   const loadQueue = useCallback(async () => {
     try { const res = await api.get('/pharmacy/queue'); setQueue(res.data); }
@@ -29,6 +52,35 @@ export default function PharmacyPage() {
 
   return (
     <div className={styles.unitPage}>
+      {/* Toolbar Manual Input */}
+      <div className="glass-card" style={{ padding: '16px 20px', marginBottom: '20px', display: 'flex', gap: '16px', alignItems: 'center', background: '#fff', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--gray-800)', marginRight: 'auto', margin: 0 }}>
+          ➕ Tambah Antrean Obat Manual
+        </h3>
+        <form onSubmit={handleAddManual} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <input 
+            type="text" 
+            className="form-input" 
+            placeholder="Nama Pasien (Wajib)" 
+            style={{ width: '220px' }}
+            required
+            value={manualName}
+            onChange={e => setManualName(e.target.value)}
+          />
+          <input 
+            type="text" 
+            className="form-input" 
+            placeholder="No. Antrean (Kosongkan utk auto)" 
+            style={{ width: '240px' }}
+            value={manualTicket}
+            onChange={e => setManualTicket(e.target.value)}
+          />
+          <button type="submit" className="btn btn-primary" disabled={submittingManual}>
+            {submittingManual ? 'Menyimpan...' : 'Tambah Antrean'}
+          </button>
+        </form>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 20 }}>
         {/* Column: Waiting to Process */}
         <div className={`glass-card ${styles.column}`}>

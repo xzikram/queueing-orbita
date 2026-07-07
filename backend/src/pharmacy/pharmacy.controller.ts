@@ -6,6 +6,7 @@ import {
   Query,
   UseGuards,
   Request,
+  Body,
 } from '@nestjs/common';
 import { PharmacyService } from './pharmacy.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -13,6 +14,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Permission } from '../common/decorators/permission.decorator';
+import { Public } from '../common/decorators/public.decorator';
 
 @Controller('pharmacy')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -54,5 +56,19 @@ export class PharmacyController {
   @Post(':visitId/finish-visit')
   finishVisit(@Param('visitId') visitId: string, @Request() req: any) {
     return this.service.finishVisit(visitId, req.user.id);
+  }
+
+  @Public()
+  @Get('ready-list')
+  getReadyList() {
+    return this.service.getReadyList();
+  }
+
+  @Post('manual')
+  createManual(
+    @Body() body: { patientName: string; ticketNo?: string },
+    @Request() req: any,
+  ) {
+    return this.service.createManualVisit(body.patientName, body.ticketNo, req.user.id);
   }
 }
