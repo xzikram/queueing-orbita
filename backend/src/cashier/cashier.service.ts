@@ -60,6 +60,18 @@ export class CashierService {
     });
     if (!counter) throw new NotFoundException('Counter tidak ditemukan');
 
+    // Auto-reset busy counter status to STANDBY if calling a patient
+    if (counter.status === 'BUSY') {
+      await this.prisma.counter.update({
+        where: { id: counter.id },
+        data: { status: 'STANDBY' },
+      });
+      this.displayGateway.server.emit('counterStatusChanged', {
+        counterId: counter.id,
+        status: 'STANDBY',
+      });
+    }
+
     const session = await this.journeyService.findSessionByVisitAndUnit(
       visitId,
       'CASHIER',

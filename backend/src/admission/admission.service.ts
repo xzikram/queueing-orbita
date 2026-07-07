@@ -92,6 +92,18 @@ export class AdmissionService {
     });
     if (!counter) throw new NotFoundException('Counter tidak ditemukan');
 
+    // Auto-reset busy counter status to STANDBY if calling a patient
+    if (counter.status === 'BUSY') {
+      await this.prisma.counter.update({
+        where: { id: counter.id },
+        data: { status: 'STANDBY' },
+      });
+      this.displayGateway.server.emit('counterStatusChanged', {
+        counterId: counter.id,
+        status: 'STANDBY',
+      });
+    }
+
     // Check if the ticket is already being processed by another counter
     const activeSession = ticket.visit?.journeySessions?.[0];
     if (

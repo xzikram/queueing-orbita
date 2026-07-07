@@ -117,7 +117,13 @@ export default function AdmissionPage() {
   const callPatient = async (ticketId: string) => {
     if (!selectedCounter) { alert('Pilih counter'); return; }
     setActionLoading(ticketId);
-    try { await api.post(`/admission/${ticketId}/call`, { counterId: selectedCounter }); await loadQueue(); }
+    try {
+      await api.post(`/admission/${ticketId}/call`, { counterId: selectedCounter });
+      await loadQueue();
+      if (counterStatus === 'BUSY') {
+        setCounterStatus('STANDBY');
+      }
+    }
     catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
   };

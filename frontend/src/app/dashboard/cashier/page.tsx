@@ -91,7 +91,13 @@ export default function CashierPage() {
 
   const action = async (visitId: string, endpoint: string, body?: any) => {
     setActionLoading(visitId);
-    try { await api.post(`/cashier/${visitId}/${endpoint}`, body || {}); await loadQueue(); }
+    try {
+      await api.post(`/cashier/${visitId}/${endpoint}`, body || {});
+      await loadQueue();
+      if (endpoint === 'call' && counterStatus === 'BUSY') {
+        setCounterStatus('STANDBY');
+      }
+    }
     catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
   };
