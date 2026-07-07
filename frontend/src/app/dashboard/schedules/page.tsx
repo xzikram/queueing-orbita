@@ -55,10 +55,8 @@ export default function SchedulesPage() {
   };
 
   useEffect(() => {
-    if (showForm && doctors.length === 0) {
-      loadMasterData();
-    }
-  }, [showForm]);
+    loadMasterData();
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -188,6 +186,23 @@ export default function SchedulesPage() {
       load();
     } catch(err:any) {
       alert(err.response?.data?.message || 'Gagal menyimpan jadwal');
+    }
+  };
+
+  const handleRoomChange = async (scheduleId: string, newRoomId: string) => {
+    const selectedRoom = rooms.find(r => r.id === newRoomId);
+    if (!selectedRoom) return;
+    
+    try {
+      await api.put(`/schedules/${scheduleId}`, {
+        roomId: newRoomId,
+        floorId: selectedRoom.floorId || '',
+        reason: 'Ubah ruangan inline'
+      });
+      load();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah ruangan');
+      load();
     }
   };
 
@@ -432,7 +447,34 @@ export default function SchedulesPage() {
               <td>{new Date(s.scheduleDate).toLocaleDateString('id-ID')}</td>
               <td>{s.dayName}</td>
               <td><strong>{s.doctor?.doctorName}</strong></td>
-              <td>{s.room?.roomName || s.room?.name}</td>
+              <td>
+                {rooms.length > 0 ? (
+                  <select
+                    className="form-input"
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '0.875rem',
+                      width: '100%',
+                      minWidth: '160px',
+                      borderColor: 'var(--border-color)',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      borderRadius: '6px'
+                    }}
+                    value={s.roomId || ''}
+                    onChange={(e) => handleRoomChange(s.id, e.target.value)}
+                  >
+                    <option value="">-- Pilih Ruangan --</option>
+                    {rooms.map((rm) => (
+                      <option key={rm.id} value={rm.id}>
+                        {rm.roomName || rm.name} (Lt. {rm.floor?.name || rm.floor?.floorNumber})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  s.room?.roomName || s.room?.name || '-'
+                )}
+              </td>
               <td>{s.floor?.name}</td>
               <td>{formatTime(s.startTime)} - {formatTime(s.endTime)}</td>
               <td><span className={`badge ${s.status==='ACTIVE'?'badge-success':'badge-danger'}`}>{s.status}</span></td>
