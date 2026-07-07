@@ -19,7 +19,7 @@ export default function KioskGabunganPage() {
         </div>
         <div className={styles.headerText}>
           <h1 className={styles.title}>Kiosk Mandiri ORBITA</h1>
-          <p className={styles.subtitle}>Sistem Layanan Mandiri Pasien</p>
+          <p className={styles.subtitle}>ANTRIAN ADMISI & KASIR</p>
         </div>
       </div>
 
