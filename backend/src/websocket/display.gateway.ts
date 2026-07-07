@@ -72,6 +72,7 @@ export class DisplayGateway
     displayCode: string,
     payload: {
       ticketNo: string;
+      patientName?: string;
       patientType: string;
       counterName?: string;
       roomName?: string;

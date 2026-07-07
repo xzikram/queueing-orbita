@@ -50,6 +50,13 @@ export class PharmacyService {
         unitType: 'PHARMACY',
         calledAt: { gte: today },
       },
+      include: {
+        visit: {
+          select: {
+            patientName: true,
+          },
+        },
+      },
       orderBy: { calledAt: 'desc' },
       take: limit,
     });
@@ -129,6 +136,7 @@ export class PharmacyService {
     if (farmasiDisplay) {
       this.displayGateway.broadcastCall('display_farmasi', {
         ticketNo: visit.doctorTicketNo || visit.queueTicket.ticketNo,
+        patientName: visit.patientName || undefined,
         patientType: visit.queueTicket.patientType,
         roomName: 'Farmasi',
         unitType: 'PHARMACY',

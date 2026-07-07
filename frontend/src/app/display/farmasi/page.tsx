@@ -7,6 +7,7 @@ import styles from './farmasi.module.css';
 
 interface CallData {
   ticketNo: string;
+  patientName?: string;
   roomName?: string;
   unitType: string;
   calledAt: Date;
@@ -83,7 +84,8 @@ export default function DisplayFarmasiPage() {
 
       await playDingDong();
 
-      const msg = `Nomor antrian. ${data.ticketNo.split('').join(' ')}. silakan menuju ke. Loket Farmasi.`;
+      const nameToCall = data.patientName ? `atas nama ${data.patientName}` : `nomor antrean ${data.ticketNo.split('').join(' ')}`;
+      const msg = `${nameToCall}, silakan menuju ke Loket Farmasi.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
       
@@ -127,6 +129,7 @@ export default function DisplayFarmasiPage() {
 
       const calls = (callsRes.data || []).map((c: any) => ({
         ticketNo: c.ticketNo,
+        patientName: c.visit?.patientName || undefined,
         roomName: c.targetRoom || 'Farmasi',
         unitType: c.unitType || 'PHARMACY',
         calledAt: c.calledAt,
@@ -296,7 +299,22 @@ export default function DisplayFarmasiPage() {
             {currentCall ? (
               <div className={styles.currentCallCard}>
                 <div className={styles.callLabel}>AMBIL OBAT</div>
-                <div className={styles.callNumber}>{currentCall.ticketNo}</div>
+                <div 
+                  className={styles.callNumber}
+                  style={{ 
+                    fontSize: currentCall.patientName && currentCall.patientName.length > 8 ? '4rem' : '6rem',
+                    wordBreak: 'break-word',
+                    lineHeight: '1.2',
+                    padding: '10px 0'
+                  }}
+                >
+                  {currentCall.patientName || currentCall.ticketNo}
+                </div>
+                {currentCall.patientName && (
+                  <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1e40af', marginTop: '10px', textTransform: 'uppercase' }}>
+                    {currentCall.ticketNo}
+                  </div>
+                )}
                 <div className={styles.callArrow}>→</div>
                 <div className={styles.callCounter}>Loket Farmasi</div>
               </div>
