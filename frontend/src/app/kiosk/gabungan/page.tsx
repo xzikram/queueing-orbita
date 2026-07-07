@@ -18,8 +18,7 @@ export default function KioskGabunganPage() {
           <img src="/logo-orbita.png" alt="Logo RS JEC ORBITA" style={{ height: '100%', width: 'auto', objectFit: 'contain' }} />
         </div>
         <div className={styles.headerText}>
-          <h1 className={styles.title}>Kiosk Mandiri ORBITA</h1>
-          <p className={styles.subtitle}>ANTRIAN ADMISI & KASIR</p>
+          <h1 className={styles.title}>ANTREAN ADMISI & KASIR</h1>
         </div>
       </div>
 
