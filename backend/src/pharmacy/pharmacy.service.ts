@@ -305,7 +305,7 @@ export class PharmacyService {
           patientName,
           patientType: 'UMUM',
           currentUnitType: 'PHARMACY',
-          currentStatus: 'WAITING',
+          currentStatus: 'SERVING',
           createdBy: userId,
         },
       });
@@ -314,8 +314,9 @@ export class PharmacyService {
         data: {
           visitId: visit.id,
           unitType: 'PHARMACY',
-          status: 'WAITING',
+          status: 'SERVING',
           waitingStartedAt: new Date(),
+          serviceStartedAt: new Date(),
           queueTicketId: ticket.id,
           createdBy: userId,
         },

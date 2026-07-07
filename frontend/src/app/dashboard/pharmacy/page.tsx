@@ -8,7 +8,6 @@ export default function PharmacyPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [manualName, setManualName] = useState('');
-  const [manualTicket, setManualTicket] = useState('');
   const [submittingManual, setSubmittingManual] = useState(false);
 
   const handleAddManual = async (e: React.FormEvent) => {
@@ -18,11 +17,9 @@ export default function PharmacyPage() {
     setSubmittingManual(true);
     try {
       await api.post('/pharmacy/manual', {
-        patientName: manualName,
-        ticketNo: manualTicket || undefined
+        patientName: manualName
       });
       setManualName('');
-      setManualTicket('');
       await loadQueue();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Gagal menambahkan antrean');
@@ -62,18 +59,10 @@ export default function PharmacyPage() {
             type="text" 
             className="form-input" 
             placeholder="Nama Pasien (Wajib)" 
-            style={{ width: '220px' }}
+            style={{ width: '320px' }}
             required
             value={manualName}
             onChange={e => setManualName(e.target.value)}
-          />
-          <input 
-            type="text" 
-            className="form-input" 
-            placeholder="No. Antrean (Kosongkan utk auto)" 
-            style={{ width: '240px' }}
-            value={manualTicket}
-            onChange={e => setManualTicket(e.target.value)}
           />
           <button type="submit" className="btn btn-primary" disabled={submittingManual}>
             {submittingManual ? 'Menyimpan...' : 'Tambah Antrean'}
@@ -81,21 +70,7 @@ export default function PharmacyPage() {
         </form>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 20 }}>
-        {/* Column: Waiting to Process */}
-        <div className={`glass-card ${styles.column}`}>
-          <div className={styles.columnHeader}><h3>⏳ Antrian Obat ({waiting.length})</h3></div>
-          <div className={styles.queueList}>
-            {waiting.length === 0 ? <div className={styles.empty}>Tidak ada</div> : waiting.map((v: any) => (
-              <div key={v.id} className={styles.queueCard}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-warning">WAITING</span></div>
-                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
-                <button className="btn btn-success btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'start-process')} disabled={actionLoading === v.id}>🧪 Siapkan Obat</button>
-              </div>
-            ))}
-          </div>
-        </div>
-
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
         {/* Column: Being Prepared */}
         <div className={`glass-card ${styles.column}`}>
           <div className={styles.columnHeader}><h3>🧪 Disiapkan ({processing.length})</h3></div>

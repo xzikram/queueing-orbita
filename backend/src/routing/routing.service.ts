@@ -251,12 +251,12 @@ export class RoutingService {
       where: { id: visitId },
       data: {
         currentUnitType: nextUnitType as any,
-        currentStatus: 'WAITING',
+        currentStatus: nextUnitType === 'PHARMACY' ? 'SERVING' : 'WAITING',
       },
     });
 
     // Create journey session at the new unit
-    await this.journeyService.createSession({
+    const session = await this.journeyService.createSession({
       visitId,
       unitType: nextUnitType,
       roomId: roomId || undefined,
@@ -265,6 +265,16 @@ export class RoutingService {
       queueTicketId: options.queueTicketId || visit.queueTicketId,
       createdBy: userId,
     });
+
+    if (nextUnitType === 'PHARMACY') {
+      await this.prisma.journeyUnitSession.update({
+        where: { id: session.id },
+        data: {
+          status: 'SERVING',
+          serviceStartedAt: new Date(),
+        },
+      });
+    }
 
     const destLabel =
       this.allUnits.find((u) => u.unitType === nextUnitType)?.label ||
@@ -342,12 +352,12 @@ export class RoutingService {
       where: { id: visitId },
       data: {
         currentUnitType: targetUnitType as any,
-        currentStatus: 'WAITING',
+        currentStatus: targetUnitType === 'PHARMACY' ? 'SERVING' : 'WAITING',
       },
     });
 
     // 5. Create new session at target unit
-    await this.journeyService.createSession({
+    const session = await this.journeyService.createSession({
       visitId,
       unitType: targetUnitType,
       roomId: roomId || undefined,
@@ -356,6 +366,16 @@ export class RoutingService {
       queueTicketId: visit.queueTicketId,
       createdBy: userId,
     });
+
+    if (targetUnitType === 'PHARMACY') {
+      await this.prisma.journeyUnitSession.update({
+        where: { id: session.id },
+        data: {
+          status: 'SERVING',
+          serviceStartedAt: new Date(),
+        },
+      });
+    }
 
     const fromLabel =
       this.allUnits.find((u) => u.unitType === fromUnit)?.label || fromUnit;
