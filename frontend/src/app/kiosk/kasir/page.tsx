@@ -39,6 +39,34 @@ function KioskKasirPageContent() {
     };
   }, [ticket, fromGabungan, handleFinish]);
 
+  // Idle timeout (10 seconds) to return to menu utama if accessed from gabungan
+  useEffect(() => {
+    if (!fromGabungan || ticket) return;
+
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        router.push('/kiosk/gabungan');
+      }, 10000); // 10 seconds
+    };
+
+    resetIdleTimer();
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => {
+      window.addEventListener(event, resetIdleTimer);
+    });
+
+    return () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      events.forEach(event => {
+        window.removeEventListener(event, resetIdleTimer);
+      });
+    };
+  }, [fromGabungan, ticket, router]);
+
   const generateTicket = async (patientType: 'UMUM' | 'ASURANSI') => {
     setLoading(true);
     try {

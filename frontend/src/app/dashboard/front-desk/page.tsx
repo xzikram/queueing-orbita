@@ -291,12 +291,21 @@ export default function FrontDeskPage() {
     return t.status === 'IN_PROGRESS' && session && ['CALLED', 'SERVING'].includes(session.status);
   });
 
-  const cashWaiting = cashierQueue.filter(v => {
+  const isCashierTicket = (v: any) => {
+    const ticketNo = v.queueTicket?.ticketNo || v.doctorTicketNo || '';
+    return ticketNo.startsWith('G') || ticketNo.startsWith('H');
+  };
+
+  const allCashWaiting = cashierQueue.filter(v => {
     const s = v.journeySessions?.[0];
     return s?.status === 'WAITING' || s?.status === 'SKIPPED';
   });
-  const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
-  const cashNeedDest = cashierQueue.filter(v => v.currentStatus === 'WAITING_DESTINATION');
+
+  const cashWaiting = allCashWaiting.filter(isCashierTicket);
+  const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status)).filter(isCashierTicket);
+  const cashNeedDest = cashierQueue.filter(v => v.currentStatus === 'WAITING_DESTINATION').filter(isCashierTicket);
+
+  const patientCashWaiting = allCashWaiting.filter(v => !isCashierTicket(v) && v.patientName);
 
   return (
     <div className={styles.page}>
@@ -664,8 +673,8 @@ export default function FrontDeskPage() {
             <div className="form-group">
               <select className="form-input" value={targetSyncVisit} onChange={e => setTargetSyncVisit(e.target.value)} style={{ padding: '10px' }}>
                 <option value="">-- Pilih Data Pasien --</option>
-                {cashWaiting
-                  .filter((w: any) => w.id !== syncModal && w.patientName)
+                 {patientCashWaiting
+                  .filter((w: any) => w.id !== syncModal)
                   .map((w: any) => (
                     <option key={w.id} value={w.id}>
                       {w.doctorTicketNo || w.queueTicket?.ticketNo} - {w.patientName}

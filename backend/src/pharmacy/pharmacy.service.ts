@@ -24,7 +24,6 @@ export class PharmacyService {
         currentStatus: {
           in: ['WAITING', 'SERVING', 'CALLED', 'READY', 'PHARMACY_DONE'],
         },
-        patientRmNo: 'MANUAL_PHARMACY',
         finishedAt: null,
         visitDate: { gte: today, lt: tomorrow },
       },
@@ -232,7 +231,6 @@ export class PharmacyService {
       where: {
         currentUnitType: 'PHARMACY',
         currentStatus: { in: ['READY', 'CALLED'] },
-        patientRmNo: 'MANUAL_PHARMACY',
         finishedAt: null,
         visitDate: { gte: today, lt: tomorrow },
       },
