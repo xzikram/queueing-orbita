@@ -262,19 +262,30 @@ export default function CashierPage() {
               <>
                 {active.map((v: any) => {
                   const s = v.journeySessions?.[0];
+                  const isMyTicket = s?.counterId === selectedCounter;
                   return (
-                    <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                      <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span></div>
+                    <div 
+                      key={v.id} 
+                      className={`${styles.queueCard} ${styles.activeCard}`}
+                      style={{ opacity: isMyTicket ? 1 : 0.6 }}
+                    >
+                      <div className={styles.ticketHeader}>
+                        <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                        <span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span>
+                      </div>
+                      <div className={styles.ticketInfo}>
+                        <span>🖥️ {s?.counter?.name || 'Counter Lain'}</span>
+                      </div>
                       <div className={styles.actionBtns}>
                         {(s?.status === 'CALLED' || s?.status === 'SERVING') && (
                           <>
-                            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>
-                            <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter}>🔁 Ulang</button>
+                            <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id || !isMyTicket}>✅ Selesai</button>
+                            <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call', { counterId: selectedCounter })} disabled={actionLoading === v.id || !selectedCounter || !isMyTicket}>🔁 Ulang</button>
                           </>
                         )}
-                        <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
-                        <button className="btn btn-warning btn-sm" onClick={() => holdVisit(v.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }} disabled={actionLoading === v.id || !isMyTicket}>🔄</button>
+                        <button className="btn btn-warning btn-sm" onClick={() => holdVisit(v.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }} disabled={actionLoading === v.id || !isMyTicket}>⏸️</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px' }} disabled={actionLoading === v.id || !isMyTicket}>
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>

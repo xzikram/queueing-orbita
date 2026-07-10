@@ -356,8 +356,13 @@ export default function AdmissionPage() {
               const session = ticket.visit?.journeySessions?.[0];
               const isCalled = session?.status === 'CALLED';
               const isServing = session?.status === 'SERVING';
+              const isMyTicket = session?.counterId === selectedCounter;
               return (
-                <div key={ticket.id} className={`${styles.queueCard} ${styles.activeCard}`}>
+                <div 
+                  key={ticket.id} 
+                  className={`${styles.queueCard} ${styles.activeCard}`}
+                  style={{ opacity: isMyTicket ? 1 : 0.6 }}
+                >
                   <div className={styles.ticketHeader}>
                     <span className={styles.ticketNo}>{ticket.ticketNo}</span>
                     <span className={`badge ${isCalled ? 'badge-warning' : 'badge-success'}`}>{isCalled ? 'DIPANGGIL' : 'DILAYANI'}</span>
@@ -373,12 +378,12 @@ export default function AdmissionPage() {
                   <div className={styles.actionBtns}>
                     {(isCalled || isServing) && (
                       <>
-                        <button className="btn btn-primary btn-sm" onClick={() => finishService(ticket)} disabled={actionLoading === ticket.id} style={{ flex: 1 }}>✅ Selesai</button>
-                        <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id}>🔁 Ulang</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => finishService(ticket)} disabled={actionLoading === ticket.id || !isMyTicket} style={{ flex: 1 }}>✅ Selesai</button>
+                        <button className="btn btn-warning btn-sm" onClick={() => callPatient(ticket.id)} disabled={actionLoading === ticket.id || !isMyTicket}>🔁 Ulang</button>
                       </>
                     )}
-                    <button className="btn btn-warning btn-sm" onClick={() => holdTicket(ticket.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }}>⏸️</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px' }}>
+                    <button className="btn btn-warning btn-sm" onClick={() => holdTicket(ticket.id)} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706' }} disabled={actionLoading === ticket.id || !isMyTicket}>⏸️</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(ticket)} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 10px' }} disabled={actionLoading === ticket.id || !isMyTicket}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
