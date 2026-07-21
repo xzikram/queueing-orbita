@@ -186,6 +186,38 @@ export class ScheduleService {
     }
   }
 
+  private async querySimrsLeaves(targetDateStr: string): Promise<Set<string>> {
+    const bridgeUrl = process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
+    const bridgeToken = process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
+    const url = new URL(bridgeUrl);
+    url.searchParams.append('token', bridgeToken);
+
+    const sql = `
+      SELECT ParamedicID
+      FROM ParamedicLeave
+      WHERE IsApproved = 1
+        AND StartDate <= '${targetDateStr} 23:59:59'
+        AND EndDate >= '${targetDateStr} 00:00:00'
+    `;
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query: sql }).toString(),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        return new Set(data.map((l: any) => l.ParamedicID));
+      }
+      return new Set();
+    } catch (err: any) {
+      this.logger.warn(`SIMRS Bridge leave query failed: ${err.message}`);
+      return new Set();
+    }
+  }
+
   async syncDailySchedules(targetDateStr?: string) {
     this.logger.log(`Starting daily HIS schedule sync for targetDateStr: ${targetDateStr || 'today'}...`);
 
@@ -236,12 +268,18 @@ export class ScheduleService {
 
     today = new Date(Date.UTC(year, month, day) - tzOffset * 60 * 60 * 1000);
 
-    // 1. Try SIMRS Bridge first
-    const simrsSchedules = await this.querySimrsBridge(isoDateStr);
+    // 1. Fetch SIMRS Schedules & Leaves in parallel
+    const [simrsSchedules, leaveDoctorIds] = await Promise.all([
+      this.querySimrsBridge(isoDateStr),
+      this.querySimrsLeaves(isoDateStr),
+    ]);
+
     let totalSynced = 0;
 
     if (simrsSchedules.length > 0) {
-      this.logger.log(`Found ${simrsSchedules.length} doctor schedules from SIMRS Bridge.`);
+      this.logger.log(
+        `Found ${simrsSchedules.length} doctor schedules from SIMRS Bridge. (${leaveDoctorIds.size} doctor(s) on leave today)`,
+      );
 
       const parts = isoDateStr.split('-');
       const y = parseInt(parts[0], 10);
@@ -253,6 +291,8 @@ export class ScheduleService {
 
       for (const s of simrsSchedules) {
         if (!s.ParamedicID) continue;
+
+        const isOnLeave = leaveDoctorIds.has(s.ParamedicID);
 
         let doctor = await this.prisma.doctor.findUnique({
           where: { doctorCode: s.ParamedicID },
@@ -266,6 +306,24 @@ export class ScheduleService {
               specialty: 'Spesialis Mata',
             },
           });
+        }
+
+        const existing = await this.prisma.doctorSchedule.findFirst({
+          where: {
+            doctorId: doctor.id,
+            scheduleDate: today,
+          },
+        });
+
+        if (isOnLeave) {
+          if (existing) {
+            await this.prisma.doctorSchedule.update({
+              where: { id: existing.id },
+              data: { status: 'INACTIVE' },
+            });
+            this.logger.log(`Marked schedule INACTIVE for Dr. ${doctor.doctorName} (On Leave in SIMRS)`);
+          }
+          continue;
         }
 
         const roomCode = s.RoomID || 'DEFAULT-ROOM';
@@ -294,13 +352,6 @@ export class ScheduleService {
             },
           });
         }
-
-        const existing = await this.prisma.doctorSchedule.findFirst({
-          where: {
-            doctorId: doctor.id,
-            scheduleDate: today,
-          },
-        });
 
         if (existing) {
           await this.prisma.doctorSchedule.update({
@@ -332,7 +383,7 @@ export class ScheduleService {
         totalSynced++;
       }
 
-      this.logger.log(`Daily sync finished via SIMRS Bridge. Synced ${totalSynced} schedule entries.`);
+      this.logger.log(`Daily sync finished via SIMRS Bridge. Synced ${totalSynced} active schedule entries.`);
       return { success: true, totalSynced };
     }
 
