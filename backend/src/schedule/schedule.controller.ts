@@ -62,6 +62,16 @@ export class ScheduleController {
     return this.scheduleService.findAll({ date, doctorId, roomId });
   }
 
+  @Get('appointment-tracking')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  getAppointmentArrivalTracking(
+    @Query('scheduleId') scheduleId?: string,
+    @Query('date') date?: string,
+  ) {
+    return this.scheduleService.getAppointmentArrivalTracking(scheduleId, date);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string) {
@@ -119,13 +129,6 @@ export class ScheduleController {
   @Permission('schedules')
   syncHisSchedule(@Query('date') date?: string) {
     return this.scheduleService.syncDailySchedules(date);
-  }
-
-  @Get('appointment-tracking')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  getAppointmentArrivalTracking(@Query('date') date?: string) {
-    return this.scheduleService.getAppointmentArrivalTracking(date);
   }
 }
 

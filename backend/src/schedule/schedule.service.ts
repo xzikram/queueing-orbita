@@ -152,7 +152,10 @@ export class ScheduleService {
 
   // --- HIS SYNC LOGIC ---
 
-  async getAppointmentArrivalTracking(targetDateStr?: string) {
+  async getAppointmentArrivalTracking(
+    scheduleId?: string,
+    targetDateStr?: string,
+  ) {
     let tzOffset = 8;
     if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
     else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
@@ -164,6 +167,20 @@ export class ScheduleService {
     let year = localDate.getUTCFullYear();
     let month = localDate.getUTCMonth();
     let day = localDate.getUTCDate();
+
+    let selectedSchedule: any = null;
+    if (scheduleId) {
+      selectedSchedule = await this.prisma.doctorSchedule.findUnique({
+        where: { id: scheduleId },
+        include: { doctor: true, room: { include: { floor: true } } },
+      });
+      if (selectedSchedule && selectedSchedule.scheduleDate) {
+        const d = new Date(selectedSchedule.scheduleDate);
+        year = d.getFullYear();
+        month = d.getMonth();
+        day = d.getDate();
+      }
+    }
 
     if (targetDateStr) {
       const cleanStr = String(targetDateStr).trim();
@@ -195,8 +212,13 @@ export class ScheduleService {
     const ddStr = String(day).padStart(2, '0');
     const isoDateStr = `${year}-${mmStr}-${ddStr}`;
 
-    const bridgeUrl = process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
-    const bridgeToken = process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
+    const startOfDay = new Date(`${isoDateStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${isoDateStr}T23:59:59.999Z`);
+
+    const bridgeUrl =
+      process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
+    const bridgeToken =
+      process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
     const url = new URL(bridgeUrl);
     url.searchParams.append('token', bridgeToken);
 
@@ -215,8 +237,10 @@ export class ScheduleService {
       }
     };
 
-    const [appointments, registrations, leaves] = await Promise.all([
-      executeSql(`
+    // Fetch SIMRS appointments, SIMRS registrations, ParamedicLeaves, and local Orbita Visits
+    const [appointments, registrations, leaves, localVisits] =
+      await Promise.all([
+        executeSql(`
         SELECT 
           AppointmentNo, ParamedicID, ParamedicName, MedicalNo, PatientID, PatientName,
           MobilePhoneNo, AppointmentDate, AppointmentTime, SaranDatang, AppointmentQue, Notes, ServiceUnitName
@@ -224,14 +248,14 @@ export class ScheduleService {
         WHERE AppointmentDate >= '${isoDateStr} 00:00:00' AND AppointmentDate <= '${isoDateStr} 23:59:59'
         ORDER BY ParamedicName, AppointmentQue ASC
       `),
-      executeSql(`
+        executeSql(`
         SELECT 
           r.RegistrationNo, r.RegistrationDate, r.PatientID, r.AppointmentNo, r.RegistrationQue, r.ParamedicID
         FROM Registration r
         WHERE r.RegistrationDate >= '${isoDateStr} 00:00:00' AND r.RegistrationDate <= '${isoDateStr} 23:59:59'
           AND r.IsVoid = 0
       `),
-      executeSql(`
+        executeSql(`
         SELECT pl.ParamedicID, p.ParamedicName, pl.Notes
         FROM ParamedicLeave pl
         LEFT JOIN Paramedic p ON pl.ParamedicID = p.ParamedicID
@@ -239,7 +263,16 @@ export class ScheduleService {
           AND pl.StartDate <= '${isoDateStr} 23:59:59'
           AND pl.EndDate >= '${isoDateStr} 00:00:00'
       `),
-    ]);
+        this.prisma.visit.findMany({
+          where: {
+            visitDate: { gte: startOfDay, lt: endOfDay },
+            ...(selectedSchedule?.doctorId
+              ? { selectedDoctorId: selectedSchedule.doctorId }
+              : {}),
+          },
+          include: { queueTicket: true },
+        }),
+      ]);
 
     const regMap = new Map<string, any>();
     const patientRegMap = new Map<string, any>();
@@ -249,56 +282,92 @@ export class ScheduleService {
       if (r.PatientID) patientRegMap.set(r.PatientID, r);
     }
 
+    const localVisitMap = new Map<string, any>();
+    for (const v of localVisits) {
+      if (v.patientRmNo) localVisitMap.set(v.patientRmNo, v);
+    }
+
     const leaveDocSet = new Set(leaves.map((l: any) => l.ParamedicID));
 
     const localDoctors = await this.prisma.doctor.findMany({
-      select: { doctorCode: true, doctorInitials: true },
+      select: { id: true, doctorCode: true, doctorInitials: true },
     });
     const initialsMap = new Map<string, string>();
-    localDoctors.forEach((d) => initialsMap.set(d.doctorCode, d.doctorInitials || ''));
+    localDoctors.forEach((d) =>
+      initialsMap.set(d.doctorCode, d.doctorInitials || ''),
+    );
+
+    // Filter appointments if a specific schedule was selected
+    const targetDoctorCode = selectedSchedule?.doctor?.doctorCode;
+    const filteredAppointments = targetDoctorCode
+      ? appointments.filter((a: any) => a.ParamedicID === targetDoctorCode)
+      : appointments;
 
     let arrivedCount = 0;
     let notArrivedCount = 0;
 
-    const list = appointments.map((a: any) => {
-      const reg = regMap.get(a.AppointmentNo) || (a.PatientID ? patientRegMap.get(a.PatientID) : null);
-      const isArrived = !!reg;
+    const list = filteredAppointments.map((a: any) => {
+      const simrsReg =
+        regMap.get(a.AppointmentNo) ||
+        (a.PatientID ? patientRegMap.get(a.PatientID) : null);
+      const localVisit = a.MedicalNo
+        ? localVisitMap.get(a.MedicalNo)
+        : null;
+
+      const isArrived = !!simrsReg || !!localVisit;
       const isDoctorOnLeave = leaveDocSet.has(a.ParamedicID);
 
       if (isArrived) arrivedCount++;
       else notArrivedCount++;
 
-      const initials = initialsMap.get(a.ParamedicID) || 'DR';
-      const queueNo = a.AppointmentQue || reg?.RegistrationQue || 1;
-      const doctorTicketNo = `${initials}${String(queueNo).padStart(3, '0')}`;
+      const initials =
+        initialsMap.get(a.ParamedicID) ||
+        selectedSchedule?.doctor?.doctorInitials ||
+        selectedSchedule?.doctor?.doctorCode ||
+        'DR';
+      const queueNo = a.AppointmentQue || simrsReg?.RegistrationQue || 1;
+      const formattedDoctorTicketNo = localVisit?.doctorTicketNo || `${initials}${String(queueNo).padStart(3, '0')}`;
 
       return {
         appointmentNo: a.AppointmentNo,
         patientId: a.PatientID,
-        medicalNo: a.MedicalNo || a.PatientID || '-',
-        patientName: a.PatientName,
-        mobilePhoneNo: a.MobilePhoneNo || '-',
-        paramedicId: a.ParamedicID,
-        paramedicName: a.ParamedicName,
-        appointmentTime: a.AppointmentTime,
-        saranDatang: a.SaranDatang,
-        appointmentQue: a.AppointmentQue,
-        doctorTicketNo,
-        notes: a.Notes,
+        MedicalNo: a.MedicalNo || a.PatientID || '-',
+        PatientName: a.PatientName,
+        MobilePhoneNo: a.MobilePhoneNo || '-',
+        ParamedicID: a.ParamedicID,
+        ParamedicName: a.ParamedicName,
+        AppointmentTime: a.AppointmentTime,
+        SaranDatang: a.SaranDatang,
+        AppointmentQue: a.AppointmentQue,
+        formattedDoctorTicketNo,
+        Notes: a.Notes,
         isArrived,
-        registrationNo: reg?.RegistrationNo || null,
-        registrationQue: reg?.RegistrationQue || null,
-        scannedAt: reg?.RegistrationDate || null,
+        queueTicketNo: localVisit?.queueTicket?.ticketNo || null,
+        registration: localVisit
+          ? {
+              currentUnitType: localVisit.currentUnitType,
+              currentStatus: localVisit.currentStatus,
+            }
+          : simrsReg
+          ? {
+              currentUnitType: 'ADMISSION',
+              currentStatus: 'WAITING',
+            }
+          : null,
         isDoctorOnLeave,
       };
     });
 
     return {
       date: isoDateStr,
-      totalAppointments: appointments.length,
-      arrivedCount,
-      notArrivedCount,
-      leaveDoctorsCount: leaves.length,
+      scheduleId: selectedSchedule?.id || null,
+      doctor: selectedSchedule?.doctor || null,
+      room: selectedSchedule?.room || null,
+      summary: {
+        totalAppointments: filteredAppointments.length,
+        arrivedCount,
+        notArrivedCount,
+      },
       appointments: list,
     };
   }
