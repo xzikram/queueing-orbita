@@ -727,7 +727,8 @@ export class AdmissionService {
 
   /**
    * Helper to generate a doctor ticket number using doctorInitials (or fallback to doctorCode)
-   * Uses gap-filling (smallest available positive integer starting from 1).
+   * Uses gap-filling (smallest available positive integer starting from 1) while respecting
+   * SIMRS reserved appointment queue numbers so walk-in patients never collide with appointments.
    */
   async generateDoctorTicketNo(doctorId: string): Promise<string> {
     const { today, tomorrow } = getLocalDateBoundaries();
@@ -758,6 +759,49 @@ export class AdmissionService {
           usedNumbers.add(num);
         }
       }
+    }
+
+    // Also include reserved appointment queue numbers from SIMRS for this doctor today
+    try {
+      const year = today.getFullYear();
+      const mmStr = String(today.getMonth() + 1).padStart(2, '0');
+      const ddStr = String(today.getDate()).padStart(2, '0');
+      const isoDateStr = `${year}-${mmStr}-${ddStr}`;
+
+      const bridgeUrl =
+        process.env.SIMRS_BRIDGE_URL ||
+        'http://192.168.40.141:88/qc/bridge.ashx';
+      const bridgeToken =
+        process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
+      const url = new URL(bridgeUrl);
+      url.searchParams.append('token', bridgeToken);
+
+      const sql = `
+        SELECT AppointmentQue
+        FROM vwAppointment
+        WHERE AppointmentDate >= '${isoDateStr} 00:00:00' AND AppointmentDate <= '${isoDateStr} 23:59:59'
+          AND ParamedicID = '${doctor.doctorCode}'
+      `;
+
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query: sql }).toString(),
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item.AppointmentQue) {
+            const num = parseInt(item.AppointmentQue, 10);
+            if (!isNaN(num)) {
+              usedNumbers.add(num);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Fallback to local usedNumbers if bridge is unreachable
     }
 
     let minAvailable = 1;
