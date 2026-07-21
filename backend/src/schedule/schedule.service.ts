@@ -176,7 +176,7 @@ export class ScheduleService {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ query: sql }).toString(),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(15000),
       });
       const data = await res.json();
       return Array.isArray(data) ? data : [];
@@ -187,7 +187,7 @@ export class ScheduleService {
   }
 
   async syncDailySchedules(targetDateStr?: string) {
-    this.logger.log('Starting daily HIS schedule sync...');
+    this.logger.log(`Starting daily HIS schedule sync for targetDateStr: ${targetDateStr || 'today'}...`);
 
     let tzOffset = 8;
     if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
@@ -197,43 +197,44 @@ export class ScheduleService {
     const localTime = today.getTime() + tzOffset * 60 * 60 * 1000;
     const localDate = new Date(localTime);
 
-    let dateStr = targetDateStr;
-    let isoDateStr = '';
+    let year = localDate.getUTCFullYear();
+    let month = localDate.getUTCMonth();
+    let day = localDate.getUTCDate();
 
-    if (dateStr) {
-      const normalized = dateStr.replace(/[^0-9]/g, '');
-      if (normalized.length === 8) {
-        const y = parseInt(normalized.substring(0, 4), 10);
-        const m = parseInt(normalized.substring(4, 6), 10) - 1;
-        const d = parseInt(normalized.substring(6, 8), 10);
-        today = new Date(Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000);
-        dateStr = normalized;
-        isoDateStr = `${normalized.substring(0, 4)}-${normalized.substring(4, 6)}-${normalized.substring(6, 8)}`;
-      } else if (dateStr.length === 10 && dateStr.includes('-')) {
-        const parts = dateStr.split('-');
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1;
-        const d = parseInt(parts[2], 10);
-        today = new Date(Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000);
-        isoDateStr = dateStr;
-        dateStr = `${parts[0]}${parts[1]}${parts[2]}`;
+    if (targetDateStr) {
+      const cleanStr = String(targetDateStr).trim();
+      if (cleanStr.includes('-') || cleanStr.includes('/')) {
+        const delimiter = cleanStr.includes('-') ? '-' : '/';
+        const parts = cleanStr.split(delimiter);
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            // YYYY-MM-DD or YYYY/MM/DD
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10) - 1;
+            day = parseInt(parts[2], 10);
+          } else {
+            // DD-MM-YYYY or DD/MM/YYYY
+            day = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10) - 1;
+            year = parseInt(parts[2], 10);
+          }
+        }
       } else {
-        dateStr = undefined;
+        const digits = cleanStr.replace(/[^0-9]/g, '');
+        if (digits.length === 8) {
+          year = parseInt(digits.substring(0, 4), 10);
+          month = parseInt(digits.substring(4, 6), 10) - 1;
+          day = parseInt(digits.substring(6, 8), 10);
+        }
       }
     }
 
-    if (!dateStr || !isoDateStr) {
-      const yyyy = localDate.getUTCFullYear().toString();
-      const mm = (localDate.getUTCMonth() + 1).toString().padStart(2, '0');
-      const dd = localDate.getUTCDate().toString().padStart(2, '0');
-      dateStr = `${yyyy}${mm}${dd}`;
-      isoDateStr = `${yyyy}-${mm}-${dd}`;
+    const mmStr = String(month + 1).padStart(2, '0');
+    const ddStr = String(day).padStart(2, '0');
+    const isoDateStr = `${year}-${mmStr}-${ddStr}`;
+    const dateStr = `${year}${mmStr}${ddStr}`;
 
-      const y = localDate.getUTCFullYear();
-      const m = localDate.getUTCMonth();
-      const d = localDate.getUTCDate();
-      today = new Date(Date.UTC(y, m, d) - tzOffset * 60 * 60 * 1000);
-    }
+    today = new Date(Date.UTC(year, month, day) - tzOffset * 60 * 60 * 1000);
 
     // 1. Try SIMRS Bridge first
     const simrsSchedules = await this.querySimrsBridge(isoDateStr);
