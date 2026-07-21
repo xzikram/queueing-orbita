@@ -152,6 +152,157 @@ export class ScheduleService {
 
   // --- HIS SYNC LOGIC ---
 
+  async getAppointmentArrivalTracking(targetDateStr?: string) {
+    let tzOffset = 8;
+    if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+    else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+    let today = new Date();
+    const localTime = today.getTime() + tzOffset * 60 * 60 * 1000;
+    const localDate = new Date(localTime);
+
+    let year = localDate.getUTCFullYear();
+    let month = localDate.getUTCMonth();
+    let day = localDate.getUTCDate();
+
+    if (targetDateStr) {
+      const cleanStr = String(targetDateStr).trim();
+      if (cleanStr.includes('-') || cleanStr.includes('/')) {
+        const delimiter = cleanStr.includes('-') ? '-' : '/';
+        const parts = cleanStr.split(delimiter);
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            year = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10) - 1;
+            day = parseInt(parts[2], 10);
+          } else {
+            day = parseInt(parts[0], 10);
+            month = parseInt(parts[1], 10) - 1;
+            year = parseInt(parts[2], 10);
+          }
+        }
+      } else {
+        const digits = cleanStr.replace(/[^0-9]/g, '');
+        if (digits.length === 8) {
+          year = parseInt(digits.substring(0, 4), 10);
+          month = parseInt(digits.substring(4, 6), 10) - 1;
+          day = parseInt(digits.substring(6, 8), 10);
+        }
+      }
+    }
+
+    const mmStr = String(month + 1).padStart(2, '0');
+    const ddStr = String(day).padStart(2, '0');
+    const isoDateStr = `${year}-${mmStr}-${ddStr}`;
+
+    const bridgeUrl = process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
+    const bridgeToken = process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
+    const url = new URL(bridgeUrl);
+    url.searchParams.append('token', bridgeToken);
+
+    const executeSql = async (sql: string) => {
+      try {
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ query: sql }).toString(),
+          signal: AbortSignal.timeout(15000),
+        });
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (err: any) {
+        return [];
+      }
+    };
+
+    const [appointments, registrations, leaves] = await Promise.all([
+      executeSql(`
+        SELECT 
+          AppointmentNo, ParamedicID, ParamedicName, MedicalNo, PatientID, PatientName,
+          MobilePhoneNo, AppointmentDate, AppointmentTime, SaranDatang, AppointmentQue, Notes, ServiceUnitName
+        FROM vwAppointment
+        WHERE AppointmentDate >= '${isoDateStr} 00:00:00' AND AppointmentDate <= '${isoDateStr} 23:59:59'
+        ORDER BY ParamedicName, AppointmentQue ASC
+      `),
+      executeSql(`
+        SELECT 
+          r.RegistrationNo, r.RegistrationDate, r.PatientID, r.AppointmentNo, r.RegistrationQue, r.ParamedicID
+        FROM Registration r
+        WHERE r.RegistrationDate >= '${isoDateStr} 00:00:00' AND r.RegistrationDate <= '${isoDateStr} 23:59:59'
+          AND r.IsVoid = 0
+      `),
+      executeSql(`
+        SELECT pl.ParamedicID, p.ParamedicName, pl.Notes
+        FROM ParamedicLeave pl
+        LEFT JOIN Paramedic p ON pl.ParamedicID = p.ParamedicID
+        WHERE pl.IsApproved = 1
+          AND pl.StartDate <= '${isoDateStr} 23:59:59'
+          AND pl.EndDate >= '${isoDateStr} 00:00:00'
+      `),
+    ]);
+
+    const regMap = new Map<string, any>();
+    const patientRegMap = new Map<string, any>();
+
+    for (const r of registrations) {
+      if (r.AppointmentNo) regMap.set(r.AppointmentNo, r);
+      if (r.PatientID) patientRegMap.set(r.PatientID, r);
+    }
+
+    const leaveDocSet = new Set(leaves.map((l: any) => l.ParamedicID));
+
+    const localDoctors = await this.prisma.doctor.findMany({
+      select: { doctorCode: true, doctorInitials: true },
+    });
+    const initialsMap = new Map<string, string>();
+    localDoctors.forEach((d) => initialsMap.set(d.doctorCode, d.doctorInitials || ''));
+
+    let arrivedCount = 0;
+    let notArrivedCount = 0;
+
+    const list = appointments.map((a: any) => {
+      const reg = regMap.get(a.AppointmentNo) || (a.PatientID ? patientRegMap.get(a.PatientID) : null);
+      const isArrived = !!reg;
+      const isDoctorOnLeave = leaveDocSet.has(a.ParamedicID);
+
+      if (isArrived) arrivedCount++;
+      else notArrivedCount++;
+
+      const initials = initialsMap.get(a.ParamedicID) || 'DR';
+      const queueNo = a.AppointmentQue || reg?.RegistrationQue || 1;
+      const doctorTicketNo = `${initials}${String(queueNo).padStart(3, '0')}`;
+
+      return {
+        appointmentNo: a.AppointmentNo,
+        patientId: a.PatientID,
+        medicalNo: a.MedicalNo || a.PatientID || '-',
+        patientName: a.PatientName,
+        mobilePhoneNo: a.MobilePhoneNo || '-',
+        paramedicId: a.ParamedicID,
+        paramedicName: a.ParamedicName,
+        appointmentTime: a.AppointmentTime,
+        saranDatang: a.SaranDatang,
+        appointmentQue: a.AppointmentQue,
+        doctorTicketNo,
+        notes: a.Notes,
+        isArrived,
+        registrationNo: reg?.RegistrationNo || null,
+        registrationQue: reg?.RegistrationQue || null,
+        scannedAt: reg?.RegistrationDate || null,
+        isDoctorOnLeave,
+      };
+    });
+
+    return {
+      date: isoDateStr,
+      totalAppointments: appointments.length,
+      arrivedCount,
+      notArrivedCount,
+      leaveDoctorsCount: leaves.length,
+      appointments: list,
+    };
+  }
+
   private async querySimrsBridge(targetDateStr: string): Promise<any[]> {
     const bridgeUrl = process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
     const bridgeToken = process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';

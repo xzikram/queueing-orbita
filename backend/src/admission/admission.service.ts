@@ -727,6 +727,7 @@ export class AdmissionService {
 
   /**
    * Helper to generate a doctor ticket number using doctorInitials (or fallback to doctorCode)
+   * Uses gap-filling (smallest available positive integer starting from 1).
    */
   async generateDoctorTicketNo(doctorId: string): Promise<string> {
     const { today, tomorrow } = getLocalDateBoundaries();
@@ -738,24 +739,33 @@ export class AdmissionService {
 
     const prefix = doctor.doctorInitials || doctor.doctorCode || 'DOC';
 
-    // Find the last visit for this doctor today where the doctorTicketNo starts with the prefix
-    const lastVisit = await this.prisma.visit.findFirst({
+    // Find all visits for this doctor today where doctorTicketNo starts with the prefix
+    const visits = await this.prisma.visit.findMany({
       where: {
         visitDate: { gte: today, lt: tomorrow },
         doctorTicketNo: { startsWith: prefix },
         selectedDoctorId: doctorId,
       },
-      orderBy: { doctorTicketNo: 'desc' },
+      select: { doctorTicketNo: true },
     });
 
-    let nextNumber = 1;
-    if (lastVisit && lastVisit.doctorTicketNo) {
-      const numberPart = lastVisit.doctorTicketNo.substring(prefix.length);
-      const lastNum = parseInt(numberPart) || 0;
-      nextNumber = lastNum + 1;
+    const usedNumbers = new Set<number>();
+    for (const v of visits) {
+      if (v.doctorTicketNo) {
+        const numberPart = v.doctorTicketNo.substring(prefix.length);
+        const num = parseInt(numberPart, 10);
+        if (!isNaN(num)) {
+          usedNumbers.add(num);
+        }
+      }
     }
 
-    return `${prefix}${String(nextNumber).padStart(3, '0')}`;
+    let minAvailable = 1;
+    while (usedNumbers.has(minAvailable)) {
+      minAvailable++;
+    }
+
+    return `${prefix}${String(minAvailable).padStart(3, '0')}`;
   }
 
   /**

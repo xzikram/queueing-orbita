@@ -103,6 +103,7 @@ export class DisplayGateway
     try {
       const stats = await this.reportsService.getLiveStats();
       this.server.to('dashboard').emit('dashboardUpdate', stats);
+      this.server.emit('dashboardRefresh');
     } catch (err) {
       this.logger.error('Failed to broadcast dashboard update', err);
     }

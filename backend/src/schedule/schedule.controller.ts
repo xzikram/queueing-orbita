@@ -120,4 +120,12 @@ export class ScheduleController {
   syncHisSchedule(@Query('date') date?: string) {
     return this.scheduleService.syncDailySchedules(date);
   }
+
+  @Get('appointment-tracking')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  getAppointmentArrivalTracking(@Query('date') date?: string) {
+    return this.scheduleService.getAppointmentArrivalTracking(date);
+  }
 }
+

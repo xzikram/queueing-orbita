@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import styles from '../unit-queue.module.css';
 
 interface Destination {
@@ -24,6 +25,14 @@ export default function AssessmentPage() {
   const [transferReason, setTransferReason] = useState('');
   // Conflict detection
   const [conflictInfo, setConflictInfo] = useState<{ savedFloorId: string; savedFloorName: string } | null>(null);
+
+  const isAppointment = (v: any) => {
+    return (
+      v.patientType === 'ONLINE' ||
+      v.queueTicket?.patientType === 'ONLINE' ||
+      v.queueTicket?.ticketNo?.startsWith('D')
+    );
+  };
 
   const loadQueue = useCallback(async () => {
     try {
@@ -77,8 +86,21 @@ export default function AssessmentPage() {
 
   useEffect(() => {
     loadQueue();
+
+    const socket = getSocket();
+    const handleRefresh = () => {
+      loadQueue();
+    };
+
+    socket.on('dashboardRefresh', handleRefresh);
+    socket.on('queueUpdate', handleRefresh);
+
     const interval = setInterval(loadQueue, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      socket.off('dashboardRefresh', handleRefresh);
+      socket.off('queueUpdate', handleRefresh);
+    };
   }, [loadQueue]);
 
   const action = async (visitId: string, endpoint: string, body?: any) => {
@@ -174,11 +196,17 @@ export default function AssessmentPage() {
               <div key={v.id} className={styles.queueCard}>
                 <div className={styles.ticketHeader}>
                   <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                  <span className="badge badge-warning">WAITING</span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span className="badge" style={isAppointment(v) ? { backgroundColor: '#2563eb', color: '#fff', fontWeight: 600 } : { backgroundColor: '#0891b2', color: '#fff', fontWeight: 600 }}>
+                      {isAppointment(v) ? '📅 APPOINTMENT' : '🚶 WALK-IN'}
+                    </span>
+                    <span className="badge badge-warning">WAITING</span>
+                  </div>
                 </div>
                 <div className={styles.ticketInfo}>
                   <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
                   <span>🚪 {v.selectedRoom?.name || '-'}</span>
+                  {v.patientName && <span>👤 {v.patientName}</span>}
                 </div>
                 <div className={styles.actionBtns}>
                   <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'start')} disabled={actionLoading === v.id}>
@@ -197,10 +225,16 @@ export default function AssessmentPage() {
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}>
                   <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                  <span className="badge badge-success">SERVING</span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span className="badge" style={isAppointment(v) ? { backgroundColor: '#2563eb', color: '#fff', fontWeight: 600 } : { backgroundColor: '#0891b2', color: '#fff', fontWeight: 600 }}>
+                      {isAppointment(v) ? '📅 APPOINTMENT' : '🚶 WALK-IN'}
+                    </span>
+                    <span className="badge badge-success">SERVING</span>
+                  </div>
                 </div>
                 <div className={styles.ticketInfo}>
                   <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
+                  {v.patientName && <span>👤 {v.patientName}</span>}
                 </div>
                 <div className={styles.actionBtns}>
                   <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setDestModal(v.id)} disabled={actionLoading === v.id}>

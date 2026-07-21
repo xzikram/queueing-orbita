@@ -26,6 +26,7 @@ const menuItems = [
     { label: 'Video Playlists', path: '/dashboard/master/videos', icon: '🎬' },
   ]},
   { label: 'Jadwal Dokter', path: '/dashboard/schedules', icon: '📅', permissionKey: 'schedules' },
+  { label: 'Tracking Appointment', path: '/dashboard/appointment-tracking', icon: '🎯', roles: ['ADMIN'] },
   { type: 'divider' },
   { label: 'Live Dashboard', path: '/dashboard/live', icon: '📈', permissionKey: 'live' },
   { label: 'Analytics Reports', path: '/dashboard/reports', icon: '📉', permissionKey: 'reports' },
