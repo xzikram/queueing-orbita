@@ -345,14 +345,18 @@ export default function DisplayFarmasiPage() {
                 <div className={styles.recentEmpty}>Belum ada antrean obat siap</div>
               ) : (
                 readyList.map((item: any, idx) => {
-                  const tNo = item.doctorTicketNo || item.queueTicket?.ticketNo || '-';
+                  const pName = item.patientName || item.doctorTicketNo || item.queueTicket?.ticketNo || 'Pasien';
+                  const docName = item.selectedDoctor?.doctorName || '';
                   return (
-                    <div key={idx} className={styles.recentItem}>
-                      <span className={styles.recentNo}>{tNo}</span>
-                      <span className={styles.recentArrow}>→</span>
-                      <span className={styles.recentCounter} style={{ fontSize: '1.25rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '170px' }}>
-                        {item.patientName || 'Pasien'}
+                    <div key={idx} className={styles.recentItem} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '8px', background: '#ecfdf5' }}>
+                      <span style={{ fontSize: '1.4rem', fontWeight: 700, color: '#065f46', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '320px' }}>
+                        🟢 {pName}
                       </span>
+                      {docName && (
+                        <span style={{ fontSize: '0.95rem', color: '#047857', fontWeight: 600 }}>
+                          {docName}
+                        </span>
+                      )}
                     </div>
                   );
                 })

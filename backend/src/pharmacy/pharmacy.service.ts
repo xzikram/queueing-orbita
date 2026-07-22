@@ -113,7 +113,7 @@ export class PharmacyService {
     }
 
     const { today, tomorrow } = getLocalDateBoundaries();
-    return this.prisma.visit.findMany({
+    const visits = await this.prisma.visit.findMany({
       where: {
         currentUnitType: 'PHARMACY',
         currentStatus: {
@@ -127,15 +127,62 @@ export class PharmacyService {
         selectedDoctor: true,
         journeySessions: {
           where: {
-            unitType: 'PHARMACY',
-            status: { notIn: ['FINISHED', 'CANCELLED'] },
+            unitType: { in: ['PHARMACY', 'CASHIER'] },
           },
           orderBy: { createdAt: 'desc' },
-          take: 1,
         },
       },
       orderBy: { createdAt: 'asc' },
     });
+
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const isoDateStr = `${year}-${month}-${day}`;
+
+    const result = await Promise.all(
+      visits.map(async (v) => {
+        const cashierSession = v.journeySessions.find(
+          (s) => s.unitType === 'CASHIER' && s.status === 'FINISHED',
+        );
+        let isPaid = !!cashierSession;
+        let paymentCategory = isPaid ? 'LUNAS' : 'BELUM_BAYAR';
+
+        if (!isPaid && v.patientRmNo && v.patientRmNo !== '-') {
+          const simrsCheck = await this.querySimrsBridge(`
+            SELECT TOP 1 r.IsClosed, r.SRPatientCategory, tp.IsApproval
+            FROM Registration r
+            LEFT JOIN Patient p ON r.PatientID = p.PatientID
+            LEFT JOIN TransPrescription tp ON r.RegistrationNo = tp.RegistrationNo
+            WHERE p.MedicalNo = '${v.patientRmNo}' AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
+            ORDER BY r.RegistrationDate DESC
+          `);
+          if (Array.isArray(simrsCheck) && simrsCheck.length > 0) {
+            const sc = simrsCheck[0];
+            if (sc.SRPatientCategory && String(sc.SRPatientCategory).toUpperCase().includes('BPJS')) {
+              isPaid = true;
+              paymentCategory = 'BPJS';
+            } else if (sc.IsClosed || sc.IsApproval) {
+              isPaid = true;
+              paymentCategory = 'LUNAS';
+            }
+          }
+        }
+
+        if (!isPaid && (v.queueTicket?.ticketNo?.startsWith('F') || v.doctorTicketNo?.startsWith('F'))) {
+          isPaid = true;
+          paymentCategory = 'OTC';
+        }
+
+        return {
+          ...v,
+          isPaid,
+          paymentCategory,
+        };
+      })
+    );
+
+    return result;
   }
 
   async getRecentCalls(limit: number = 10) {
@@ -173,6 +220,47 @@ export class PharmacyService {
   }
 
   async markReady(visitId: string, userId: string) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: {
+        journeySessions: {
+          where: { unitType: 'CASHIER' },
+        },
+        queueTicket: true,
+      },
+    });
+    if (!visit) throw new NotFoundException('Visit tidak ditemukan');
+
+    const cashierFinished = visit.journeySessions.some((s) => s.status === 'FINISHED');
+    let isPaid = cashierFinished || (visit.queueTicket?.ticketNo?.startsWith('F') || visit.doctorTicketNo?.startsWith('F'));
+
+    if (!isPaid && visit.patientRmNo && visit.patientRmNo !== '-') {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const isoDateStr = `${year}-${month}-${day}`;
+
+      const simrsCheck = await this.querySimrsBridge(`
+        SELECT TOP 1 r.IsClosed, r.SRPatientCategory, tp.IsApproval
+        FROM Registration r
+        LEFT JOIN Patient p ON r.PatientID = p.PatientID
+        LEFT JOIN TransPrescription tp ON r.RegistrationNo = tp.RegistrationNo
+        WHERE p.MedicalNo = '${visit.patientRmNo}' AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
+        ORDER BY r.RegistrationDate DESC
+      `);
+      if (Array.isArray(simrsCheck) && simrsCheck.length > 0) {
+        const sc = simrsCheck[0];
+        if (sc.IsClosed || sc.IsApproval || (sc.SRPatientCategory && String(sc.SRPatientCategory).toUpperCase().includes('BPJS'))) {
+          isPaid = true;
+        }
+      }
+    }
+
+    if (!isPaid) {
+      throw new BadRequestException('Pasien BELUM LUNAS di Kasir! Obat tidak dapat ditandai Siap sebelum pembayaran selesai.');
+    }
+
     const session = await this.journeyService.findSessionByVisitAndUnit(
       visitId,
       'PHARMACY',

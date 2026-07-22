@@ -74,15 +74,32 @@ export default function PharmacyPage() {
         {/* Column: Being Prepared */}
         <div className={`glass-card ${styles.column}`}>
           <div className={styles.columnHeader}><h3>🧪 Disiapkan ({processing.length})</h3></div>
-          <div className={styles.queueList}>
             {processing.length === 0 ? <div className={styles.empty}>Tidak ada</div> : processing.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-primary">PROCESSING</span></div>
-                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
-                <button className="btn btn-warning btn-sm" style={{ width: '100%', marginTop: 8 }} onClick={() => action(v.id, 'ready')} disabled={actionLoading === v.id}>✅ Obat Siap</button>
+                <div className={styles.ticketHeader}>
+                  <span className={styles.ticketNo}>{v.patientName || v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                  {v.isPaid ? (
+                    <span className="badge badge-success" style={{ backgroundColor: v.paymentCategory === 'BPJS' ? '#2563eb' : '#10b981', color: 'white' }}>
+                      {v.paymentCategory === 'BPJS' ? '🛡️ BPJS' : '💳 SUDAH LUNAS'}
+                    </span>
+                  ) : (
+                    <span className="badge badge-warning" style={{ backgroundColor: '#f59e0b', color: 'white' }}>
+                      ⏳ BELUM LUNAS
+                    </span>
+                  )}
+                </div>
+                {v.selectedDoctor?.doctorName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👨‍⚕️ {v.selectedDoctor.doctorName}</div>}
+                <button
+                  className="btn btn-warning btn-sm"
+                  style={{ width: '100%', marginTop: 8, opacity: v.isPaid === false ? 0.5 : 1, cursor: v.isPaid === false ? 'not-allowed' : 'pointer' }}
+                  onClick={() => action(v.id, 'ready')}
+                  disabled={actionLoading === v.id || v.isPaid === false}
+                  title={v.isPaid === false ? 'Pasien belum melunasi pembayaran di Kasir' : 'Tandai obat siap'}
+                >
+                  {v.isPaid === false ? '🔒 Lock (Belum Lunas)' : '✅ Obat Siap'}
+                </button>
               </div>
             ))}
-          </div>
         </div>
 
         {/* Column: Ready — Call & Finish */}
