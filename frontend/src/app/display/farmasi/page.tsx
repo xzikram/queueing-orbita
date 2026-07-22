@@ -78,13 +78,25 @@ export default function DisplayFarmasiPage() {
     }
   };
 
+  const formatNameForTTS = (name: string): string => {
+    if (!name) return '';
+    // Remove medical titles / prefixes
+    let clean = name.replace(/\b(Dr\.|dr\.|Prof\.|Sp\.M\(K\)|Sp\.M|M\.Kes|Ph\.D|MHPE|FFRI|S\.Kep|A\.Md\.Kep)\b/gi, '');
+    // Convert ALL CAPS to Title Case so TTS reads words naturally instead of spelling out letters
+    clean = clean.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
+    // Clean up backticks, quotes, multiple spaces
+    clean = clean.replace(/[`'"]/g, '').replace(/\s+/g, ' ').trim();
+    return clean;
+  };
+
   const playBell = useCallback(async (data: CallData) => {
     try {
       if (videoRef.current) videoRef.current.volume = 0.1;
 
       await playDingDong();
 
-      const nameToCall = data.patientName ? `atas nama ${data.patientName}` : `nomor antrean ${data.ticketNo.split('').join(' ')}`;
+      const formattedName = data.patientName ? formatNameForTTS(data.patientName) : '';
+      const nameToCall = formattedName ? `atas nama ${formattedName}` : `nomor antrean ${data.ticketNo.split('').join(' ')}`;
       const msg = `${nameToCall}, silakan menuju ke Loket Farmasi.`;
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';

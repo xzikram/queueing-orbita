@@ -16,7 +16,102 @@ export class PharmacyService {
     private displayGateway: DisplayGateway,
   ) {}
 
+  private async querySimrsBridge(sql: string): Promise<any[]> {
+    const bridgeUrl = process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
+    const bridgeToken = process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
+    const url = new URL(bridgeUrl);
+    url.searchParams.append('token', bridgeToken);
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query: sql }).toString(),
+        signal: AbortSignal.timeout(10000),
+      });
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch (err: any) {
+      return [];
+    }
+  }
+
+  async syncSimrsPrescriptionsToday() {
+    const { today, tomorrow } = getLocalDateBoundaries();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const isoDateStr = `${year}-${month}-${day}`;
+
+    const prescriptions = await this.querySimrsBridge(`
+      SELECT 
+        tp.PrescriptionNo,
+        tp.PrescriptionDate,
+        tp.RegistrationNo,
+        tp.ParamedicID,
+        tp.IsApproval,
+        tp.ApprovalDateTime,
+        r.MedicalNo,
+        p.FirstName,
+        p.LastName
+      FROM TransPrescription tp
+      LEFT JOIN Registration r ON tp.RegistrationNo = r.RegistrationNo
+      LEFT JOIN Patient p ON r.PatientID = p.PatientID
+      WHERE tp.PrescriptionDate >= '${isoDateStr} 00:00:00' AND tp.IsVoid = 0
+    `);
+
+    if (!Array.isArray(prescriptions) || prescriptions.length === 0) return;
+
+    for (const p of prescriptions) {
+      if (!p.RegistrationNo) continue;
+      const patientName = `${p.FirstName || ''} ${p.LastName || ''}`.trim() || 'Pasien SIMRS';
+      const medicalNo = p.MedicalNo || '-';
+
+      let visit = await this.prisma.visit.findFirst({
+        where: {
+          visitDate: { gte: today, lt: tomorrow },
+          ...(medicalNo !== '-' ? { patientRmNo: medicalNo } : { patientName }),
+        },
+      });
+
+      if (visit) {
+        let pharmacySession = await this.prisma.journeyUnitSession.findFirst({
+          where: {
+            visitId: visit.id,
+            unitType: 'PHARMACY',
+          },
+        });
+
+        if (!pharmacySession) {
+          await this.prisma.journeyUnitSession.create({
+            data: {
+              visitId: visit.id,
+              unitType: 'PHARMACY',
+              status: 'SERVING',
+              waitingStartedAt: new Date(),
+              serviceStartedAt: new Date(),
+              ...(p.IsApproval ? { readyAt: new Date() } : {}),
+            },
+          });
+          await this.prisma.visit.update({
+            where: { id: visit.id },
+            data: {
+              currentUnitType: 'PHARMACY',
+              currentStatus: p.IsApproval ? 'READY' : 'SERVING',
+            },
+          });
+        }
+      }
+    }
+  }
+
   async getQueue() {
+    try {
+      await this.syncSimrsPrescriptionsToday();
+    } catch (e) {
+      // Ignore sync error so queue fetch never breaks
+    }
+
     const { today, tomorrow } = getLocalDateBoundaries();
     return this.prisma.visit.findMany({
       where: {

@@ -94,8 +94,20 @@ export default function PharmacyPage() {
                 <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>{v.currentStatus}</span></div>
                 {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
                 <div className={styles.actionBtns}>
-                  {v.currentStatus === 'READY' && <button className="btn btn-warning btn-sm" onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>}
-                  <button className="btn btn-primary btn-sm" onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>💊 Serahkan Obat</button>
+                  <button
+                    className="btn btn-warning btn-sm"
+                    onClick={() => action(v.id, 'call')}
+                    disabled={actionLoading === v.id}
+                  >
+                    {v.currentStatus === 'CALLED' ? '🔄 Panggil Ulang' : '📢 Panggil'}
+                  </button>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => action(v.id, 'finish')}
+                    disabled={actionLoading === v.id}
+                  >
+                    💊 Serahkan Obat
+                  </button>
                 </div>
               </div>
             ))}
