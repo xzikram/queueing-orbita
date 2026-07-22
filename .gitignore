@@ -2,10 +2,12 @@ node_modules
 .next
 dist
 .env
+.env.local
 *.log
 *.db
 *.sqlite
 *.sqlite3
+*.txt
 
 frontend/node_modules
 frontend/.next
@@ -13,5 +15,6 @@ frontend/.next
 backend/node_modules
 backend/dist
 backend/.env
+backend/scratch/
 
 coverage
