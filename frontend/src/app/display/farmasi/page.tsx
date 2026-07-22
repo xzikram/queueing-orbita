@@ -82,8 +82,10 @@ export default function DisplayFarmasiPage() {
     if (!name) return '';
     // Remove medical titles / prefixes / degrees
     let clean = name.replace(/\b(Dr\.|dr\.|Prof\.|Sp\.M\(K\)|Sp\.M|M\.Kes|Ph\.D|MHPE|FFRI|S\.Kep|A\.Md\.Kep|SE\.|S\.E\.|SH\.|S\.H\.)\b/gi, '');
-    // Remove all punctuation, quotes, backticks
-    clean = clean.replace(/[`'".,_-]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Strip backticks and quotes directly WITHOUT adding spaces (so HAFI`Y becomes HAFIY)
+    clean = clean.replace(/[`'"]/g, '');
+    // Replace punctuation (dots, commas, underscores, hyphens) with spaces
+    clean = clean.replace(/[.,_-]/g, ' ').replace(/\s+/g, ' ').trim();
     // Convert to Title Case
     clean = clean.toLowerCase().replace(/(?:^|\s)\S/g, (char) => char.toUpperCase());
     return clean;
