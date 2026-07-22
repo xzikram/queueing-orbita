@@ -384,9 +384,14 @@ export class ScheduleService {
         psd.RoomID,
         psd.ParamedicID,
         p.ParamedicName,
-        psd.ScheduleDate
+        psd.ScheduleDate,
+        psd.OperationalTimeID,
+        ot.OperationalTimeName,
+        ot.StartTime1,
+        ot.EndTime1
       FROM ParamedicScheduleDate psd
       LEFT JOIN Paramedic p ON psd.ParamedicID = p.ParamedicID
+      LEFT JOIN OperationalTime ot ON psd.OperationalTimeID = ot.OperationalTimeID
       WHERE psd.ScheduleDate >= '${targetDateStr} 00:00:00' 
         AND psd.ScheduleDate <= '${targetDateStr} 23:59:59'
     `;
@@ -573,14 +578,23 @@ export class ScheduleService {
           });
         }
 
+        const startTime =
+          s.StartTime1 && String(s.StartTime1).trim()
+            ? String(s.StartTime1).trim()
+            : '08:00';
+        const endTime =
+          s.EndTime1 && String(s.EndTime1).trim()
+            ? String(s.EndTime1).trim()
+            : '14:00';
+
         if (existing) {
           await this.prisma.doctorSchedule.update({
             where: { id: existing.id },
             data: {
               roomId: room.id,
               floorId: floor.id,
-              startTime: '08:00',
-              endTime: '14:00',
+              startTime,
+              endTime,
               quota: 50,
               status: 'ACTIVE',
             },
@@ -593,8 +607,8 @@ export class ScheduleService {
               floorId: floor.id,
               scheduleDate: today,
               dayName,
-              startTime: '08:00',
-              endTime: '14:00',
+              startTime,
+              endTime,
               quota: 50,
               status: 'ACTIVE',
             },
