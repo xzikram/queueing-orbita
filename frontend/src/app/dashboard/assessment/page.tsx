@@ -44,7 +44,8 @@ export default function AssessmentPage() {
 
   useEffect(() => {
     api.get('/floors').then(res => {
-      setFloors(res.data);
+      const filtered = (res.data || []).filter((f: any) => f.floorNumber !== 1 && !f.name.includes('Lantai 1') && f.name !== 'Lantai 1');
+      setFloors(filtered);
 
       const savedFloor = localStorage.getItem('activeAssessmentFloor');
       if (savedFloor) {
@@ -182,9 +183,29 @@ export default function AssessmentPage() {
           <span className={styles.filterLabel} style={{ color: '#047857' }}>
             📍 Pengkajian Aktif: <strong>{floors.find(f => f.id === selectedFloor)?.name}</strong>
           </span>
-          <span style={{ fontSize: '0.85rem', color: '#059669', marginLeft: 'auto' }}>
-            (Untuk pindah lantai, silakan Logout lalu Login kembali)
-          </span>
+          <button 
+            className="btn btn-warning btn-sm"
+            style={{ 
+              padding: '6px 14px', 
+              fontSize: '0.85rem', 
+              fontWeight: '600',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              border: 'none',
+              color: 'white',
+              background: '#f59e0b',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginLeft: 'auto'
+            }}
+            onClick={() => {
+              setTempFloor(selectedFloor);
+              setIsLocked(false);
+            }}
+          >
+            🔄 Ganti Lantai
+          </button>
         </div>
       )}
 

@@ -217,9 +217,28 @@ export default function CashierPage() {
           >
             {counterStatus === 'BUSY' ? '🟢 Set Aktif (Standby)' : '🔴 Set Sibuk (Melayani)'}
           </button>
-          <span style={{ fontSize: '0.85rem', color: '#059669', marginLeft: 'auto' }}>
-            (Untuk pindah counter, silakan Logout lalu Login kembali)
-          </span>
+          <button 
+            className="btn btn-warning btn-sm"
+            style={{ 
+              padding: '6px 14px', 
+              fontSize: '0.85rem', 
+              fontWeight: '600',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              border: 'none',
+              color: 'white',
+              background: '#f59e0b',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            onClick={() => {
+              setTempCounter(selectedCounter);
+              setIsLocked(false);
+            }}
+          >
+            🔄 Ganti Counter
+          </button>
         </div>
       )}
       <div className={styles.columns}>

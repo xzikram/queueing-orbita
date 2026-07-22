@@ -153,9 +153,29 @@ export default function DoctorQueuePage() {
           <span className={styles.filterLabel} style={{ color: '#047857' }}>
             📍 Ruangan Aktif: <strong>{rooms.find(r => r.id === selectedRoom)?.name}</strong>
           </span>
-          <span style={{ fontSize: '0.85rem', color: '#059669', marginLeft: 'auto' }}>
-            (Untuk pindah ruangan, silakan Logout lalu Login kembali)
-          </span>
+          <button 
+            className="btn btn-warning btn-sm"
+            style={{ 
+              padding: '6px 14px', 
+              fontSize: '0.85rem', 
+              fontWeight: '600',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              border: 'none',
+              color: 'white',
+              background: '#f59e0b',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginLeft: 'auto'
+            }}
+            onClick={() => {
+              setTempRoom(selectedRoom);
+              setIsLocked(false);
+            }}
+          >
+            🔄 Ganti Poli / Ruangan
+          </button>
         </div>
       )}
       <div className={styles.columns}>
