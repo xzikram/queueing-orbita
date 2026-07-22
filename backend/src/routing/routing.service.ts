@@ -120,13 +120,12 @@ export class RoutingService {
       },
     ],
     CASHIER: [
-      { unitType: 'PHARMACY', label: 'Farmasi', icon: '💊', isDefault: false },
       { unitType: 'OPTIC', label: 'Optik', icon: '👓', isDefault: false },
       {
         unitType: 'FINISHED',
         label: 'Selesai (Pulang)',
         icon: '🏠',
-        isDefault: false,
+        isDefault: true,
       },
     ],
     PHARMACY: [

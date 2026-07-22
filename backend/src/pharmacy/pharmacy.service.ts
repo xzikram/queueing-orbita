@@ -50,57 +50,98 @@ export class PharmacyService {
         tp.RegistrationNo,
         tp.ParamedicID,
         tp.IsApproval,
-        tp.ApprovalDateTime,
-        r.MedicalNo,
-        p.FirstName,
-        p.LastName
+        tp.ApprovalDateTime
       FROM TransPrescription tp
-      LEFT JOIN Registration r ON tp.RegistrationNo = r.RegistrationNo
-      LEFT JOIN Patient p ON r.PatientID = p.PatientID
-      WHERE tp.PrescriptionDate >= '${isoDateStr} 00:00:00' AND tp.IsVoid = 0
+      WHERE tp.PrescriptionDate >= '${isoDateStr} 00:00:00'
+      ORDER BY tp.PrescriptionDate DESC
     `);
 
     if (!Array.isArray(prescriptions) || prescriptions.length === 0) return;
 
+    const regList = await this.querySimrsBridge(`
+      SELECT r.RegistrationNo, p.MedicalNo, p.FirstName, p.MiddleName, p.LastName
+      FROM Registration r
+      INNER JOIN Patient p ON r.PatientID = p.PatientID
+      WHERE r.RegistrationDate >= '${isoDateStr} 00:00:00'
+    `);
+
+    const regMap = new Map();
+    if (Array.isArray(regList)) {
+      regList.forEach((r) => {
+        const parts = [r.FirstName, r.MiddleName, r.LastName].filter(Boolean);
+        const fullName = parts.join(' ').trim() || 'Pasien SIMRS';
+        regMap.set(r.RegistrationNo, {
+          medicalNo: r.MedicalNo || '-',
+          patientName: fullName,
+        });
+      });
+    }
+
     for (const p of prescriptions) {
       if (!p.RegistrationNo) continue;
-      const patientName = `${p.FirstName || ''} ${p.LastName || ''}`.trim() || 'Pasien SIMRS';
-      const medicalNo = p.MedicalNo || '-';
+      const regInfo = regMap.get(p.RegistrationNo) || {
+        medicalNo: '-',
+        patientName: 'Pasien SIMRS',
+      };
 
       let visit = await this.prisma.visit.findFirst({
         where: {
           visitDate: { gte: today, lt: tomorrow },
-          ...(medicalNo !== '-' ? { patientRmNo: medicalNo } : { patientName }),
+          ...(regInfo.medicalNo !== '-' ? { patientRmNo: regInfo.medicalNo } : { patientName: regInfo.patientName }),
         },
       });
 
-      if (visit) {
-        let pharmacySession = await this.prisma.journeyUnitSession.findFirst({
-          where: {
-            visitId: visit.id,
-            unitType: 'PHARMACY',
+      if (!visit) {
+        const ticketNo = await this.generatePharmacyTicketNo();
+        const ticket = await this.prisma.queueTicket.create({
+          data: {
+            ticketNo,
+            patientType: 'UMUM',
+            status: 'WAITING',
+            queueDate: today,
           },
         });
 
-        if (!pharmacySession) {
-          await this.prisma.journeyUnitSession.create({
-            data: {
-              visitId: visit.id,
-              unitType: 'PHARMACY',
-              status: 'SERVING',
-              waitingStartedAt: new Date(),
-              serviceStartedAt: new Date(),
-              ...(p.IsApproval ? { readyAt: new Date() } : {}),
-            },
-          });
-          await this.prisma.visit.update({
-            where: { id: visit.id },
-            data: {
-              currentUnitType: 'PHARMACY',
-              currentStatus: p.IsApproval ? 'READY' : 'SERVING',
-            },
-          });
-        }
+        const visitCode = `VIS-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        visit = await this.prisma.visit.create({
+          data: {
+            visitCode,
+            queueTicketId: ticket.id,
+            patientName: regInfo.patientName,
+            patientRmNo: regInfo.medicalNo,
+            patientType: 'UMUM',
+            visitDate: today,
+            currentUnitType: 'PHARMACY',
+            currentStatus: p.IsApproval ? 'READY' : 'SERVING',
+          },
+        });
+      }
+
+      let pharmacySession = await this.prisma.journeyUnitSession.findFirst({
+        where: {
+          visitId: visit.id,
+          unitType: 'PHARMACY',
+        },
+      });
+
+      if (!pharmacySession) {
+        await this.prisma.journeyUnitSession.create({
+          data: {
+            visitId: visit.id,
+            unitType: 'PHARMACY',
+            status: 'SERVING',
+            waitingStartedAt: new Date(),
+            serviceStartedAt: new Date(),
+            ...(p.IsApproval ? { readyAt: new Date() } : {}),
+          },
+        });
+        await this.prisma.visit.update({
+          where: { id: visit.id },
+          data: {
+            currentUnitType: 'PHARMACY',
+            currentStatus: p.IsApproval ? 'READY' : 'SERVING',
+          },
+        });
       }
     }
   }
