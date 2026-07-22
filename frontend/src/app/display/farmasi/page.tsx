@@ -82,6 +82,13 @@ export default function DisplayFarmasiPage() {
     if (!name) return '';
     // Remove medical titles / prefixes / degrees
     let clean = name.replace(/\b(Dr\.|dr\.|Prof\.|Sp\.M\(K\)|Sp\.M|M\.Kes|Ph\.D|MHPE|FFRI|S\.Kep|A\.Md\.Kep|SE\.|S\.E\.|SH\.|S\.H\.)\b/gi, '');
+    
+    // Expand common abbreviations for natural Indonesian TTS speech
+    clean = clean.replace(/\b(Muh\.|Muh)\b/gi, 'Muhammad ');
+    clean = clean.replace(/\b(Hj\.|Hj)\b/gi, 'Hajjah ');
+    clean = clean.replace(/\b(H\.)\b/gi, 'Haji ');
+    clean = clean.replace(/\b(St\.)\b/gi, 'Siti ');
+
     // Strip backticks and quotes directly WITHOUT adding spaces (so HAFI`Y becomes HAFIY)
     clean = clean.replace(/[`'"]/g, '');
     // Replace punctuation (dots, commas, underscores, hyphens) with spaces
