@@ -61,8 +61,10 @@ export class PharmacyService {
     const regList = await this.querySimrsBridge(`
       SELECT r.RegistrationNo, p.MedicalNo, p.FirstName, p.MiddleName, p.LastName
       FROM Registration r
-      INNER JOIN Patient p ON r.PatientID = p.PatientID
-      WHERE r.RegistrationDate >= '${isoDateStr} 00:00:00'
+      LEFT JOIN Patient p ON r.PatientID = p.PatientID
+      WHERE r.RegistrationNo IN (
+        SELECT DISTINCT RegistrationNo FROM TransPrescription WHERE PrescriptionDate >= '${isoDateStr} 00:00:00'
+      )
     `);
 
     const regMap = new Map();
@@ -115,6 +117,14 @@ export class PharmacyService {
             currentStatus: p.IsApproval ? 'READY' : 'SERVING',
           },
         });
+      }
+
+      if (visit && (visit.patientName === 'Pasien SIMRS' || !visit.patientName) && regInfo.patientName !== 'Pasien SIMRS') {
+        await this.prisma.visit.update({
+          where: { id: visit.id },
+          data: { patientName: regInfo.patientName },
+        });
+        visit.patientName = regInfo.patientName;
       }
 
       let pharmacySession = await this.prisma.journeyUnitSession.findFirst({
