@@ -320,22 +320,36 @@ export default function DisplayFarmasiPage() {
             {currentCall ? (
               <div className={styles.currentCallCard}>
                 <div className={styles.callLabel}>AMBIL OBAT</div>
-                <div 
-                  className={styles.callNumber}
-                  style={{ 
-                    fontSize: currentCall.patientName && currentCall.patientName.length > 8 ? '4rem' : '6rem',
-                    wordBreak: 'break-word',
-                    lineHeight: '1.2',
-                    padding: '10px 0'
-                  }}
-                >
-                  {currentCall.patientName || currentCall.ticketNo}
-                </div>
-                {currentCall.patientName && (
-                  <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1e40af', marginTop: '10px', textTransform: 'uppercase' }}>
-                    {currentCall.ticketNo}
-                  </div>
-                )}
+                {(() => {
+                  const pName = currentCall.patientName || currentCall.ticketNo;
+                  const nameLen = pName.length;
+                  let fontSz = '2.8rem';
+                  if (nameLen > 25) fontSz = '1.65rem';
+                  else if (nameLen > 15) fontSz = '2.1rem';
+                  else if (nameLen > 8) fontSz = '2.5rem';
+
+                  return (
+                    <div 
+                      className={styles.callNumber}
+                      style={{ 
+                        fontSize: fontSz,
+                        wordBreak: 'normal',
+                        overflowWrap: 'break-word',
+                        lineHeight: '1.25',
+                        padding: '12px 8px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        color: '#1e3a8a',
+                        minHeight: '100px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {pName}
+                    </div>
+                  );
+                })()}
                 <div className={styles.callArrow}>→</div>
                 <div className={styles.callCounter}>Loket Farmasi</div>
               </div>
