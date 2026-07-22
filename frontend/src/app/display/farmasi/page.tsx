@@ -80,12 +80,12 @@ export default function DisplayFarmasiPage() {
 
   const formatNameForTTS = (name: string): string => {
     if (!name) return '';
-    // Remove medical titles / prefixes
-    let clean = name.replace(/\b(Dr\.|dr\.|Prof\.|Sp\.M\(K\)|Sp\.M|M\.Kes|Ph\.D|MHPE|FFRI|S\.Kep|A\.Md\.Kep)\b/gi, '');
-    // Convert ALL CAPS to Title Case so TTS reads words naturally instead of spelling out letters
-    clean = clean.toLowerCase().replace(/(?:^|\s|-)\S/g, (char) => char.toUpperCase());
-    // Clean up backticks, quotes, multiple spaces
-    clean = clean.replace(/[`'"]/g, '').replace(/\s+/g, ' ').trim();
+    // Remove medical titles / prefixes / degrees
+    let clean = name.replace(/\b(Dr\.|dr\.|Prof\.|Sp\.M\(K\)|Sp\.M|M\.Kes|Ph\.D|MHPE|FFRI|S\.Kep|A\.Md\.Kep|SE\.|S\.E\.|SH\.|S\.H\.)\b/gi, '');
+    // Remove all punctuation, quotes, backticks
+    clean = clean.replace(/[`'".,_-]/g, ' ').replace(/\s+/g, ' ').trim();
+    // Convert to Title Case
+    clean = clean.toLowerCase().replace(/(?:^|\s)\S/g, (char) => char.toUpperCase());
     return clean;
   };
 
@@ -95,24 +95,27 @@ export default function DisplayFarmasiPage() {
 
       await playDingDong();
 
-      const formattedName = data.patientName ? formatNameForTTS(data.patientName) : '';
+      const rawName = data.patientName || '';
+      const formattedName = rawName ? formatNameForTTS(rawName) : '';
       const nameToCall = formattedName ? `atas nama ${formattedName}` : `nomor antrean ${data.ticketNo.split('').join(' ')}`;
       const msg = `${nameToCall}, silakan menuju ke Loket Farmasi.`;
+
+      // Cancel any ongoing speech before speaking
+      window.speechSynthesis.cancel();
+
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.lang = 'id-ID';
       
       const voices = window.speechSynthesis.getVoices();
-      const idVoices = voices.filter(v => v.lang === 'id-ID' || v.lang === 'id_ID');
-      const femaleVoice = idVoices.find(v => v.name.includes('Google') || v.name.includes('Ayu') || v.name.includes('Gadis') || v.name.toLowerCase().includes('female'));
+      const idVoices = voices.filter(v => v.lang.startsWith('id') || v.lang.startsWith('ID') || v.name.toLowerCase().includes('indonesi'));
+      const preferredVoice = idVoices.find(v => v.name.includes('Google') || v.name.includes('Ayu') || v.name.includes('Gadis') || v.name.toLowerCase().includes('female')) || idVoices[0];
       
-      if (femaleVoice) {
-        utterance.voice = femaleVoice;
-      } else if (idVoices.length > 0) {
-        utterance.voice = idVoices[0];
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
       }
       
-      utterance.rate = 1.0;
-      utterance.pitch = 1.1;
+      utterance.rate = 0.95; // Slightly slower for natural clarity
+      utterance.pitch = 1.0;
 
       utterance.onend = () => {
         if (videoRef.current) videoRef.current.volume = videoVolumeRef.current;
@@ -169,6 +172,12 @@ export default function DisplayFarmasiPage() {
 
   useEffect(() => {
     loadInitialData();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
     const dataInterval = setInterval(loadInitialData, 5000);
     const socket = getSocket();
 
