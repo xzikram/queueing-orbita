@@ -74,10 +74,11 @@ export default function PharmacyPage() {
         {/* Column: Being Prepared */}
         <div className={`glass-card ${styles.column}`}>
           <div className={styles.columnHeader}><h3>🧪 Disiapkan ({processing.length})</h3></div>
+          <div className={styles.queueList}>
             {processing.length === 0 ? <div className={styles.empty}>Tidak ada</div> : processing.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
                 <div className={styles.ticketHeader}>
-                  <span className={styles.ticketNo}>{v.patientName || v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
+                  <span className={styles.ticketNo} style={{ fontSize: '1.2rem', fontWeight: 700 }}>👤 {v.patientName || 'Pasien SIMRS'}</span>
                   {v.isPaid ? (
                     <span className="badge badge-success" style={{ backgroundColor: v.paymentCategory === 'BPJS' ? '#2563eb' : '#10b981', color: 'white' }}>
                       {v.paymentCategory === 'BPJS' ? '🛡️ BPJS' : '💳 SUDAH LUNAS'}
@@ -100,6 +101,7 @@ export default function PharmacyPage() {
                 </button>
               </div>
             ))}
+          </div>
         </div>
 
         {/* Column: Ready — Call & Finish */}
@@ -108,9 +110,14 @@ export default function PharmacyPage() {
           <div className={styles.queueList}>
             {ready.length === 0 ? <div className={styles.empty}>Tidak ada</div> : ready.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard} ${styles.activeCard}`}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>{v.currentStatus}</span></div>
-                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
-                <div className={styles.actionBtns}>
+                <div className={styles.ticketHeader}>
+                  <span className={styles.ticketNo} style={{ fontSize: '1.2rem', fontWeight: 700 }}>👤 {v.patientName || 'Pasien SIMRS'}</span>
+                  <span className={`badge ${v.currentStatus === 'READY' ? 'badge-success' : 'badge-info'}`}>
+                    {v.currentStatus === 'READY' ? 'OBAT SIAP' : 'DIPANGGIL'}
+                  </span>
+                </div>
+                {v.selectedDoctor?.doctorName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👨‍⚕️ {v.selectedDoctor.doctorName}</div>}
+                <div className={styles.actionBtns} style={{ marginTop: 8 }}>
                   <button
                     className="btn btn-warning btn-sm"
                     onClick={() => action(v.id, 'call')}
@@ -137,8 +144,11 @@ export default function PharmacyPage() {
           <div className={styles.queueList}>
             {pharmacyDone.length === 0 ? <div className={styles.empty}>Tidak ada pasien menunggu pulang</div> : pharmacyDone.map((v: any) => (
               <div key={v.id} className={`${styles.queueCard}`} style={{ borderLeft: '4px solid #10b981' }}>
-                <div className={styles.ticketHeader}><span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span><span className="badge badge-success">OBAT DISERAHKAN</span></div>
-                {v.patientName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👤 {v.patientName}</div>}
+                <div className={styles.ticketHeader}>
+                  <span className={styles.ticketNo} style={{ fontSize: '1.2rem', fontWeight: 700 }}>👤 {v.patientName || 'Pasien SIMRS'}</span>
+                  <span className="badge badge-success">OBAT DISERAHKAN</span>
+                </div>
+                {v.selectedDoctor?.doctorName && <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>👨‍⚕️ {v.selectedDoctor.doctorName}</div>}
                 <button 
                   className="btn btn-sm" 
                   style={{ width: '100%', marginTop: 8, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', fontWeight: 600 }} 
