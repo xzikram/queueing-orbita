@@ -114,7 +114,7 @@ export class PharmacyService {
             patientType: 'UMUM',
             visitDate: today,
             currentUnitType: 'PHARMACY',
-            currentStatus: p.IsApproval ? 'READY' : 'SERVING',
+            currentStatus: 'SERVING',
           },
         });
       }
@@ -142,14 +142,13 @@ export class PharmacyService {
             status: 'SERVING',
             waitingStartedAt: new Date(),
             serviceStartedAt: new Date(),
-            ...(p.IsApproval ? { readyAt: new Date() } : {}),
           },
         });
         await this.prisma.visit.update({
           where: { id: visit.id },
           data: {
             currentUnitType: 'PHARMACY',
-            currentStatus: p.IsApproval ? 'READY' : 'SERVING',
+            currentStatus: 'SERVING',
           },
         });
       }
@@ -199,28 +198,46 @@ export class PharmacyService {
         let isPaid = !!cashierSession;
         let paymentCategory = isPaid ? 'LUNAS' : 'BELUM_BAYAR';
 
-        if (!isPaid && v.patientRmNo && v.patientRmNo !== '-') {
-          const simrsCheck = await this.querySimrsBridge(`
-            SELECT TOP 1 r.IsClosed, r.SRPatientCategory, tp.IsApproval
-            FROM Registration r
-            LEFT JOIN Patient p ON r.PatientID = p.PatientID
-            LEFT JOIN TransPrescription tp ON r.RegistrationNo = tp.RegistrationNo
-            WHERE p.MedicalNo = '${v.patientRmNo}' AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
-            ORDER BY r.RegistrationDate DESC
+        // Check payment status from SIMRS Trans_Antrian (BayarYN) and BPJS category
+        if (!isPaid && v.patientRmNo && v.patientRmNo !== '-' && v.patientRmNo !== 'MANUAL_PHARMACY') {
+          // 1. Check Trans_Antrian.BayarYN for actual payment status
+          const antrianCheck = await this.querySimrsBridge(`
+            SELECT TOP 1 ta.BayarYN, ta.StartBayar, ta.EndBayar
+            FROM Trans_Antrian ta
+            WHERE ta.MedicalNo = '${v.patientRmNo}'
+              AND CONVERT(date, ta.StartDate) = CONVERT(date, GETDATE())
+              AND ta.AktifYN = 'Y'
+            ORDER BY ta.StartDate DESC
           `);
-          if (Array.isArray(simrsCheck) && simrsCheck.length > 0) {
-            const sc = simrsCheck[0];
-            if (sc.SRPatientCategory && String(sc.SRPatientCategory).toUpperCase().includes('BPJS')) {
-              isPaid = true;
-              paymentCategory = 'BPJS';
-            } else if (sc.IsClosed || sc.IsApproval) {
+          if (Array.isArray(antrianCheck) && antrianCheck.length > 0) {
+            const ta = antrianCheck[0];
+            if (ta.BayarYN === 'Y' && ta.EndBayar) {
               isPaid = true;
               paymentCategory = 'LUNAS';
             }
           }
+
+          // 2. Check BPJS status from Registration (BPJS patients don't need cashier)
+          if (!isPaid) {
+            const bpjsCheck = await this.querySimrsBridge(`
+              SELECT TOP 1 r.SRPatientCategory
+              FROM Registration r
+              LEFT JOIN Patient p ON r.PatientID = p.PatientID
+              WHERE p.MedicalNo = '${v.patientRmNo}' AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
+              ORDER BY r.RegistrationDate DESC
+            `);
+            if (Array.isArray(bpjsCheck) && bpjsCheck.length > 0) {
+              const sc = bpjsCheck[0];
+              if (sc.SRPatientCategory && String(sc.SRPatientCategory).toUpperCase().includes('BPJS')) {
+                isPaid = true;
+                paymentCategory = 'BPJS';
+              }
+            }
+          }
         }
 
-        if (!isPaid && (v.queueTicket?.ticketNo?.startsWith('F') || v.doctorTicketNo?.startsWith('F'))) {
+        // Manual pharmacy entries (OTC) are always considered paid
+        if (!isPaid && v.patientRmNo === 'MANUAL_PHARMACY') {
           isPaid = true;
           paymentCategory = 'OTC';
         }
@@ -283,27 +300,46 @@ export class PharmacyService {
     if (!visit) throw new NotFoundException('Visit tidak ditemukan');
 
     const cashierFinished = visit.journeySessions.some((s) => s.status === 'FINISHED');
-    let isPaid = cashierFinished || (visit.queueTicket?.ticketNo?.startsWith('F') || visit.doctorTicketNo?.startsWith('F'));
+    let isPaid = cashierFinished || visit.patientRmNo === 'MANUAL_PHARMACY';
 
-    if (!isPaid && visit.patientRmNo && visit.patientRmNo !== '-') {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const isoDateStr = `${year}-${month}-${day}`;
-
-      const simrsCheck = await this.querySimrsBridge(`
-        SELECT TOP 1 r.IsClosed, r.SRPatientCategory, tp.IsApproval
-        FROM Registration r
-        LEFT JOIN Patient p ON r.PatientID = p.PatientID
-        LEFT JOIN TransPrescription tp ON r.RegistrationNo = tp.RegistrationNo
-        WHERE p.MedicalNo = '${visit.patientRmNo}' AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
-        ORDER BY r.RegistrationDate DESC
+    // Check payment from SIMRS Trans_Antrian (BayarYN) and BPJS
+    if (!isPaid && visit.patientRmNo && visit.patientRmNo !== '-' && visit.patientRmNo !== 'MANUAL_PHARMACY') {
+      // 1. Check Trans_Antrian.BayarYN for actual payment status
+      const antrianCheck = await this.querySimrsBridge(`
+        SELECT TOP 1 ta.BayarYN, ta.EndBayar
+        FROM Trans_Antrian ta
+        WHERE ta.MedicalNo = '${visit.patientRmNo}'
+          AND CONVERT(date, ta.StartDate) = CONVERT(date, GETDATE())
+          AND ta.AktifYN = 'Y'
+        ORDER BY ta.StartDate DESC
       `);
-      if (Array.isArray(simrsCheck) && simrsCheck.length > 0) {
-        const sc = simrsCheck[0];
-        if (sc.IsClosed || sc.IsApproval || (sc.SRPatientCategory && String(sc.SRPatientCategory).toUpperCase().includes('BPJS'))) {
+      if (Array.isArray(antrianCheck) && antrianCheck.length > 0) {
+        const ta = antrianCheck[0];
+        if (ta.BayarYN === 'Y' && ta.EndBayar) {
           isPaid = true;
+        }
+      }
+
+      // 2. Check BPJS status
+      if (!isPaid) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const isoDateStr = `${year}-${month}-${day}`;
+
+        const bpjsCheck = await this.querySimrsBridge(`
+          SELECT TOP 1 r.SRPatientCategory
+          FROM Registration r
+          LEFT JOIN Patient p ON r.PatientID = p.PatientID
+          WHERE p.MedicalNo = '${visit.patientRmNo}' AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
+          ORDER BY r.RegistrationDate DESC
+        `);
+        if (Array.isArray(bpjsCheck) && bpjsCheck.length > 0) {
+          const sc = bpjsCheck[0];
+          if (sc.SRPatientCategory && String(sc.SRPatientCategory).toUpperCase().includes('BPJS')) {
+            isPaid = true;
+          }
         }
       }
     }
