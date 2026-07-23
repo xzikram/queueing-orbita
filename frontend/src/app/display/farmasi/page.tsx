@@ -86,25 +86,24 @@ export default function DisplayFarmasiPage() {
     // Front titles: Dr., dr., DR., Drg., drg., Prof., Drs., Dra.
     clean = clean.replace(/(?:^|\s)(?:DR|Dr|dr|Drg|drg|Prof|Drs|Dra)\.?(?=\s|$)/gi, ' ');
     
-    // Back degrees / Specializations: S.T., ST, S.E., SE, S.H., SH, S.Kep, S.Kom, S.Si, S.Sos, S.P, S.Ked, S.Farm, Sp.M, Sp.M(K), M.Kes, Ph.D, A.Md.Kep, etc.
-    clean = clean.replace(/(?:,\s*|\s+)(?:Sp\.?\s*[A-Z]+(?:\([^)]+\))?|M\.?\s*Kes|Ph\.?D|MHPE|FFRI|S\.?\s*Kep|A\.?\s*Md(?:\.?\s*Kep)?|S\.?\s*[TEHSIKP]|Apt\.?)(?=\s|$|\.)/gi, ' ');
+    // Back degrees / Specializations: S.E., SE, S.H., SH, S.Kep, S.Kom, S.Si, Sp.M, M.Kes, Ph.D, A.Md, etc.
+    clean = clean.replace(/(?:,\s*|\s+)(?:Sp\.?\s*[A-Z]+(?:\([^)]+\))?|M\.?\s*Kes|Ph\.?D|MHPE|FFRI|S\.?\s*Kep|A\.?\s*Md(?:\.?\s*Kep)?|Apt\.?)(?=\s|$|\.)/gi, ' ');
 
-    // 2. Expand name abbreviations for clear Indonesian TTS reading
-    // "St." / "St " / "ST." -> "Siti"
-    clean = clean.replace(/(?:^|\s)(?:St|ST)\.?(?=\s+[a-zA-Z]|\s*$)/g, ' Siti ');
-    // "Muh." / "Muh " -> "Muhammad"
+    // 2. Format "ST" / "St." into "S T" (with space) so TTS pronounces "Es Te" instead of "set" or "Siti"
+    clean = clean.replace(/(?:^|\s)(?:St|ST)\.?(?=\s|$|\.)/g, ' S T ');
+
+    // 3. Expand other common prefixes (Muh -> Muhammad, Hj -> Hajjah, H -> Haji)
     clean = clean.replace(/(?:^|\s)(?:Muh|MUH)\.?(?=\s+[a-zA-Z]|\s*$)/g, ' Muhammad ');
-    // "Hj." / "Hj " -> "Hajjah"
     clean = clean.replace(/(?:^|\s)(?:Hj|HJ)\.?(?=\s+[a-zA-Z]|\s*$)/g, ' Hajjah ');
-    // "H." / "H " -> "Haji"
     clean = clean.replace(/(?:^|\s)H\.(?=\s+[a-zA-Z]|\s*$)/g, ' Haji ');
 
-    // 3. Remove punctuation, backticks, quotes, dots, commas, hyphens
+    // 4. Remove punctuation, backticks, quotes, dots, commas, hyphens
     clean = clean.replace(/[`'"]/g, '');
     clean = clean.replace(/[.,_-]/g, ' ').replace(/\s+/g, ' ').trim();
 
-    // 4. Convert to Title Case
+    // 5. Convert to Title Case, but keep "S T" spaced and uppercase so TTS reads "Es Te"
     clean = clean.toLowerCase().replace(/(?:^|\s)\S/g, (char) => char.toUpperCase());
+    clean = clean.replace(/\bSt\b/g, 'S T');
 
     return clean;
   };
