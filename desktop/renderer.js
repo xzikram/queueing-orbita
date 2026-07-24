@@ -24,6 +24,19 @@ let state = {
   lastActiveCallId: null,
 };
 
+// --- GLOBAL STATE SWITCHING FUNCTIONS (DEFINED EARLY) ---
+window.toggleManualTicketMode = function() {
+  console.log('[Orbita] toggleManualTicketMode triggered! Setting isManualMode = true');
+  state.isManualMode = true;
+  renderCurrentState();
+};
+
+window.cancelManualTicketMode = function() {
+  console.log('[Orbita] cancelManualTicketMode triggered! Setting isManualMode = false');
+  state.isManualMode = false;
+  refreshQueues();
+};
+
 const UNIT_CONFIG = {
   ADMISSION: {
     label: 'Admisi',
@@ -206,10 +219,8 @@ if (inputs.unitSelect) {
     state.activeCall = null;
     state.unitWaitingList = [];
 
-    // Only ADMISSION and CASHIER support creating new tickets
-    const supportsNewTicket = (newUnit === 'ADMISSION' || newUnit === 'CASHIER');
     if (buttons.openNewTicketBtn) {
-      buttons.openNewTicketBtn.style.display = supportsNewTicket ? 'flex' : 'none';
+      buttons.openNewTicketBtn.style.display = 'flex';
     }
 
     refreshQueues();
