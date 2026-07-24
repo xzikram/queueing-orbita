@@ -255,7 +255,7 @@ function updateCounterUI() {
 
 function updateCounterStatusUI() {
   if (state.counterStatus === 'BUSY') {
-    texts.counterStatusBadge.innerText = 'SEDANG MELAYANI';
+    texts.counterStatusBadge.innerText = 'SIBUK';
     texts.counterStatusBadge.className = 'badge badge-busy';
     buttons.toggleCounterStatus.innerText = '🟢 Set Standby';
     buttons.toggleCounterStatus.className = 'btn btn-xs btn-success';
@@ -343,7 +343,7 @@ buttons.tabKasir.addEventListener('click', () => {
   renderCurrentTab();
 });
 
-// --- QUEUE FETCHING & RENDERING ---
+// --- QUEUE FETCHING & RENDERING (MATCHING WEB FRONT-DESK 100%) ---
 async function refreshQueues() {
   try {
     const [admRes, kasRes] = await Promise.all([
@@ -354,15 +354,16 @@ async function refreshQueues() {
     const admData = Array.isArray(admRes.data) ? admRes.data : (admRes.data?.waitingList || []);
     const kasData = Array.isArray(kasRes.data) ? kasRes.data : (kasRes.data?.waitingList || []);
 
-    // Filter waiting
+    // Filter Admisi Waiting List (tickets starting with A, B, C, D)
     state.admissionList = admData.filter(t => {
       const session = t.visit?.journeySessions?.[0];
       return t.status === 'WAITING' || (t.status === 'IN_PROGRESS' && session?.status === 'SKIPPED');
     });
 
+    // Helper for direct Cashier Kiosk Tickets (G, H, K)
     const isCashierTicket = (v) => {
-      const ticketNo = v.queueTicket?.ticketNo || v.doctorTicketNo || '';
-      return ticketNo.startsWith('G') || ticketNo.startsWith('H');
+      const ticketNo = v.doctorTicketNo || v.queueTicket?.ticketNo || v.ticketNo || '';
+      return ticketNo.startsWith('G') || ticketNo.startsWith('H') || ticketNo.startsWith('K');
     };
 
     const allCashWaiting = kasData.filter(v => {
@@ -370,6 +371,7 @@ async function refreshQueues() {
       return s?.status === 'WAITING' || s?.status === 'SKIPPED';
     });
 
+    // Match Web Front Desk: Only direct Kiosk Kasir tickets (G, H, K) appear under Kasir waiting list!
     state.cashierList = allCashWaiting.filter(isCashierTicket);
     state.cashierSyncList = allCashWaiting.filter(v => !isCashierTicket(v) && v.patientName);
 
@@ -379,7 +381,7 @@ async function refreshQueues() {
       return t.status === 'IN_PROGRESS' && s && ['CALLED', 'SERVING'].includes(s.status);
     });
 
-    const activeKas = kasData.find(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
+    const activeKas = kasData.filter(isCashierTicket).find(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
 
     if (state.activeTab === 'ADMISSION') {
       state.activeCall = activeAdm || null;

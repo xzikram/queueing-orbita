@@ -55,24 +55,19 @@
     <!-- CALLER WIDGET SCREEN -->
     <div id="callerScreen" class="screen">
       
-      <!-- User Info Header -->
-      <div class="header">
+      <!-- Top Header & Ultra-Minimalist Counter Bar -->
+      <div class="top-compact-bar">
         <div class="user-meta">
           <span id="userName" class="user-name">User</span>
-          <span id="userRole" class="badge badge-role">ADMISSION</span>
+          <span id="userRole" class="badge badge-role">ADMIN</span>
         </div>
-        <button id="logoutBtn" class="btn btn-xs btn-outline">Keluar</button>
-      </div>
 
-      <!-- Counter Status Bar (Matching Web Version) -->
-      <div class="counter-status-bar">
-        <div class="counter-info">
-          <span class="counter-name">📍 <strong id="currentCounterName">-</strong></span>
+        <div class="counter-mini-pill">
+          <span class="counter-name">📍 <strong id="currentCounterName">Counter 1</strong></span>
           <span id="counterStatusBadge" class="badge badge-standby">STANDBY</span>
-        </div>
-        <div class="counter-actions">
-          <button id="toggleCounterStatusBtn" class="btn btn-xs btn-danger">🔴 Set Sibuk</button>
-          <button id="changeCounterBtn" class="btn btn-xs btn-warning">🔄 Ganti</button>
+          <button id="changeCounterBtn" class="btn btn-xs btn-outline" title="Ganti Loket Jaga">🔄 Ganti</button>
+          <button id="toggleCounterStatusBtn" class="btn btn-xs btn-danger" title="Set Sibuk/Standby">🔴 Set Sibuk</button>
+          <button id="logoutBtn" class="btn btn-xs btn-outline" title="Keluar">Keluar</button>
         </div>
       </div>
 
@@ -177,14 +172,14 @@
   <div id="counterModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>📍 Pilih Counter Jaga</h3>
+        <h3>📍 Pilih Loket / Counter Jaga</h3>
         <button id="closeCounterModalBtn" class="close-modal">&times;</button>
       </div>
       <div class="form-group">
-        <label>Pilih Loket / Counter Tempat Anda Bertugas:</label>
+        <label>Pilih Loket Tempat Anda Bertugas:</label>
         <select id="modalCounterSelect" class="select-input"></select>
       </div>
-      <button id="saveCounterBtn" class="btn btn-primary btn-block">Mulai Sesi Jaga</button>
+      <button id="saveCounterBtn" class="btn btn-primary btn-block">Simpan & Mulai Jaga</button>
     </div>
   </div>
 
