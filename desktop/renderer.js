@@ -324,26 +324,58 @@ buttons.closeCounterModal.addEventListener('click', () => {
 // --- DOCTORS & TICKETS GENERATOR ---
 async function loadDoctors() {
   try {
-    const res = await axios.get('/master/doctors');
-    state.doctors = Array.isArray(res.data) ? res.data.filter(d => d.isActive) : [];
     inputs.doctorSelect.innerHTML = '<option value="">-- Pilih Dokter --</option>';
+    
+    // Try fetching today's active schedules first
+    const schedRes = await axios.get('/schedules/active-today').catch(() => null);
+    if (schedRes && Array.isArray(schedRes.data) && schedRes.data.length > 0) {
+      state.schedules = schedRes.data;
+      state.schedules.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        const docName = s.doctor?.doctorName || s.doctorName || 'Dokter';
+        const roomName = s.room?.name || s.roomName || '';
+        opt.innerText = roomName ? `${docName} (${roomName})` : docName;
+        opt.style.color = '#0f172a';
+        opt.style.backgroundColor = '#ffffff';
+        inputs.doctorSelect.appendChild(opt);
+      });
+      return;
+    }
+
+    // Fallback to all doctors (/doctors)
+    const res = await axios.get('/doctors');
+    state.doctors = Array.isArray(res.data) ? res.data.filter(d => d.isActive !== false) : [];
     state.doctors.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.id;
       opt.innerText = `${d.doctorName}`;
+      opt.style.color = '#0f172a';
+      opt.style.backgroundColor = '#ffffff';
       inputs.doctorSelect.appendChild(opt);
     });
-  } catch (err) {}
+  } catch (err) {
+    console.error("Gagal memuat dokter:", err);
+  }
 }
 
-inputs.doctorSelect.addEventListener('change', (e) => {
-  const doctorId = e.target.value;
-  if (doctorId) {
-    const doc = state.doctors.find(d => d.id === doctorId);
-    const initials = doc ? doc.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'MA';
-    const randomNum = String(Math.floor(Math.random() * 90) + 10).padStart(3, '0');
-    inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
-  }
+inputs.doctorSelect.addEventListener('change', async (e) => {
+  const selectedId = e.target.value;
+  if (!selectedId) return;
+
+  try {
+    const res = await axios.get(`/admission/next-doctor-ticket?scheduleId=${selectedId}`).catch(() => null);
+    if (res?.data?.nextDoctorTicketNo) {
+      inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
+      return;
+    }
+  } catch (err) {}
+
+  // Fallback generation
+  const doc = (state.doctors || []).find(d => d.id === selectedId) || (state.schedules || []).find(s => s.id === selectedId)?.doctor;
+  const initials = doc ? doc.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'MA';
+  const randomNum = String(Math.floor(Math.random() * 90) + 10).padStart(3, '0');
+  inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
 });
 
 // --- QUEUE FETCHING ---

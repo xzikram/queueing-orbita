@@ -8,10 +8,10 @@ function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   
   mainWindow = new BrowserWindow({
-    width: 360,
-    height: 560,
-    x: Math.max(10, width - 380), // Bottom right position
-    y: Math.max(10, height - 580),
+    width: 320,
+    height: 450,
+    x: Math.max(10, width - 340), // Bottom right position
+    y: Math.max(10, height - 470),
     show: false,
     frame: false, // Frameless window
     resizable: true,
