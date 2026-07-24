@@ -146,9 +146,6 @@ const texts = {
   loginError: document.getElementById('loginError'),
   userName: document.getElementById('userName'),
   currentCounterName: document.getElementById('currentCounterName'),
-  countAdmisi: document.getElementById('countAdmisi'),
-  countKasir: document.getElementById('countKasir'),
-  admisiDot: document.getElementById('admisiDot'),
   ticketPrefix: document.getElementById('ticketPrefix'),
   ticketNum: document.getElementById('ticketNum'),
   activePatientType: document.getElementById('activePatientType'),
@@ -162,8 +159,6 @@ const buttons = {
   toggleCounterStatus: document.getElementById('toggleCounterStatusBtn'),
   changeCounter: document.getElementById('changeCounterBtn'),
   closeCounterModal: document.getElementById('closeCounterModalBtn'),
-  tabAdmisi: document.getElementById('tabAdmisi'),
-  tabKasir: document.getElementById('tabKasir'),
   minBtn: document.getElementById('minBtn'),
   finishBtn: document.getElementById('finishBtn'),
   recallBtn: document.getElementById('recallBtn'),
@@ -277,25 +272,6 @@ function startLiveClock() {
   updateClock();
   state.clockTimer = setInterval(updateClock, 10000);
 }
-
-// --- UNIT SELECTOR DROPDOWN (ADMISI VS KASIR) ---
-});
-
-buttons.tabAdmisi.addEventListener('click', () => {
-  state.activeTab = 'ADMISSION';
-  inputs.unitSelect.value = 'ADMISSION';
-  buttons.tabAdmisi.classList.add('active');
-  buttons.tabKasir.classList.remove('active');
-  renderCurrentState();
-});
-
-buttons.tabKasir.addEventListener('click', () => {
-  state.activeTab = 'CASHIER';
-  inputs.unitSelect.value = 'CASHIER';
-  buttons.tabKasir.classList.add('active');
-  buttons.tabAdmisi.classList.remove('active');
-  renderCurrentState();
-});
 
 // --- COUNTER MANAGEMENT ---
 async function loadCounters() {
