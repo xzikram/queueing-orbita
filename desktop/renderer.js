@@ -457,23 +457,43 @@ function renderCurrentState() {
 
     const waitingList = state.activeTab === 'ADMISSION' ? state.admissionList : state.cashierList;
     if (waitingList.length > 0) {
-      const nextTicket = waitingList[0];
-      const rawNo = nextTicket.ticketNo || nextTicket.doctorTicketNo || nextTicket.queueTicket?.ticketNo || 'A001';
+      const itemsToShow = waitingList.slice(0, 3);
       
+      const rowsHtml = itemsToShow.map((t, idx) => {
+        const rawNo = t.ticketNo || t.doctorTicketNo || t.queueTicket?.ticketNo || 'A001';
+        const typeStr = t.patientType || t.visit?.patientType || 'BARU';
+        const isFirst = idx === 0;
+        
+        return `
+          <div class="waiting-ticket-item ${isFirst ? 'primary' : ''}">
+            <div class="ticket-item-left">
+              <span class="ticket-item-no">${rawNo}</span>
+              <span class="ticket-item-tag ${typeStr.toLowerCase()}">${typeStr}</span>
+            </div>
+            <button class="btn-call-row" data-index="${idx}">
+              📢 Panggil
+            </button>
+          </div>
+        `;
+      }).join('');
+
       containers.idleStateContainer.innerHTML = `
-        <div class="waiting-ticket-card">
-          <div class="waiting-badge">⏱️ Menunggu Dipanggil (${waitingList.length})</div>
-          <div class="waiting-ticket-no">${rawNo}</div>
-          <button id="callWaitingBtn" class="btn-call-waiting">
-            📢 PANGGIL ANTREAN (${rawNo})
-          </button>
+        <div class="waiting-card-container">
+          <div class="waiting-header-badge">⏱️ MENUNGGU DIPANGGIL (${waitingList.length})</div>
+          <div class="waiting-tickets-scroll">
+            ${rowsHtml}
+          </div>
         </div>
       `;
 
-      const btn = document.getElementById('callWaitingBtn');
-      if (btn) {
-        btn.addEventListener('click', () => callPatientInQueue(nextTicket));
-      }
+      const rowBtns = containers.idleStateContainer.querySelectorAll('.btn-call-row');
+      rowBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.dataset.index);
+          const targetTicket = itemsToShow[idx];
+          if (targetTicket) callPatientInQueue(targetTicket);
+        });
+      });
     } else {
       containers.idleStateContainer.innerHTML = `<div class="empty-state-text">Antrean Kosong</div>`;
     }

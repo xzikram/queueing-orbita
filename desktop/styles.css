@@ -425,51 +425,99 @@ body {
   color: #475569;
 }
 
-/* WAITING TICKET CARD IN IDLE STATE */
-.waiting-ticket-card {
+/* WAITING TICKET LIST IN IDLE STATE */
+.waiting-card-container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   width: 100%;
-  gap: 8px;
-  text-align: center;
+  gap: 6px;
 }
 
-.waiting-badge {
-  background: #dbeafe;
-  color: #1e40af;
-  font-size: 11px;
+.waiting-header-badge {
+  text-align: center;
+  font-size: 10.5px;
   font-weight: 800;
-  padding: 3px 12px;
+  color: #1e40af;
+  background: #dbeafe;
+  padding: 4px 10px;
   border-radius: 12px;
   text-transform: uppercase;
 }
 
-.waiting-ticket-no {
-  font-size: 32px;
-  font-weight: 900;
-  color: #1e293b;
-  letter-spacing: 1px;
-  line-height: 1;
-  margin: 4px 0;
+.waiting-tickets-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 165px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
-.btn-call-waiting {
-  width: 100%;
-  padding: 10px 14px;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 800;
-  border: none;
+.waiting-ticket-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
-  transition: transform 0.15s ease, background 0.15s ease;
+  padding: 6px 10px;
+  transition: background 0.15s ease;
 }
 
-.btn-call-waiting:hover {
+.waiting-ticket-item.primary {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.ticket-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-item-no {
+  font-size: 17px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+}
+
+.ticket-item-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.ticket-item-tag.baru {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.ticket-item-tag.lama {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.btn-call-row {
+  padding: 6px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.btn-call-row:hover {
   background: #1d4ed8;
   transform: translateY(-1px);
 }
