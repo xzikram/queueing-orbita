@@ -550,7 +550,7 @@ export default function FrontDeskPage() {
                       <div className={styles.cardLeft}>
                         <div className={styles.ticketHeaderCompact}>
                           <span className={styles.ticketNoCompact}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                          <span className="badge badge-info" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>PILIH TUJUAN</span>
+                          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>SELESAI</span>
                         </div>
                         <div className={styles.ticketInfoCompact}>
                           <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
@@ -558,7 +558,7 @@ export default function FrontDeskPage() {
                         </div>
                       </div>
                       <div className={styles.cardRight}>
-                        <button className="btn btn-primary btn-sm" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setDestModal({ ticket: v, type: 'CASHIER' })}>🗺️ Pilih Tujuan</button>
+                        <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')}>✅ Selesai</button>
                       </div>
                     </div>
                   ))}
