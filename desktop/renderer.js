@@ -47,6 +47,25 @@ window.cancelManualTicketMode = function() {
   refreshQueues();
 };
 
+window.createTicket = async function(unit, patientType) {
+  console.log('[Orbita] createTicket called -> unit:', unit, 'patientType:', patientType);
+  try {
+    let res;
+    if (unit === 'CASHIER') {
+      res = await axios.post('/queue-tickets/cashier', { patientType });
+    } else {
+      res = await axios.post('/queue-tickets/admission', { patientType });
+    }
+    const ticketNo = res.data?.ticketNo || 'Baru';
+    showToast(`✅ Tiket ${ticketNo} berhasil dibuat!`, false);
+    state.isManualMode = false;
+    await refreshQueues();
+    ipcRenderer.send('show-window');
+  } catch (err) {
+    alert("Gagal mengambil antrean: " + (err.response?.data?.message || err.message));
+  }
+};
+
 const UNIT_CONFIG = {
   ADMISSION: {
     label: 'Admisi',
@@ -704,7 +723,7 @@ function renderCurrentState() {
     `;
 
     containers.idleControlsBox.style.display = 'none';
-    containers.manualControlsBox.style.display = 'none';
+    containers.manualControlsBox.style.display = 'flex';
 
     renderCategoryGrid();
 
@@ -783,64 +802,29 @@ async function callPatientInQueue(item) {
 
 // --- DYNAMIC CATEGORY GRID (MOCKUP 3 - ADMISI: A-D, KASIR: G-H) ---
 function renderCategoryGrid() {
-  const grid = document.getElementById('centerCategoryGrid') || containers.categoryGrid;
-  if (!grid) return;
-  grid.innerHTML = '';
+  const centerGrid = document.getElementById('centerCategoryGrid');
+  const bottomGrid = containers.categoryGrid;
 
-  if (state.activeTab === 'CASHIER') {
-    // Kasir Categories: UMUM (G), ASURANSI (H)
-    const cats = [
-      { type: 'UMUM', code: 'G', label: '➕ Kasir Umum (G)', color: 'btn-blue' },
-      { type: 'ASURANSI', code: 'H', label: '➕ Kasir Asuransi (H)', color: 'btn-orange' },
-    ];
+  const isCashier = (state.activeTab === 'CASHIER');
 
-    cats.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = `btn-cat ${c.color}`;
-      btn.style.padding = '12px 6px';
-      btn.style.fontSize = '12px';
-      btn.innerText = c.label;
-      btn.addEventListener('click', () => createTicket('CASHIER', c.type));
-      grid.appendChild(btn);
-    });
+  const cats = isCashier ? [
+    { type: 'UMUM', code: 'G', label: '➕ Kasir Umum (G)', color: 'btn-blue', unit: 'CASHIER' },
+    { type: 'ASURANSI', code: 'H', label: '➕ Kasir Asuransi (H)', color: 'btn-orange', unit: 'CASHIER' },
+  ] : [
+    { type: 'BARU', code: 'A', label: '➕ Baru (A)', color: 'btn-blue', unit: 'ADMISSION' },
+    { type: 'LAMA', code: 'B', label: '➕ Lama (B)', color: 'btn-blue', unit: 'ADMISSION' },
+    { type: 'ASURANSI', code: 'C', label: '➕ Asuransi (C)', color: 'btn-orange', unit: 'ADMISSION' },
+    { type: 'ONLINE', code: 'D', label: '➕ Online (D)', color: 'btn-orange', unit: 'ADMISSION' },
+  ];
 
-  } else {
-    // Admisi Categories: BARU (A), LAMA (B), ASURANSI (C), ONLINE (D)
-    const cats = [
-      { type: 'BARU', code: 'A', label: '➕ Baru (A)', color: 'btn-blue' },
-      { type: 'LAMA', code: 'B', label: '➕ Lama (B)', color: 'btn-blue' },
-      { type: 'ASURANSI', code: 'C', label: '➕ Asuransi (C)', color: 'btn-orange' },
-      { type: 'ONLINE', code: 'D', label: '➕ Online (D)', color: 'btn-orange' },
-    ];
+  const html = cats.map(c => `
+    <button type="button" class="btn-cat ${c.color}" style="padding:12px 6px;font-size:12px;font-weight:800;cursor:pointer;" onclick="window.createTicket('${c.unit}', '${c.type}')">
+      ${c.label}
+    </button>
+  `).join('');
 
-    cats.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = `btn-cat ${c.color}`;
-      btn.style.padding = '12px 6px';
-      btn.style.fontSize = '12px';
-      btn.innerText = c.label;
-      btn.addEventListener('click', () => createTicket('ADMISSION', c.type));
-      grid.appendChild(btn);
-    });
-  }
-}
-
-async function createTicket(unit, patientType) {
-  try {
-    let res;
-    if (unit === 'CASHIER') {
-      res = await axios.post('/queue-tickets/cashier', { patientType });
-    } else {
-      res = await axios.post('/queue-tickets/admission', { patientType });
-    }
-    const ticketNo = res.data?.ticketNo || 'Baru';
-    showToast(`✅ Tiket ${ticketNo} berhasil dibuat!`, false);
-    state.isManualMode = false;
-    await refreshQueues();
-    ipcRenderer.send('show-window');
-  } catch (err) {
-    alert("Gagal mengambil antrean: " + (err.response?.data?.message || err.message));
-  }
+  if (centerGrid) centerGrid.innerHTML = html;
+  if (bottomGrid) bottomGrid.innerHTML = html;
 }
 
 // --- STATE SWITCHING BUTTONS ---
