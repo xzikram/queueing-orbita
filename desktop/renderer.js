@@ -18,7 +18,7 @@ let state = {
   admissionList: [],
   cashierList: [],
   activeCall: null,
-  isManualMode: false, // State 3 toggle
+  isManualMode: false,
   clockTimer: null,
 
   targetCancelTicket: null,
@@ -337,6 +337,7 @@ async function refreshQueues() {
       return s?.status === 'WAITING' || s?.status === 'SKIPPED';
     });
 
+    // Only direct Kiosk Kasir tickets (G, H) appear under Kasir waiting list!
     state.cashierList = allCashWaiting.filter(isCashierTicket);
 
     // Active Calls
@@ -405,6 +406,8 @@ function renderCurrentState() {
     containers.idleControlsBox.style.display = 'none';
     containers.manualControlsBox.style.display = 'flex';
 
+    renderCategoryGrid();
+
   } else {
     // === STATE 2: IDLE / EMPTY (MOCKUP 2) ===
     containers.activeStateContainer.style.display = 'none';
@@ -413,6 +416,59 @@ function renderCurrentState() {
     containers.idleStateContainer.style.display = 'flex';
     containers.idleControlsBox.style.display = 'flex';
     containers.manualControlsBox.style.display = 'none';
+  }
+}
+
+// --- DYNAMIC CATEGORY GRID (MOCKUP 3 - ADMISI: A-D, KASIR: G-H) ---
+function renderCategoryGrid() {
+  containers.categoryGrid.innerHTML = '';
+
+  if (state.activeTab === 'ADMISSION') {
+    // Admisi Categories: BARU (A), LAMA (B), ASURANSI (C), ONLINE (D)
+    const cats = [
+      { type: 'BARU', code: 'A', label: '➕ Baru (A)', color: 'btn-blue' },
+      { type: 'LAMA', code: 'B', label: '➕ Lama (B)', color: 'btn-blue' },
+      { type: 'ASURANSI', code: 'C', label: '➕ Asuransi (C)', color: 'btn-orange' },
+      { type: 'ONLINE', code: 'D', label: '➕ Online (D)', color: 'btn-orange' },
+    ];
+
+    cats.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = `btn-cat ${c.color}`;
+      btn.innerText = c.label;
+      btn.addEventListener('click', () => createTicket('ADMISSION', c.type));
+      containers.categoryGrid.appendChild(btn);
+    });
+
+  } else {
+    // Kasir Categories: UMUM (G), ASURANSI (H)
+    const cats = [
+      { type: 'UMUM', code: 'G', label: '➕ Kasir Umum (G)', color: 'btn-blue' },
+      { type: 'ASURANSI', code: 'H', label: '➕ Kasir Asuransi (H)', color: 'btn-orange' },
+    ];
+
+    cats.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = `btn-cat ${c.color}`;
+      btn.innerText = c.label;
+      btn.addEventListener('click', () => createTicket('CASHIER', c.type));
+      containers.categoryGrid.appendChild(btn);
+    });
+  }
+}
+
+async function createTicket(unit, patientType) {
+  try {
+    if (unit === 'ADMISSION') {
+      await axios.post('/queue-tickets/admission', { patientType });
+    } else {
+      await axios.post('/queue-tickets/cashier', { patientType });
+    }
+    state.isManualMode = false;
+    await refreshQueues();
+    ipcRenderer.send('show-window');
+  } catch (err) {
+    alert("Gagal mengambil antrean: " + (err.response?.data?.message || err.message));
   }
 }
 
@@ -430,23 +486,6 @@ buttons.refreshBtn.addEventListener('click', () => {
 buttons.refreshBtn2.addEventListener('click', () => {
   state.isManualMode = false;
   refreshQueues();
-});
-
-// --- QUICK CATEGORY TICKET CREATION (STATE 3) ---
-containers.categoryGrid.querySelectorAll('.btn-cat').forEach(b => {
-  b.addEventListener('click', async (e) => {
-    const category = state.activeTab;
-    const patientType = e.target.getAttribute('data-cat') || 'UMUM';
-
-    try {
-      await axios.post('/queue/kiosk/ticket', { category, patientType });
-      state.isManualMode = false;
-      await refreshQueues();
-      ipcRenderer.send('show-window');
-    } catch (err) {
-      alert("Gagal membuat antrean: " + (err.response?.data?.message || err.message));
-    }
-  });
 });
 
 // --- ACTIVE CONTROL BUTTONS (STATE 1 - MOCKUP 1) ---
