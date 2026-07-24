@@ -1,79 +1,186 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Orbita Queue Caller</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Title Bar (Drag area) -->
+
+  <!-- Drag Titlebar -->
   <div class="titlebar">
-    <div class="titlebar-text">Orbita Queue Caller</div>
+    <div class="titlebar-title">
+      <span class="titlebar-dot"></span>
+      <span class="titlebar-text">Orbita Caller</span>
+    </div>
     <div class="titlebar-controls">
-      <button id="minBtn" class="control-btn">−</button>
+      <button id="alwaysOnTopBtn" class="control-btn" title="Toggle Always-on-Top">📌</button>
+      <button id="minBtn" class="control-btn" title="Minimize ke Tray">−</button>
+      <button id="closeBtn" class="control-btn close-btn" title="Sembunyikan">×</button>
     </div>
   </div>
 
   <div class="app-container">
-    
-    <!-- Login Screen -->
+
+    <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="screen active">
-      <div class="logo">Orbita</div>
-      <h2>Login Operator</h2>
-      <div class="form-group">
-        <label>Server URL</label>
-        <input type="text" id="serverUrl" value="http://localhost:3001" placeholder="http://192.168.1.100:3001">
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="email" placeholder="admin@orbita.com">
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="password" placeholder="••••••••">
-      </div>
-      <button id="loginBtn" class="btn btn-primary">Login</button>
-      <div id="loginError" class="error-msg"></div>
-    </div>
-
-    <!-- Caller Screen -->
-    <div id="callerScreen" class="screen">
-      <div class="header">
-        <div class="user-info">
-          <span id="userName">User</span>
-          <span class="badge" id="userRole">ROLE</span>
+      <div class="login-box">
+        <div class="brand">
+          <div class="brand-title">Orbita Queue</div>
+          <div class="brand-sub">JEC ORBITA @ Makassar</div>
         </div>
-        <button id="logoutBtn" class="btn btn-small btn-secondary">Keluar</button>
-      </div>
-
-      <div class="main-card">
-        <div class="label">ANTRIAN SAAT INI</div>
-        <div id="currentTicket" class="ticket-no">-</div>
-        <div id="currentDest" class="ticket-dest">Menunggu...</div>
-      </div>
-
-      <div class="action-grid">
-        <button id="callNextBtn" class="btn btn-large btn-primary">
-          ▶ Panggil Berikutnya
-        </button>
-        <button id="recallBtn" class="btn btn-large btn-secondary" disabled>
-          🔊 Panggil Ulang
-        </button>
-      </div>
-      
-      <!-- Counter selector (If applicable, e.g. admission) -->
-      <div id="counterSelectorBox" class="counter-box" style="display: none;">
-        <label>Pilih Loket Tujuan:</label>
-        <select id="counterSelect" class="input-select"></select>
-      </div>
-
-      <!-- Action logs -->
-      <div class="logs">
-        <div class="log-title">Aktivitas Terakhir:</div>
-        <div id="statusLog" class="log-text">Sistem siap digunakan.</div>
+        
+        <form id="loginForm">
+          <div class="form-group">
+            <label>URL Server API</label>
+            <input type="text" id="serverUrl" value="http://192.168.40.131:3001" placeholder="http://192.168.40.131:3001" required>
+          </div>
+          <div class="form-group">
+            <label>Email Petugas</label>
+            <input type="email" id="email" placeholder="admin@orbita.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••" required>
+          </div>
+          <button type="submit" id="loginBtn" class="btn btn-primary">
+            🔑 Login Operator
+          </button>
+        </form>
+        <div id="loginError" class="error-msg"></div>
       </div>
     </div>
 
+    <!-- CALLER WIDGET SCREEN -->
+    <div id="callerScreen" class="screen">
+      
+      <!-- User Info Header -->
+      <div class="header">
+        <div class="user-meta">
+          <span id="userName" class="user-name">User</span>
+          <span id="userRole" class="badge badge-role">ADMISSION</span>
+        </div>
+        <button id="logoutBtn" class="btn btn-xs btn-outline">Keluar</button>
+      </div>
+
+      <!-- Counter Selector -->
+      <div class="counter-card">
+        <label for="counterSelect">📍 Loket / Counter Aktif:</label>
+        <select id="counterSelect" class="select-input"></select>
+      </div>
+
+      <!-- Tab Navigation (Admisi vs Kasir) -->
+      <div class="tab-bar">
+        <button id="tabAdmisi" class="tab-btn active">
+          📋 Admisi <span id="countAdmisi" class="tab-badge">0</span>
+        </button>
+        <button id="tabKasir" class="tab-btn">
+          💳 Kasir <span id="countKasir" class="tab-badge">0</span>
+        </button>
+      </div>
+
+      <!-- Active Called Ticket Card -->
+      <div id="activeTicketCard" class="active-card">
+        <div class="card-header">
+          <span class="card-title">SEDANG DILAYANI</span>
+          <span id="activeUnitBadge" class="badge badge-unit">ADMISI</span>
+        </div>
+
+        <div id="activeTicketNo" class="ticket-display">-</div>
+        <div id="activePatientName" class="patient-display">Belum ada pemanggilan</div>
+
+        <!-- Doctor & Doctor Ticket Form (If Admisi) -->
+        <div id="admisiDoctorBox" class="doctor-box" style="display: none;">
+          <label>Dokter Tujuan:</label>
+          <select id="doctorSelect" class="select-input">
+            <option value="">-- Pilih Dokter / Klinik --</option>
+          </select>
+        </div>
+
+        <!-- Action Buttons for Active Call -->
+        <div id="activeActions" class="action-box" style="display: none;">
+          <!-- Primary 1-Click Finish Button -->
+          <button id="finishDefaultBtn" class="btn btn-success btn-finish-primary">
+            ✅ Selesai ➔ Pengkajian
+          </button>
+
+          <!-- Quick Routing Alternative Buttons (If Admisi) -->
+          <div id="quickRouteBox" class="quick-route-grid">
+            <button class="btn-route" data-target="DOCTOR">➔ Dokter (Poli)</button>
+            <button class="btn-route" data-target="BDR">➔ BDR</button>
+            <button class="btn-route" data-target="CASHIER">➔ Kasir</button>
+            <button class="btn-route" data-target="PHARMACY">➔ Farmasi</button>
+          </div>
+
+          <!-- Recall Button -->
+          <button id="recallBtn" class="btn btn-warning btn-block mt-2">
+            🔊 Panggil Ulang
+          </button>
+        </div>
+      </div>
+
+      <!-- Top 3 Waiting List Section -->
+      <div class="queue-section">
+        <div class="section-header">
+          <span class="section-title">⏳ Antrean Menunggu (Max 3)</span>
+          <button id="callNextBtn" class="btn btn-sm btn-primary">
+            ▶ Panggil Berikutnya
+          </button>
+        </div>
+
+        <!-- Top 3 Cards Container -->
+        <div id="waitingListContainer" class="waiting-list">
+          <div class="empty-msg">Tidak ada antrean menunggu</div>
+        </div>
+
+        <!-- Hidden Queue Count Indicator -->
+        <div id="hiddenCountIndicator" class="hidden-indicator" style="display: none;">
+          +<span id="hiddenCountNum">0</span> antrean lainnya tersembunyi di server
+        </div>
+      </div>
+
+      <!-- Quick Manual Ticket Generator Trigger -->
+      <div class="bottom-actions">
+        <button id="openManualBtn" class="btn btn-secondary btn-block">
+          ➕ Ambil Antrean Manual
+        </button>
+      </div>
+
+      <!-- Status Log Bar -->
+      <div class="log-bar">
+        <span id="statusLog">Siap digunakan.</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- MODAL MANUAL TICKET -->
+  <div id="manualModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Cetak Antrean Manual</h3>
+        <button id="closeManualBtn" class="close-modal">&times;</button>
+      </div>
+      <form id="manualTicketForm">
+        <div class="form-group">
+          <label>Kategori Antrean:</label>
+          <select id="manualType" class="select-input">
+            <option value="ADMISSION">📋 Admisi (A)</option>
+            <option value="CASHIER">💳 Kasir (K)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tipe Pasien:</label>
+          <select id="manualPatientType" class="select-input">
+            <option value="UMUM">UMUM</option>
+            <option value="ASURANSI">ASURANSI / BPJS</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Cetak / Ambil Antrean</button>
+      </form>
+    </div>
   </div>
 
   <script src="renderer.js"></script>

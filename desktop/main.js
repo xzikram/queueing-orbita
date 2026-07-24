@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, ipcMain } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -8,73 +8,101 @@ function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   
   mainWindow = new BrowserWindow({
-    width: 320,
-    height: 480,
-    x: width - 340, // Position at bottom right
-    y: height - 500,
-    show: false, // Don't show until ready
+    width: 360,
+    height: 560,
+    x: Math.max(10, width - 380), // Bottom right position
+    y: Math.max(10, height - 580),
+    show: false,
     frame: false, // Frameless window
-    resizable: false,
-    alwaysOnTop: true, // ALWAYS ON TOP
-    skipTaskbar: true, // Don't show in taskbar, only tray
+    resizable: true,
+    alwaysOnTop: true, // Always on top for caller widget
+    skipTaskbar: false, // Show in taskbar and tray
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: false
     }
   });
 
   mainWindow.loadFile('index.html');
 
-  // Hide the window when it loses focus (optional, but usually good for tray apps)
-  // For a queue caller, they might want it to stay on top even when not focused.
-  // mainWindow.on('blur', () => {
-  //   if (!mainWindow.webContents.isDevToolsOpened()) {
-  //     mainWindow.hide();
-  //   }
-  // });
-
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  });
+
+  // Handle minimize to tray
+  mainWindow.on('minimize', (event) => {
+    // Keep window alive in background
   });
 }
 
 function createTray() {
-  // We use a simple placeholder icon for now.
-  // In production, you'd replace this with a real .ico file.
-  tray = new Tray(path.join(__dirname, 'icon.png')); // We will need to create this dummy icon
+  const iconPath = path.join(__dirname, 'icon.png');
+  try {
+    tray = new Tray(iconPath);
+  } catch (err) {
+    // Fallback if icon fails
+    tray = new Tray(path.join(__dirname, 'icon.png'));
+  }
   
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Tampilkan Orbita Caller', click: () => mainWindow.show() },
+    { 
+      label: 'Tampilkan Orbita Caller', 
+      click: () => {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      } 
+    },
+    { 
+      label: 'Always On Top', 
+      type: 'checkbox', 
+      checked: true,
+      click: (item) => {
+        if (mainWindow) {
+          mainWindow.setAlwaysOnTop(item.checked, 'screen-saver');
+        }
+      }
+    },
     { type: 'separator' },
-    { label: 'Keluar', click: () => {
-      app.isQuiting = true;
-      app.quit();
-    }}
+    { 
+      label: 'Keluar', 
+      click: () => {
+        app.isQuiting = true;
+        app.quit();
+      }
+    }
   ]);
 
-  tray.setToolTip('Orbita Queue Caller');
+  tray.setToolTip('Orbita Queue Caller (Admisi & Kasir)');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
-    if (mainWindow.isVisible()) {
-      mainWindow.hide();
-    } else {
-      mainWindow.show();
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.hide();
+      } else {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+      }
     }
   });
 }
 
-// Force single instance
+// Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window.
+  app.on('second-instance', () => {
     if (mainWindow) {
-      if (!mainWindow.isVisible()) mainWindow.show();
       if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
       mainWindow.focus();
     }
   });
@@ -89,10 +117,36 @@ if (!gotTheLock) {
   });
 }
 
-// Don't quit when all windows are closed, because it's a tray app
+// IPC Handlers for Auto Pop-Up & Window Control
+ipcMain.on('show-window', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    mainWindow.focus();
+  }
+});
+
+ipcMain.on('minimize-window', () => {
+  if (mainWindow) {
+    mainWindow.minimize();
+  }
+});
+
+ipcMain.on('close-window', () => {
+  if (mainWindow) {
+    mainWindow.hide();
+  }
+});
+
+ipcMain.on('toggle-always-on-top', (event, flag) => {
+  if (mainWindow) {
+    mainWindow.setAlwaysOnTop(flag, 'screen-saver');
+  }
+});
+
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') {
-    // Just hide, don't quit
-    // app.quit();
+    // Keep app running in tray
   }
 });

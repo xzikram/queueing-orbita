@@ -25,8 +25,11 @@
     "appId": "com.orbita.queue.caller",
     "productName": "Orbita Queue Caller",
     "win": {
-      "target": "nsis",
-      "icon": "icon.ico"
+      "target": ["portable", "nsis"],
+      "icon": "icon.png"
+    },
+    "portable": {
+      "artifactName": "Orbita-Queue-Caller.exe"
     },
     "directories": {
       "output": "dist"
