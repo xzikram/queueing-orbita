@@ -44,7 +44,7 @@
             <label>Password</label>
             <input type="password" id="password" placeholder="••••••••" required>
           </div>
-          <button type="submit" id="loginBtn" class="btn btn-primary">
+          <button type="submit" id="loginBtn" class="btn btn-primary btn-block">
             🔑 Login Operator
           </button>
         </form>
@@ -64,10 +64,16 @@
         <button id="logoutBtn" class="btn btn-xs btn-outline">Keluar</button>
       </div>
 
-      <!-- Counter Selector -->
-      <div class="counter-card">
-        <label for="counterSelect">📍 Loket / Counter Aktif:</label>
-        <select id="counterSelect" class="select-input"></select>
+      <!-- Counter Status Bar (Matching Web Version) -->
+      <div class="counter-status-bar">
+        <div class="counter-info">
+          <span class="counter-name">📍 <strong id="currentCounterName">-</strong></span>
+          <span id="counterStatusBadge" class="badge badge-standby">STANDBY</span>
+        </div>
+        <div class="counter-actions">
+          <button id="toggleCounterStatusBtn" class="btn btn-xs btn-danger">🔴 Set Sibuk</button>
+          <button id="changeCounterBtn" class="btn btn-xs btn-warning">🔄 Ganti</button>
+        </div>
       </div>
 
       <!-- Tab Navigation (Admisi vs Kasir) -->
@@ -90,11 +96,20 @@
         <div id="activeTicketNo" class="ticket-display">-</div>
         <div id="activePatientName" class="patient-display">Belum ada pemanggilan</div>
 
-        <!-- Doctor & Doctor Ticket Form (If Admisi) -->
+        <!-- Extra Action Icons Bar for Active Call (Edit, Time Correct, Hold, Transfer, Batal) -->
+        <div id="activeMiniTools" class="mini-tools-bar" style="display: none;">
+          <button id="editPatientBtn" class="tool-btn" title="Edit Data Pasien & Dokter">👤 Edit</button>
+          <button id="correctTimeBtn" class="tool-btn" title="Koreksi Waktu">⏱️ Jam</button>
+          <button id="holdActiveBtn" class="tool-btn warning-tool" title="Hold / Pause Antrean">⏸️ Hold</button>
+          <button id="transferActiveBtn" class="tool-btn info-tool" title="Transfer Pasien">🔄 Transfer</button>
+          <button id="cancelActiveBtn" class="tool-btn danger-tool" title="Batal / Drop Antrean">❌ Drop</button>
+        </div>
+
+        <!-- Doctor Selector (If Admisi & Active Call) -->
         <div id="admisiDoctorBox" class="doctor-box" style="display: none;">
-          <label>Dokter Tujuan:</label>
+          <label>Dokter Tujuan / Poliklinik:</label>
           <select id="doctorSelect" class="select-input">
-            <option value="">-- Pilih Dokter / Klinik --</option>
+            <option value="">-- Pilih Dokter Tujuan --</option>
           </select>
         </div>
 
@@ -156,7 +171,155 @@
 
   </div>
 
-  <!-- MODAL MANUAL TICKET -->
+  <!-- MODALS -->
+
+  <!-- 1. COUNTER LOCK / SELECTOR MODAL -->
+  <div id="counterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📍 Pilih Counter Jaga</h3>
+        <button id="closeCounterModalBtn" class="close-modal">&times;</button>
+      </div>
+      <div class="form-group">
+        <label>Pilih Loket / Counter Tempat Anda Bertugas:</label>
+        <select id="modalCounterSelect" class="select-input"></select>
+      </div>
+      <button id="saveCounterBtn" class="btn btn-primary btn-block">Mulai Sesi Jaga</button>
+    </div>
+  </div>
+
+  <!-- 2. EDIT PATIENT & DOCTOR DATA MODAL -->
+  <div id="patientModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 Edit Data Pasien & Dokter</h3>
+        <button id="closePatientModalBtn" class="close-modal">&times;</button>
+      </div>
+      <form id="patientForm">
+        <div class="form-group">
+          <label>Dokter Tujuan / Jadwal</label>
+          <select id="patientScheduleSelect" class="select-input">
+            <option value="">-- Pilih Dokter Tujuan --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>No. Antrean Dokter (Auto-Generated)</label>
+          <input type="text" id="patientDoctorTicketNo" class="select-input" placeholder="Misal: DOC-001">
+        </div>
+        <div class="form-group">
+          <label>Nomor RM Pasien</label>
+          <input type="text" id="patientRmNoInput" class="select-input" placeholder="Misal: RM-12345">
+        </div>
+        <div class="form-group">
+          <label>Nama Pasien</label>
+          <input type="text" id="patientNameInput" class="select-input" placeholder="Nama Pasien">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">💾 Simpan Data Pasien</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. CANCEL / DROP TICKET MODAL -->
+  <div id="cancelModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="color: #ef4444;">❌ Batalkan / Drop Antrean</h3>
+        <button id="closeCancelModalBtn" class="close-modal">&times;</button>
+      </div>
+      <form id="cancelForm">
+        <p style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
+          Sesi dan status tiket akan diubah menjadi CANCELLED.
+        </p>
+        <div class="form-group">
+          <label>Alasan Batal / Drop *</label>
+          <input type="text" id="cancelReasonInput" class="select-input" placeholder="Contoh: Pasien batal berobat / Salah panggil" required>
+        </div>
+        <button type="submit" class="btn btn-danger btn-block">💾 Simpan Pembatalan</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. TRANSFER PATIENT MODAL -->
+  <div id="transferModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔄 Transfer Pasien ke Unit Lain</h3>
+        <button id="closeTransferModalBtn" class="close-modal">&times;</button>
+      </div>
+      <form id="transferForm">
+        <div class="form-group">
+          <label>Unit Tujuan Transfer *</label>
+          <select id="transferTargetSelect" class="select-input" required>
+            <option value="ASSESSMENT">Pengkajian / Triage</option>
+            <option value="DOCTOR">Dokter / Poliklinik</option>
+            <option value="BDR">BDR (Bank Darah)</option>
+            <option value="CASHIER">Kasir</option>
+            <option value="PHARMACY">Farmasi</option>
+            <option value="OPTIC">Optik</option>
+            <option value="CDC">CDC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Alasan Transfer *</label>
+          <input type="text" id="transferReasonInput" class="select-input" placeholder="Contoh: Pasien langsung ke poliklinik" required>
+        </div>
+        <button type="submit" class="btn btn-warning btn-block">🔄 Proses Transfer</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. SYNC TICKET MODAL (KASIR) -->
+  <div id="syncModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🔗 Gabungkan Antrean Kasir</h3>
+        <button id="closeSyncModalBtn" class="close-modal">&times;</button>
+      </div>
+      <form id="syncForm">
+        <p style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
+          Pilih data kunjungan pasien dari Dokter/Poli untuk digabungkan ke tiket Kiosk Kasir ini.
+        </p>
+        <div class="form-group">
+          <label>Data Pasien Poliklinik:</label>
+          <select id="syncTargetVisitSelect" class="select-input" required>
+            <option value="">-- Pilih Data Pasien --</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">🔗 Gabungkan Tiket</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. TIME CORRECTION MODAL -->
+  <div id="timeModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⏱️ Koreksi Waktu Jam</h3>
+        <button id="closeTimeModalBtn" class="close-modal">&times;</button>
+      </div>
+      <form id="timeForm">
+        <div class="form-group">
+          <label>Field Waktu</label>
+          <select id="timeFieldSelect" class="select-input">
+            <option value="calledAt">Waktu Panggil</option>
+            <option value="serviceStartedAt">Waktu Mulai Layani</option>
+            <option value="serviceFinishedAt">Waktu Selesai</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Waktu Sebenarnya</label>
+          <input type="datetime-local" id="timeCorrectedInput" class="select-input" required>
+        </div>
+        <div class="form-group">
+          <label>Alasan Koreksi</label>
+          <input type="text" id="timeReasonInput" class="select-input" placeholder="Contoh: Lupa klik tombol mulai" required>
+        </div>
+        <button type="submit" class="btn btn-warning btn-block">⏱️ Simpan Koreksi Waktu</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. MANUAL TICKET MODAL -->
   <div id="manualModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
-    "pack": "electron-packager ./ OrbitaQueueCaller --platform=win32 --arch=x64 --out=dist --overwrite"
+    "pack": "npx electron-packager ./ OrbitaQueueCaller --platform=win32 --arch=x64 --out=dist --overwrite"
   },
   "keywords": [
     "queue",
