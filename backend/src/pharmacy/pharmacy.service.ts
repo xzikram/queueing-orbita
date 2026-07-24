@@ -242,6 +242,36 @@ export class PharmacyService {
           paymentCategory = 'OTC';
         }
 
+        // Option A: Auto-promote to READY (Siap Ambil) as soon as payment is confirmed (Lunas/BPJS/OTC)
+        if (isPaid && v.currentStatus === 'SERVING') {
+          await this.prisma.visit.update({
+            where: { id: v.id },
+            data: { currentStatus: 'READY' },
+          });
+
+          const session = v.journeySessions.find(
+            (s) => s.unitType === 'PHARMACY',
+          );
+          if (session && !session.readyAt) {
+            await this.prisma.journeyUnitSession.update({
+              where: { id: session.id },
+              data: { readyAt: new Date() },
+            });
+            await this.prisma.journeyEvent.create({
+              data: {
+                visitId: v.id,
+                journeyUnitSessionId: session.id,
+                unitType: 'PHARMACY',
+                eventType: 'READY',
+                eventTime: new Date(),
+                createdBy: 'SYSTEM_AUTO_LUNAS',
+              },
+            });
+          }
+
+          v.currentStatus = 'READY';
+        }
+
         return {
           ...v,
           isPaid,
