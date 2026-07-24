@@ -369,6 +369,22 @@ async function loadDoctors() {
   }
 }
 
+let toastTimer = null;
+function showToast(message, isError = true) {
+  const toast = document.getElementById('toastNotification');
+  const msgEl = document.getElementById('toastMessage');
+  if (!toast || !msgEl) return;
+
+  msgEl.innerText = message;
+  toast.style.background = isError ? '#ef4444' : '#1e293b';
+  toast.classList.add('show');
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2500);
+}
+
 if (inputs.doctorInput) {
   inputs.doctorInput.addEventListener('input', async (e) => {
     const val = e.target.value.trim();
@@ -378,18 +394,22 @@ if (inputs.doctorInput) {
       inputs.doctorTicketNoInput.disabled = false;
       inputs.doctorTicketNoInput.placeholder = "Contoh: MA020";
 
-      try {
-        const res = await axios.get(`/admission/next-doctor-ticket?scheduleId=${match.id}`).catch(() => null);
-        if (res?.data?.nextDoctorTicketNo) {
-          inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
-          return;
-        }
-      } catch (err) {}
-
-      // Fallback ticket generation
+      // 1. INSTANT LOCAL GENERATION (0ms delay so ticket input is NEVER empty!)
       const initials = match.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'MA';
       const randomNum = String(Math.floor(Math.random() * 90) + 10).padStart(3, '0');
-      inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
+      if (!inputs.doctorTicketNoInput.value) {
+        inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
+      }
+
+      // 2. FAST ASYNC FETCH from SIMRS/Backend
+      axios.get(`/admission/next-doctor-ticket?scheduleId=${match.id}`)
+        .then(res => {
+          if (res?.data?.nextDoctorTicketNo && inputs.doctorInput.value.trim() === val) {
+            inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
+          }
+        })
+        .catch(() => {});
+
     } else {
       inputs.doctorTicketNoInput.disabled = true;
       inputs.doctorTicketNoInput.placeholder = "Pilih dokter dahulu...";
@@ -677,11 +697,23 @@ buttons.finishBtn.addEventListener('click', async () => {
   try {
     if (state.activeTab === 'ADMISSION') {
       const docVal = inputs.doctorInput ? inputs.doctorInput.value.trim() : '';
+      const ticketNoVal = inputs.doctorTicketNoInput ? inputs.doctorTicketNoInput.value.trim() : '';
+
+      if (!docVal) {
+        showToast("⚠️ Dokter Tujuan belum dipilih!");
+        return;
+      }
+
+      if (!ticketNoVal) {
+        showToast("⚠️ No. Tiket Dokter belum terisi!");
+        return;
+      }
+
       const match = state.doctorOptionsMap[docVal];
       if (match) {
         await axios.put(`/admission/${ticketId}/patient-data`, {
           scheduleId: match.id,
-          doctorTicketNo: inputs.doctorTicketNoInput.value
+          doctorTicketNo: ticketNoVal
         }).catch(() => {});
       }
       await axios.post(`/admission/${ticketId}/finish`, { nextUnitType });
@@ -691,7 +723,7 @@ buttons.finishBtn.addEventListener('click', async () => {
     state.activeCall = null;
     await refreshQueues();
   } catch (err) {
-    alert("Gagal menyelesaikan: " + (err.response?.data?.message || err.message));
+    showToast(err.response?.data?.message || "Gagal menyelesaikan antrean");
   }
 });
 

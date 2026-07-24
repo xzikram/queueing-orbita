@@ -787,7 +787,7 @@ export class AdmissionService {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ query: sql }).toString(),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(1500),
       });
       const data = await res.json();
       if (Array.isArray(data)) {
