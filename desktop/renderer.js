@@ -611,6 +611,7 @@ function renderCurrentState() {
     containers.activeControlsGrid.style.display = 'none';
 
     containers.idleStateContainer.style.display = 'flex';
+    containers.idleStateContainer.innerHTML = `<div class="empty-state-text" style="color:#2563eb;font-weight:700;">🎟️ Pilih Kategori Tiket Baru</div>`;
     containers.idleControlsBox.style.display = 'none';
     containers.manualControlsBox.style.display = 'flex';
 
@@ -691,7 +692,22 @@ async function callPatientInQueue(item) {
 function renderCategoryGrid() {
   containers.categoryGrid.innerHTML = '';
 
-  if (state.activeTab === 'ADMISSION') {
+  if (state.activeTab === 'CASHIER') {
+    // Kasir Categories: UMUM (G), ASURANSI (H)
+    const cats = [
+      { type: 'UMUM', code: 'G', label: '➕ Kasir Umum (G)', color: 'btn-blue' },
+      { type: 'ASURANSI', code: 'H', label: '➕ Kasir Asuransi (H)', color: 'btn-orange' },
+    ];
+
+    cats.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = `btn-cat ${c.color}`;
+      btn.innerText = c.label;
+      btn.addEventListener('click', () => createTicket('CASHIER', c.type));
+      containers.categoryGrid.appendChild(btn);
+    });
+
+  } else {
     // Admisi Categories: BARU (A), LAMA (B), ASURANSI (C), ONLINE (D)
     const cats = [
       { type: 'BARU', code: 'A', label: '➕ Baru (A)', color: 'btn-blue' },
@@ -707,31 +723,19 @@ function renderCategoryGrid() {
       btn.addEventListener('click', () => createTicket('ADMISSION', c.type));
       containers.categoryGrid.appendChild(btn);
     });
-
-  } else {
-    // Kasir Categories: UMUM (G), ASURANSI (H)
-    const cats = [
-      { type: 'UMUM', code: 'G', label: '➕ Kasir Umum (G)', color: 'btn-blue' },
-      { type: 'ASURANSI', code: 'H', label: '➕ Kasir Asuransi (H)', color: 'btn-orange' },
-    ];
-
-    cats.forEach(c => {
-      const btn = document.createElement('button');
-      btn.className = `btn-cat ${c.color}`;
-      btn.innerText = c.label;
-      btn.addEventListener('click', () => createTicket('CASHIER', c.type));
-      containers.categoryGrid.appendChild(btn);
-    });
   }
 }
 
 async function createTicket(unit, patientType) {
   try {
-    if (unit === 'ADMISSION') {
-      await axios.post('/queue-tickets/admission', { patientType });
+    let res;
+    if (unit === 'CASHIER') {
+      res = await axios.post('/queue-tickets/cashier', { patientType });
     } else {
-      await axios.post('/queue-tickets/cashier', { patientType });
+      res = await axios.post('/queue-tickets/admission', { patientType });
     }
+    const ticketNo = res.data?.ticketNo || 'Baru';
+    showToast(`✅ Tiket ${ticketNo} berhasil dibuat!`);
     state.isManualMode = false;
     await refreshQueues();
     ipcRenderer.send('show-window');
