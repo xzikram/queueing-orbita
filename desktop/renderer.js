@@ -685,14 +685,16 @@ function renderCurrentState() {
       
       const rowsHtml = itemsToShow.map((t, idx) => {
         const rawNo = t.ticketNo || t.doctorTicketNo || t.queueTicket?.ticketNo || 'A001';
-        const typeStr = t.patientType || t.visit?.patientType || 'BARU';
+        const rawType = String(t.patientType || t.visit?.patientType || t.queueTicket?.patientType || 'BARU');
+        const typeStr = rawType.toUpperCase();
+        const tagClass = rawType.toLowerCase();
         const isFirst = idx === 0;
         
         return `
           <div class="waiting-ticket-item ${isFirst ? 'primary' : ''}">
             <div class="ticket-item-left">
               <span class="ticket-item-no">${rawNo}</span>
-              <span class="ticket-item-tag ${typeStr.toLowerCase()}">${typeStr}</span>
+              <span class="ticket-item-tag ${tagClass}">${typeStr}</span>
             </div>
             <button class="btn-call-row" data-index="${idx}">
               📢 Panggil
