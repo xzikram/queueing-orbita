@@ -392,24 +392,18 @@ if (inputs.doctorInput) {
 
     if (match) {
       inputs.doctorTicketNoInput.disabled = false;
-      inputs.doctorTicketNoInput.placeholder = "Contoh: MA020";
+      inputs.doctorTicketNoInput.value = "";
+      inputs.doctorTicketNoInput.placeholder = "⏳ Memuat no. tiket...";
 
-      // 1. INSTANT LOCAL GENERATION (0ms delay so ticket input is NEVER empty!)
-      const initials = match.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'MA';
-      const randomNum = String(Math.floor(Math.random() * 90) + 10).padStart(3, '0');
-      if (!inputs.doctorTicketNoInput.value) {
-        inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
+      try {
+        const res = await axios.get(`/admission/next-doctor-ticket?scheduleId=${match.id}`);
+        if (res?.data?.nextDoctorTicketNo && inputs.doctorInput.value.trim() === val) {
+          inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
+        }
+      } catch (err) {
+        const initials = match.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'DOC';
+        inputs.doctorTicketNoInput.value = `${initials}001`;
       }
-
-      // 2. FAST ASYNC FETCH from SIMRS/Backend
-      axios.get(`/admission/next-doctor-ticket?scheduleId=${match.id}`)
-        .then(res => {
-          if (res?.data?.nextDoctorTicketNo && inputs.doctorInput.value.trim() === val) {
-            inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
-          }
-        })
-        .catch(() => {});
-
     } else {
       inputs.doctorTicketNoInput.disabled = true;
       inputs.doctorTicketNoInput.placeholder = "Pilih dokter dahulu...";

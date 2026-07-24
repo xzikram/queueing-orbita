@@ -740,12 +740,14 @@ export class AdmissionService {
 
     const prefix = doctor.doctorInitials || doctor.doctorCode || 'DOC';
 
-    // Find all visits for this doctor today where doctorTicketNo starts with the prefix
+    // Find all visits today where doctorTicketNo starts with the prefix (or selectedDoctorId = doctorId)
     const visits = await this.prisma.visit.findMany({
       where: {
-        visitDate: { gte: today, lt: tomorrow },
-        doctorTicketNo: { startsWith: prefix },
-        selectedDoctorId: doctorId,
+        createdAt: { gte: today, lt: tomorrow },
+        OR: [
+          { doctorTicketNo: { startsWith: prefix } },
+          { selectedDoctorId: doctorId }
+        ]
       },
       select: { doctorTicketNo: true },
     });
@@ -804,12 +806,13 @@ export class AdmissionService {
       // Fallback to local usedNumbers if bridge is unreachable
     }
 
-    let minAvailable = 1;
-    while (usedNumbers.has(minAvailable)) {
-      minAvailable++;
+    let maxNum = 0;
+    for (const n of usedNumbers) {
+      if (n > maxNum) maxNum = n;
     }
+    const nextNum = maxNum + 1;
 
-    return `${prefix}${String(minAvailable).padStart(3, '0')}`;
+    return `${prefix}${String(nextNum).padStart(3, '0')}`;
   }
 
   /**
