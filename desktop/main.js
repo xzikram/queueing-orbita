@@ -9,9 +9,9 @@ function createWindow() {
   
   mainWindow = new BrowserWindow({
     width: 320,
-    height: 450,
+    height: 480,
     x: Math.max(10, width - 340), // Bottom right position
-    y: Math.max(10, height - 470),
+    y: Math.max(10, height - 500),
     show: false,
     frame: false, // Frameless window
     resizable: true,
