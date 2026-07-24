@@ -761,24 +761,39 @@ async function createTicket(unit, patientType) {
 
 // --- STATE SWITCHING BUTTONS ---
 window.toggleManualTicketMode = function() {
+  console.log('[Orbita] toggleManualTicketMode -> isManualMode = true');
   state.isManualMode = true;
   renderCurrentState();
 };
 
 window.cancelManualTicketMode = function() {
+  console.log('[Orbita] cancelManualTicketMode -> isManualMode = false');
   state.isManualMode = false;
   refreshQueues();
 };
 
+// Direct addEventListener on cached button reference
 if (buttons.openNewTicketBtn) {
-  buttons.openNewTicketBtn.addEventListener('click', () => {
+  buttons.openNewTicketBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     window.toggleManualTicketMode();
   });
 }
 
+// FALLBACK: Document-level event delegation for dynamically rendered buttons
+document.addEventListener('click', (e) => {
+  const target = e.target.closest('#openNewTicketBtn');
+  if (target) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.toggleManualTicketMode();
+  }
+});
+
 if (buttons.refreshBtn) {
   buttons.refreshBtn.addEventListener('click', () => {
-    window.cancelManualTicketMode();
+    refreshQueues();
   });
 }
 
