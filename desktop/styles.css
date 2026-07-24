@@ -581,26 +581,44 @@ body {
   margin-bottom: 10px;
 }
 
-.modal-select-custom {
+.counter-btn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.counter-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 10px 12px;
-  background: #1e293b !important;
-  color: #ffffff !important;
-  border: 1px solid #334155 !important;
+  padding: 11px 14px;
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
-  outline: none;
+  color: #1e293b;
   cursor: pointer;
-  height: 42px;
-  box-sizing: border-box;
+  transition: all 0.15s ease;
+  text-align: left;
 }
 
-.modal-select-custom option {
-  background: #1e293b !important;
-  color: #ffffff !important;
-  padding: 8px;
-  font-weight: 600;
+.counter-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.counter-btn.selected {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.counter-btn .counter-icon {
+  font-size: 16px;
 }
 
 .modal-header h3 {

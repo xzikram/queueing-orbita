@@ -35,7 +35,7 @@ const inputs = {
   email: document.getElementById('email'),
   password: document.getElementById('password'),
   unitSelect: document.getElementById('unitSelect'),
-  modalCounterSelect: document.getElementById('modalCounterSelect'),
+  counterButtonList: document.getElementById('counterButtonList'),
   doctorSelect: document.getElementById('doctorSelect'),
   doctorTicketNoInput: document.getElementById('doctorTicketNoInput'),
   nextUnitSelect: document.getElementById('nextUnitSelect'),
@@ -61,7 +61,6 @@ const buttons = {
   logout: document.getElementById('logoutBtn'),
   toggleCounterStatus: document.getElementById('toggleCounterStatusBtn'),
   changeCounter: document.getElementById('changeCounterBtn'),
-  saveCounter: document.getElementById('saveCounterBtn'),
   closeCounterModal: document.getElementById('closeCounterModalBtn'),
   tabAdmisi: document.getElementById('tabAdmisi'),
   tabKasir: document.getElementById('tabKasir'),
@@ -215,34 +214,54 @@ async function loadCounters() {
     const res = await axios.get('/counters');
     state.counters = Array.isArray(res.data) ? res.data : [];
     
-    inputs.modalCounterSelect.innerHTML = '';
-    if (state.counters.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.innerText = '-- Tidak Ada Counter --';
-      inputs.modalCounterSelect.appendChild(opt);
-    } else {
-      state.counters.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.id;
-        opt.innerText = `📍 ${c.name}`;
-        opt.style.color = '#ffffff';
-        opt.style.backgroundColor = '#1e293b';
-        inputs.modalCounterSelect.appendChild(opt);
-      });
-    }
+    renderCounterButtons();
 
     if (state.selectedCounter && state.counters.some(c => c.id === state.selectedCounter)) {
-      inputs.modalCounterSelect.value = state.selectedCounter;
+      // keep existing selection
     } else if (state.counters.length > 0) {
       state.selectedCounter = state.counters[0].id;
-      inputs.modalCounterSelect.value = state.selectedCounter;
     }
     updateCounterUI();
+    highlightSelectedCounterBtn();
     if (state.selectedCounter) await fetchCounterStatus(state.selectedCounter);
   } catch (err) {
     console.error("Gagal memuat counter:", err);
   }
+}
+
+function renderCounterButtons() {
+  const list = inputs.counterButtonList;
+  list.innerHTML = '';
+  if (state.counters.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada counter tersedia</div>';
+    return;
+  }
+  state.counters.forEach(c => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'counter-btn';
+    btn.dataset.counterId = c.id;
+    btn.innerHTML = `<span class="counter-icon">📍</span> ${c.name}`;
+    btn.addEventListener('click', () => selectCounter(c.id));
+    list.appendChild(btn);
+  });
+}
+
+function selectCounter(counterId) {
+  state.selectedCounter = counterId;
+  localStorage.setItem('orbita_selected_counter', counterId);
+  updateCounterUI();
+  highlightSelectedCounterBtn();
+  fetchCounterStatus(counterId);
+  containers.counterModal.classList.remove('active');
+  refreshQueues();
+}
+
+function highlightSelectedCounterBtn() {
+  const btns = inputs.counterButtonList.querySelectorAll('.counter-btn');
+  btns.forEach(b => {
+    b.classList.toggle('selected', b.dataset.counterId === state.selectedCounter);
+  });
 }
 
 async function fetchCounterStatus(counterId) {
@@ -288,15 +307,7 @@ buttons.closeCounterModal.addEventListener('click', () => {
   containers.counterModal.classList.remove('active');
 });
 
-buttons.saveCounter.addEventListener('click', () => {
-  const val = inputs.modalCounterSelect.value;
-  if (!val) return alert("Pilih counter terlebih dahulu");
-  state.selectedCounter = val;
-  localStorage.setItem('orbita_selected_counter', val);
-  updateCounterUI();
-  fetchCounterStatus(val);
-  containers.counterModal.classList.remove('active');
-});
+// saveCounter button removed - counter selection is now handled by button clicks directly
 
 // --- DOCTORS & TICKETS GENERATOR ---
 async function loadDoctors() {
