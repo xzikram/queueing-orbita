@@ -290,10 +290,44 @@ buttons.logout.addEventListener('click', () => {
   showScreen('login');
 });
 
+function applyRoleUnitFiltering() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const role = urlParams.get('role') || 'ALL';
+  console.log('[Orbita] applyRoleUnitFiltering -> role:', role);
+
+  const allowedUnits = {
+    ADMISI_KASIR: ['ADMISSION', 'CASHIER'],
+    PENGKAJIAN_CDC_DOKTER: ['ASSESSMENT', 'CDC', 'DOCTOR'],
+    BDR: ['BDR'],
+    ALL: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER']
+  }[role] || ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER'];
+
+  const select = inputs.unitSelect;
+  if (!select) return;
+
+  let firstValid = null;
+  Array.from(select.options).forEach(opt => {
+    if (allowedUnits.includes(opt.value)) {
+      opt.style.display = '';
+      if (!firstValid) firstValid = opt.value;
+    } else {
+      opt.style.display = 'none';
+    }
+  });
+
+  if (firstValid && !allowedUnits.includes(select.value)) {
+    select.value = firstValid;
+    state.activeTab = firstValid;
+  }
+}
+
 // --- CALLER SCREEN ENGINE ---
 async function initCallerScreen() {
   showScreen('caller');
   texts.userName.innerText = state.user.name || 'Administrator';
+  
+  applyRoleUnitFiltering();
+  
   if (inputs.unitSelect && inputs.unitSelect.value) {
     state.activeTab = inputs.unitSelect.value;
   }

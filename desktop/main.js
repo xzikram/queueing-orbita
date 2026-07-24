@@ -7,6 +7,16 @@ let tray = null;
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   
+  const exeName = path.basename(process.execPath, '.exe').toLowerCase();
+  let appRole = 'ALL';
+  if (exeName.includes('admisi') || exeName.includes('kasir')) {
+    appRole = 'ADMISI_KASIR';
+  } else if (exeName.includes('pengkajian') || exeName.includes('cdc') || exeName.includes('dokter')) {
+    appRole = 'PENGKAJIAN_CDC_DOKTER';
+  } else if (exeName.includes('bdr')) {
+    appRole = 'BDR';
+  }
+
   mainWindow = new BrowserWindow({
     width: 320,
     height: 480,
@@ -24,7 +34,7 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile('index.html');
+  mainWindow.loadFile('index.html', { query: { role: appRole } });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
