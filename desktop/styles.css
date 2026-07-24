@@ -125,7 +125,7 @@ body {
 }
 
 .form-group {
-  margin-bottom: 10px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
@@ -138,12 +138,14 @@ body {
 
 .select-input, input[type="text"], input[type="email"], input[type="password"] {
   width: 100%;
-  padding: 7px 9px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 13px;
+  font-weight: 600;
   outline: none;
-  background-color: #fff;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
 
 .btn {

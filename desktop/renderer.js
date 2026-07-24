@@ -213,24 +213,43 @@ buttons.tabKasir.addEventListener('click', () => {
 async function loadCounters() {
   try {
     const res = await axios.get('/counters');
-    state.counters = res.data.filter(c => (c.canHandleAdmission || c.canHandleCashier) && c.isActive);
+    const list = Array.isArray(res.data) ? res.data : [];
+    state.counters = list.filter(c => c.isActive !== false);
+    if (state.counters.length === 0 && list.length > 0) {
+      state.counters = list;
+    }
     
     inputs.modalCounterSelect.innerHTML = '';
-    state.counters.forEach(c => {
+    if (state.counters.length === 0) {
       const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.innerText = c.name;
+      opt.value = '';
+      opt.innerText = '-- Tidak Ada Counter --';
       inputs.modalCounterSelect.appendChild(opt);
-    });
+    } else {
+      state.counters.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.innerText = c.name;
+        opt.style.color = '#0f172a';
+        opt.style.backgroundColor = '#ffffff';
+        inputs.modalCounterSelect.appendChild(opt);
+      });
+    }
 
     if (state.selectedCounter && state.counters.some(c => c.id === state.selectedCounter)) {
       inputs.modalCounterSelect.value = state.selectedCounter;
       updateCounterUI();
       await fetchCounterStatus(state.selectedCounter);
-    } else {
-      containers.counterModal.classList.add('active');
+    } else if (state.counters.length > 0) {
+      state.selectedCounter = state.counters[0].id;
+      inputs.modalCounterSelect.value = state.selectedCounter;
+      localStorage.setItem('orbita_selected_counter', state.selectedCounter);
+      updateCounterUI();
+      await fetchCounterStatus(state.selectedCounter);
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Gagal memuat counter:", err);
+  }
 }
 
 async function fetchCounterStatus(counterId) {
