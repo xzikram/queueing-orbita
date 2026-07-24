@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
@@ -6,17 +6,17 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  private readonly logger = new Logger(PrismaService.name);
+
   async onModuleInit() {
     await this.$connect();
-    const dbUrl = process.env.DATABASE_URL || '';
-    if (dbUrl.startsWith('file:') || dbUrl.includes('.db') || dbUrl.includes('sqlite')) {
-      try {
-        await this.$executeRawUnsafe(`PRAGMA journal_mode = WAL;`);
-        await this.$executeRawUnsafe(`PRAGMA busy_timeout = 10000;`);
-        await this.$executeRawUnsafe(`PRAGMA synchronous = NORMAL;`);
-      } catch (e) {
-        // Silently ignore if PRAGMA is unsupported
-      }
+    try {
+      await this.$queryRawUnsafe(`PRAGMA journal_mode = WAL;`);
+      await this.$queryRawUnsafe(`PRAGMA busy_timeout = 10000;`);
+      await this.$queryRawUnsafe(`PRAGMA synchronous = NORMAL;`);
+      await this.$queryRawUnsafe(`PRAGMA cache_size = -64000;`);
+    } catch (e: any) {
+      this.logger.warn(`Failed to set SQLite PRAGMAs: ${e?.message}`);
     }
   }
 

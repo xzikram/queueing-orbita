@@ -24,7 +24,14 @@ export default function LoginPage() {
       localStorage.setItem('orbita_user', JSON.stringify(res.data.user));
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login gagal. Periksa kembali email dan password Anda.');
+      const serverMsg = err.response?.data?.message;
+      if (!err.response) {
+        setError('Gagal terhubung ke server backend. Mohon periksa layanan server Anda.');
+      } else if (err.response.status === 500) {
+        setError('Terjadi kesalahan pada server/database (500). Silakan coba lagi.');
+      } else {
+        setError(serverMsg || 'Login gagal. Periksa kembali email dan password Anda.');
+      }
     } finally {
       setLoading(false);
     }

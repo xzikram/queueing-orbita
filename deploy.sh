@@ -23,7 +23,7 @@ npm install
 if [ ! -f .env ]; then
   echo "⚠️  File .env tidak ditemukan, membuat dari template..."
   cat > .env << 'EOF'
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="file:./dev.db?connection_limit=1&socket_timeout=10000&busy_timeout=10000"
 JWT_SECRET=orbita-queue-jwt-secret-key-2026
 JWT_EXPIRATION=24h
 BACKEND_PORT=3001
