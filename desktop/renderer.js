@@ -213,11 +213,7 @@ buttons.tabKasir.addEventListener('click', () => {
 async function loadCounters() {
   try {
     const res = await axios.get('/counters');
-    const list = Array.isArray(res.data) ? res.data : [];
-    state.counters = list.filter(c => c.isActive !== false);
-    if (state.counters.length === 0 && list.length > 0) {
-      state.counters = list;
-    }
+    state.counters = Array.isArray(res.data) ? res.data : [];
     
     inputs.modalCounterSelect.innerHTML = '';
     if (state.counters.length === 0) {
@@ -229,24 +225,21 @@ async function loadCounters() {
       state.counters.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
-        opt.innerText = c.name;
-        opt.style.color = '#0f172a';
-        opt.style.backgroundColor = '#ffffff';
+        opt.innerText = `📍 ${c.name}`;
+        opt.style.color = '#ffffff';
+        opt.style.backgroundColor = '#1e293b';
         inputs.modalCounterSelect.appendChild(opt);
       });
     }
 
     if (state.selectedCounter && state.counters.some(c => c.id === state.selectedCounter)) {
       inputs.modalCounterSelect.value = state.selectedCounter;
-      updateCounterUI();
-      await fetchCounterStatus(state.selectedCounter);
     } else if (state.counters.length > 0) {
       state.selectedCounter = state.counters[0].id;
       inputs.modalCounterSelect.value = state.selectedCounter;
-      localStorage.setItem('orbita_selected_counter', state.selectedCounter);
-      updateCounterUI();
-      await fetchCounterStatus(state.selectedCounter);
     }
+    updateCounterUI();
+    if (state.selectedCounter) await fetchCounterStatus(state.selectedCounter);
   } catch (err) {
     console.error("Gagal memuat counter:", err);
   }

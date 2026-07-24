@@ -581,6 +581,28 @@ body {
   margin-bottom: 10px;
 }
 
+.modal-select-custom {
+  width: 100%;
+  padding: 10px 12px;
+  background: #1e293b !important;
+  color: #ffffff !important;
+  border: 1px solid #334155 !important;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.modal-select-custom option {
+  background: #1e293b !important;
+  color: #ffffff !important;
+  padding: 8px;
+  font-weight: 600;
+}
+
 .modal-header h3 {
   font-size: 13px;
 }
