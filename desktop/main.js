@@ -29,7 +29,6 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.setAlwaysOnTop(true, 'screen-saver');
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
   });
 
   // Handle minimize to tray
