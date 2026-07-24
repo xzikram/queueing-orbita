@@ -305,20 +305,24 @@ function applyRoleUnitFiltering() {
   const select = inputs.unitSelect;
   if (!select) return;
 
-  let firstValid = null;
-  Array.from(select.options).forEach(opt => {
-    if (allowedUnits.includes(opt.value)) {
-      opt.style.display = '';
-      if (!firstValid) firstValid = opt.value;
-    } else {
-      opt.style.display = 'none';
-    }
+  const unitMap = {
+    ADMISSION: '🏢 Admisi',
+    ASSESSMENT: '📋 Pengkajian',
+    DOCTOR: '🩺 Dokter (Poli)',
+    BDR: '🩸 BDR',
+    CDC: '🔬 CDC',
+    CASHIER: '💳 Kasir'
+  };
+
+  select.innerHTML = '';
+  allowedUnits.forEach(uKey => {
+    const opt = document.createElement('option');
+    opt.value = uKey;
+    opt.innerText = unitMap[uKey] || uKey;
+    select.appendChild(opt);
   });
 
-  if (firstValid && !allowedUnits.includes(select.value)) {
-    select.value = firstValid;
-    state.activeTab = firstValid;
-  }
+  state.activeTab = select.value || allowedUnits[0];
 }
 
 // --- CALLER SCREEN ENGINE ---
