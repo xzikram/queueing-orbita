@@ -196,6 +196,26 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- WINDOW CONTROLS ---
 buttons.minBtn.addEventListener('click', () => ipcRenderer.send('minimize-window'));
 
+// --- UNIT SELECT CHANGE HANDLER ---
+if (inputs.unitSelect) {
+  inputs.unitSelect.addEventListener('change', (e) => {
+    const newUnit = e.target.value;
+    console.log('[Orbita] Unit changed to:', newUnit);
+    state.activeTab = newUnit;
+    state.isManualMode = false;
+    state.activeCall = null;
+    state.unitWaitingList = [];
+
+    // Only ADMISSION and CASHIER support creating new tickets
+    const supportsNewTicket = (newUnit === 'ADMISSION' || newUnit === 'CASHIER');
+    if (buttons.openNewTicketBtn) {
+      buttons.openNewTicketBtn.style.display = supportsNewTicket ? 'flex' : 'none';
+    }
+
+    refreshQueues();
+  });
+}
+
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
   screens[name].classList.add('active');
