@@ -8,6 +8,11 @@ export class PrismaService
 {
   async onModuleInit() {
     await this.$connect();
+    try {
+      await this.$queryRawUnsafe(`PRAGMA journal_mode = WAL;`);
+      await this.$queryRawUnsafe(`PRAGMA busy_timeout = 10000;`);
+      await this.$queryRawUnsafe(`PRAGMA synchronous = NORMAL;`);
+    } catch (e) {}
   }
 
   async onModuleDestroy() {
