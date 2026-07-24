@@ -409,6 +409,13 @@ body {
   padding: 6px;
 }
 
+.form-input-custom:disabled {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
+  cursor: not-allowed;
+}
+
 .text-orange {
   color: #ea580c;
   font-weight: 800;

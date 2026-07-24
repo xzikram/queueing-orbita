@@ -36,7 +36,7 @@ const inputs = {
   password: document.getElementById('password'),
   unitSelect: document.getElementById('unitSelect'),
   counterButtonList: document.getElementById('counterButtonList'),
-  doctorSelect: document.getElementById('doctorSelect'),
+  doctorInput: document.getElementById('doctorInput'),
   doctorTicketNoInput: document.getElementById('doctorTicketNoInput'),
   nextUnitSelect: document.getElementById('nextUnitSelect'),
   cancelReasonInput: document.getElementById('cancelReasonInput'),
@@ -322,23 +322,30 @@ buttons.closeCounterModal.addEventListener('click', () => {
 // saveCounter button removed - counter selection is now handled by button clicks directly
 
 // --- DOCTORS & TICKETS GENERATOR ---
+state.doctorOptionsMap = {};
+
 async function loadDoctors() {
+  const listEl = document.getElementById('doctorListOptions');
+  if (listEl) listEl.innerHTML = '';
+  state.doctorOptionsMap = {};
+
   try {
-    inputs.doctorSelect.innerHTML = '<option value="">-- Pilih Dokter --</option>';
-    
     // Try fetching today's active schedules first
     const schedRes = await axios.get('/schedules/active-today').catch(() => null);
     if (schedRes && Array.isArray(schedRes.data) && schedRes.data.length > 0) {
       state.schedules = schedRes.data;
       state.schedules.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
         const docName = s.doctor?.doctorName || s.doctorName || 'Dokter';
         const roomName = s.room?.name || s.roomName || '';
-        opt.innerText = roomName ? `${docName} (${roomName})` : docName;
-        opt.style.color = '#0f172a';
-        opt.style.backgroundColor = '#ffffff';
-        inputs.doctorSelect.appendChild(opt);
+        const label = roomName ? `${docName} (${roomName})` : docName;
+        
+        state.doctorOptionsMap[label] = { id: s.id, doctorName: docName, isSchedule: true };
+        
+        if (listEl) {
+          const opt = document.createElement('option');
+          opt.value = label;
+          listEl.appendChild(opt);
+        }
       });
       return;
     }
@@ -347,36 +354,48 @@ async function loadDoctors() {
     const res = await axios.get('/doctors');
     state.doctors = Array.isArray(res.data) ? res.data.filter(d => d.isActive !== false) : [];
     state.doctors.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d.id;
-      opt.innerText = `${d.doctorName}`;
-      opt.style.color = '#0f172a';
-      opt.style.backgroundColor = '#ffffff';
-      inputs.doctorSelect.appendChild(opt);
+      const label = d.doctorName;
+      state.doctorOptionsMap[label] = { id: d.id, doctorName: d.doctorName, isSchedule: false };
+      
+      if (listEl) {
+        const opt = document.createElement('option');
+        opt.value = label;
+        listEl.appendChild(opt);
+      }
     });
   } catch (err) {
     console.error("Gagal memuat dokter:", err);
   }
 }
 
-inputs.doctorSelect.addEventListener('change', async (e) => {
-  const selectedId = e.target.value;
-  if (!selectedId) return;
+if (inputs.doctorInput) {
+  inputs.doctorInput.addEventListener('input', async (e) => {
+    const val = e.target.value.trim();
+    const match = state.doctorOptionsMap[val];
 
-  try {
-    const res = await axios.get(`/admission/next-doctor-ticket?scheduleId=${selectedId}`).catch(() => null);
-    if (res?.data?.nextDoctorTicketNo) {
-      inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
-      return;
+    if (match) {
+      inputs.doctorTicketNoInput.disabled = false;
+      inputs.doctorTicketNoInput.placeholder = "Contoh: MA020";
+
+      try {
+        const res = await axios.get(`/admission/next-doctor-ticket?scheduleId=${match.id}`).catch(() => null);
+        if (res?.data?.nextDoctorTicketNo) {
+          inputs.doctorTicketNoInput.value = res.data.nextDoctorTicketNo;
+          return;
+        }
+      } catch (err) {}
+
+      // Fallback ticket generation
+      const initials = match.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'MA';
+      const randomNum = String(Math.floor(Math.random() * 90) + 10).padStart(3, '0');
+      inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
+    } else {
+      inputs.doctorTicketNoInput.disabled = true;
+      inputs.doctorTicketNoInput.placeholder = "Pilih dokter dahulu...";
+      inputs.doctorTicketNoInput.value = "";
     }
-  } catch (err) {}
-
-  // Fallback generation
-  const doc = (state.doctors || []).find(d => d.id === selectedId) || (state.schedules || []).find(s => s.id === selectedId)?.doctor;
-  const initials = doc ? doc.doctorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'MA';
-  const randomNum = String(Math.floor(Math.random() * 90) + 10).padStart(3, '0');
-  inputs.doctorTicketNoInput.value = `${initials}${randomNum}`;
-});
+  });
+}
 
 // --- QUEUE FETCHING ---
 async function refreshQueues() {
@@ -630,10 +649,11 @@ buttons.finishBtn.addEventListener('click', async () => {
 
   try {
     if (state.activeTab === 'ADMISSION') {
-      const selectedDoctorId = inputs.doctorSelect.value;
-      if (selectedDoctorId) {
+      const docVal = inputs.doctorInput ? inputs.doctorInput.value.trim() : '';
+      const match = state.doctorOptionsMap[docVal];
+      if (match) {
         await axios.put(`/admission/${ticketId}/patient-data`, {
-          scheduleId: selectedDoctorId,
+          scheduleId: match.id,
           doctorTicketNo: inputs.doctorTicketNoInput.value
         }).catch(() => {});
       }

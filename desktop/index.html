@@ -104,14 +104,13 @@
           <div id="innerFormBox" class="inner-form-box">
             <div class="form-row">
               <label>👤 Dokter Tujuan *</label>
-              <select id="doctorSelect" class="form-select-custom">
-                <option value="">-- Pilih Dokter --</option>
-              </select>
+              <input type="text" id="doctorInput" list="doctorListOptions" class="form-input-custom" placeholder="🔍 Ketik nama / poli dokter..." autocomplete="off">
+              <datalist id="doctorListOptions"></datalist>
             </div>
             
             <div class="form-row flex-row">
               <label>🎟️ No. Tiket Dokter:</label>
-              <input type="text" id="doctorTicketNoInput" class="form-input-custom text-orange" placeholder="MA020">
+              <input type="text" id="doctorTicketNoInput" class="form-input-custom text-orange" placeholder="Pilih dokter dahulu..." disabled>
             </div>
 
             <div class="form-row">
