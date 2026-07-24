@@ -8,16 +8,14 @@
 </head>
 <body>
 
-  <!-- Drag Titlebar -->
+  <!-- Titlebar (Lavender Background, Mimicking Mockup) -->
   <div class="titlebar">
     <div class="titlebar-title">
-      <span class="titlebar-dot"></span>
-      <span class="titlebar-text">Orbita Caller</span>
+      <span class="titlebar-icon">🔔</span>
+      <span class="titlebar-text">Orbita Queue</span>
     </div>
     <div class="titlebar-controls">
-      <button id="alwaysOnTopBtn" class="control-btn" title="Toggle Always-on-Top">📌</button>
-      <button id="minBtn" class="control-btn" title="Minimize ke Tray">−</button>
-      <button id="closeBtn" class="control-btn close-btn" title="Sembunyikan">×</button>
+      <button id="minBtn" class="control-btn" title="Minimize">−</button>
     </div>
   </div>
 
@@ -55,124 +53,132 @@
     <!-- CALLER WIDGET SCREEN -->
     <div id="callerScreen" class="screen">
       
-      <!-- Top Header & Ultra-Minimalist Counter Bar -->
-      <div class="top-compact-bar">
-        <div class="user-meta">
-          <span id="userName" class="user-name">User</span>
-          <span id="userRole" class="badge badge-role">ADMIN</span>
-        </div>
+      <!-- Card 1: Unit Selector Box (Dark Select) -->
+      <div class="unit-select-card">
+        <span class="unit-label">🔄 Unit:</span>
+        <select id="unitSelect" class="dark-unit-select">
+          <option value="ADMISSION">🏢 Admisi</option>
+          <option value="CASHIER">💳 Kasir</option>
+        </select>
+      </div>
 
-        <div class="counter-mini-pill">
-          <span class="counter-name">📍 <strong id="currentCounterName">Counter 1</strong></span>
-          <span id="counterStatusBadge" class="badge badge-standby">STANDBY</span>
-          <button id="changeCounterBtn" class="btn btn-xs btn-outline" title="Ganti Loket Jaga">🔄 Ganti</button>
-          <button id="toggleCounterStatusBtn" class="btn btn-xs btn-danger" title="Set Sibuk/Standby">🔴 Set Sibuk</button>
-          <button id="logoutBtn" class="btn btn-xs btn-outline" title="Keluar">Keluar</button>
+      <!-- Card 2: Loket & User Info Bar -->
+      <div class="loket-bar-card">
+        <div class="loket-info">
+          <div class="loket-title">📍 <strong id="currentCounterName">Loket</strong></div>
+          <div class="loket-sub">Halo, <span id="userName">Administrator</span></div>
+        </div>
+        <div class="loket-pills">
+          <button id="toggleCounterStatusBtn" class="pill-btn pill-active">🟢 Aktif</button>
+          <button id="changeCounterBtn" class="pill-btn pill-change">🔄 Ganti</button>
+          <button id="logoutBtn" class="pill-btn pill-logout">🚪 Keluar</button>
         </div>
       </div>
 
-      <!-- Tab Navigation (Admisi vs Kasir) -->
-      <div class="tab-bar">
-        <button id="tabAdmisi" class="tab-btn active">
-          📋 Admisi <span id="countAdmisi" class="tab-badge">0</span>
+      <!-- Card 3: Tab Navigation Bar (Admisi vs Kasir) -->
+      <div class="tab-pill-bar">
+        <button id="tabAdmisi" class="tab-pill active">
+          📋 Admisi (<span id="countAdmisi">0</span>)<span id="admisiDot" class="red-dot" style="display:none;"></span>
         </button>
-        <button id="tabKasir" class="tab-btn">
-          💳 Kasir <span id="countKasir" class="tab-badge">0</span>
+        <button id="tabKasir" class="tab-pill">
+          💳 Kasir (<span id="countKasir">0</span>)
         </button>
       </div>
 
-      <!-- Active Called Ticket Card -->
-      <div id="activeTicketCard" class="active-card">
-        <div class="card-header">
-          <span class="card-title">SEDANG DILAYANI</span>
-          <span id="activeUnitBadge" class="badge badge-unit">ADMISI</span>
-        </div>
+      <!-- MAIN CONTENT CONTAINER (STATE DEPENDENT) -->
+      <div class="main-content-wrapper">
 
-        <div id="activeTicketNo" class="ticket-display">-</div>
-        <div id="activePatientName" class="patient-display">Belum ada pemanggilan</div>
-
-        <!-- Extra Action Icons Bar for Active Call (Edit, Time Correct, Hold, Transfer, Batal) -->
-        <div id="activeMiniTools" class="mini-tools-bar" style="display: none;">
-          <button id="editPatientBtn" class="tool-btn" title="Edit Data Pasien & Dokter">👤 Edit</button>
-          <button id="correctTimeBtn" class="tool-btn" title="Koreksi Waktu">⏱️ Jam</button>
-          <button id="holdActiveBtn" class="tool-btn warning-tool" title="Hold / Pause Antrean">⏸️ Hold</button>
-          <button id="transferActiveBtn" class="tool-btn info-tool" title="Transfer Pasien">🔄 Transfer</button>
-          <button id="cancelActiveBtn" class="tool-btn danger-tool" title="Batal / Drop Antrean">❌ Drop</button>
-        </div>
-
-        <!-- Doctor Selector (If Admisi & Active Call) -->
-        <div id="admisiDoctorBox" class="doctor-box" style="display: none;">
-          <label>Dokter Tujuan / Poliklinik:</label>
-          <select id="doctorSelect" class="select-input">
-            <option value="">-- Pilih Dokter Tujuan --</option>
-          </select>
-        </div>
-
-        <!-- Action Buttons for Active Call -->
-        <div id="activeActions" class="action-box" style="display: none;">
-          <!-- Primary 1-Click Finish Button -->
-          <button id="finishDefaultBtn" class="btn btn-success btn-finish-primary">
-            ✅ Selesai ➔ Pengkajian
-          </button>
-
-          <!-- Quick Routing Alternative Buttons (If Admisi) -->
-          <div id="quickRouteBox" class="quick-route-grid">
-            <button class="btn-route" data-target="DOCTOR">➔ Dokter (Poli)</button>
-            <button class="btn-route" data-target="BDR">➔ BDR</button>
-            <button class="btn-route" data-target="CASHIER">➔ Kasir</button>
-            <button class="btn-route" data-target="PHARMACY">➔ Farmasi</button>
+        <!-- STATE 1: ACTIVE CALL / SERVING STATE (MOCKUP 1) -->
+        <div id="activeStateContainer" class="active-call-card" style="display: none;">
+          <div class="active-header">
+            <span id="activeStatusLabel" class="status-green">🟢 DILAYANI</span>
+            <span id="activeTimerClock" class="clock-timer">⏱️ 12:05</span>
           </div>
 
-          <!-- Recall Button -->
-          <button id="recallBtn" class="btn btn-warning btn-block mt-2">
-            🔊 Panggil Ulang
+          <div id="activeTicketDisplay" class="ticket-number-big">
+            <span id="ticketPrefix" class="t-prefix">B</span><span id="ticketNum" class="t-num">002</span>
+          </div>
+          <div id="activePatientType" class="patient-type-label">Umum</div>
+
+          <!-- Inner Form Box (Matching Mockup 1) -->
+          <div id="innerFormBox" class="inner-form-box">
+            <div class="form-row">
+              <label>👤 Dokter Tujuan *</label>
+              <select id="doctorSelect" class="form-select-custom">
+                <option value="">-- Pilih Dokter --</option>
+              </select>
+            </div>
+            
+            <div class="form-row flex-row">
+              <label>🎟️ No. Tiket Dokter:</label>
+              <input type="text" id="doctorTicketNoInput" class="form-input-custom text-orange" placeholder="MA020">
+            </div>
+
+            <div class="form-row">
+              <label>Tujuan Selanjutnya *</label>
+              <select id="nextUnitSelect" class="form-select-custom">
+                <option value="ASSESSMENT">📋 Pengkajian</option>
+                <option value="DOCTOR">🩺 Dokter (Poli)</option>
+                <option value="BDR">🩸 BDR</option>
+                <option value="CASHIER">💳 Kasir</option>
+                <option value="PHARMACY">💊 Farmasi</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATE 2 & 3: IDLE / EMPTY STATE BOX (MOCKUP 2 & 3) -->
+        <div id="idleStateContainer" class="idle-card">
+          <div class="empty-state-text">Antrean Kosong</div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM CONTROL BAR CONTAINER (STATE DEPENDENT) -->
+      <div class="bottom-control-container">
+
+        <!-- STATE 1 CONTROLS: 4 GRID ACTION BUTTONS (MOCKUP 1) -->
+        <div id="activeControlsGrid" class="controls-grid-4" style="display: none;">
+          <button id="finishBtn" class="action-btn finish-btn" title="Selesai">✅</button>
+          <button id="recallBtn" class="action-btn recall-btn" title="Panggil Ulang">📢</button>
+          <button id="holdBtn" class="action-btn hold-btn" title="Hold / Pause">⏸️</button>
+          <button id="cancelBtn" class="action-btn cancel-btn" title="Batal / Drop">❌</button>
+        </div>
+
+        <!-- STATE 2 CONTROLS: REFRESH & AMBIL TIKET BARU (MOCKUP 2) -->
+        <div id="idleControlsBox" class="idle-controls-box">
+          <button id="refreshBtn" class="btn-action-full btn-refresh">
+            🔄 Refresh Antrean
+          </button>
+          <button id="openNewTicketBtn" class="btn-action-full btn-new-ticket">
+            🎟️ Ambil Tiket Baru
           </button>
         </div>
-      </div>
 
-      <!-- Top 3 Waiting List Section -->
-      <div class="queue-section">
-        <div class="section-header">
-          <span class="section-title">⏳ Antrean Menunggu (Max 3)</span>
-          <button id="callNextBtn" class="btn btn-sm btn-primary">
-            ▶ Panggil Berikutnya
+        <!-- STATE 3 CONTROLS: REFRESH & 4 QUICK CATEGORY BUTTONS (MOCKUP 3) -->
+        <div id="manualControlsBox" class="manual-controls-box" style="display: none;">
+          <button id="refreshBtn2" class="btn-action-full btn-refresh mb-2">
+            🔄 Refresh Antrean
           </button>
+          <div id="categoryGrid" class="category-grid">
+            <button class="btn-cat btn-blue" data-cat="UMUM" data-prefix="A">➕ Baru (A)</button>
+            <button class="btn-cat btn-blue" data-cat="LAMA" data-prefix="B">➕ Lama (B)</button>
+            <button class="btn-cat btn-orange" data-cat="ASURANSI" data-prefix="C">➕ Asuransi (C)</button>
+            <button class="btn-cat btn-orange" data-cat="ONLINE" data-prefix="D">➕ Online (D)</button>
+          </div>
         </div>
 
-        <!-- Top 3 Cards Container -->
-        <div id="waitingListContainer" class="waiting-list">
-          <div class="empty-msg">Tidak ada antrean menunggu</div>
-        </div>
-
-        <!-- Hidden Queue Count Indicator -->
-        <div id="hiddenCountIndicator" class="hidden-indicator" style="display: none;">
-          +<span id="hiddenCountNum">0</span> antrean lainnya tersembunyi di server
-        </div>
-      </div>
-
-      <!-- Quick Manual Ticket Generator Trigger -->
-      <div class="bottom-actions">
-        <button id="openManualBtn" class="btn btn-secondary btn-block">
-          ➕ Ambil Antrean Manual
-        </button>
-      </div>
-
-      <!-- Status Log Bar -->
-      <div class="log-bar">
-        <span id="statusLog">Siap digunakan.</span>
       </div>
 
     </div>
 
   </div>
 
-  <!-- MODALS -->
-
-  <!-- 1. COUNTER LOCK / SELECTOR MODAL -->
+  <!-- MODAL: COUNTER PICKER -->
   <div id="counterModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>📍 Pilih Loket / Counter Jaga</h3>
+        <h3>📍 Pilih Loket Jaga</h3>
         <button id="closeCounterModalBtn" class="close-modal">&times;</button>
       </div>
       <div class="form-group">
@@ -183,38 +189,7 @@
     </div>
   </div>
 
-  <!-- 2. EDIT PATIENT & DOCTOR DATA MODAL -->
-  <div id="patientModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>👤 Edit Data Pasien & Dokter</h3>
-        <button id="closePatientModalBtn" class="close-modal">&times;</button>
-      </div>
-      <form id="patientForm">
-        <div class="form-group">
-          <label>Dokter Tujuan / Jadwal</label>
-          <select id="patientScheduleSelect" class="select-input">
-            <option value="">-- Pilih Dokter Tujuan --</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>No. Antrean Dokter (Auto-Generated)</label>
-          <input type="text" id="patientDoctorTicketNo" class="select-input" placeholder="Misal: DOC-001">
-        </div>
-        <div class="form-group">
-          <label>Nomor RM Pasien</label>
-          <input type="text" id="patientRmNoInput" class="select-input" placeholder="Misal: RM-12345">
-        </div>
-        <div class="form-group">
-          <label>Nama Pasien</label>
-          <input type="text" id="patientNameInput" class="select-input" placeholder="Nama Pasien">
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">💾 Simpan Data Pasien</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- 3. CANCEL / DROP TICKET MODAL -->
+  <!-- MODAL: CANCEL REASON -->
   <div id="cancelModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
@@ -222,121 +197,11 @@
         <button id="closeCancelModalBtn" class="close-modal">&times;</button>
       </div>
       <form id="cancelForm">
-        <p style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
-          Sesi dan status tiket akan diubah menjadi CANCELLED.
-        </p>
         <div class="form-group">
-          <label>Alasan Batal / Drop *</label>
-          <input type="text" id="cancelReasonInput" class="select-input" placeholder="Contoh: Pasien batal berobat / Salah panggil" required>
+          <label>Alasan Pembatalan *</label>
+          <input type="text" id="cancelReasonInput" class="select-input" placeholder="Contoh: Salah panggil / Pasien batal" required>
         </div>
         <button type="submit" class="btn btn-danger btn-block">💾 Simpan Pembatalan</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- 4. TRANSFER PATIENT MODAL -->
-  <div id="transferModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>🔄 Transfer Pasien ke Unit Lain</h3>
-        <button id="closeTransferModalBtn" class="close-modal">&times;</button>
-      </div>
-      <form id="transferForm">
-        <div class="form-group">
-          <label>Unit Tujuan Transfer *</label>
-          <select id="transferTargetSelect" class="select-input" required>
-            <option value="ASSESSMENT">Pengkajian / Triage</option>
-            <option value="DOCTOR">Dokter / Poliklinik</option>
-            <option value="BDR">BDR (Bank Darah)</option>
-            <option value="CASHIER">Kasir</option>
-            <option value="PHARMACY">Farmasi</option>
-            <option value="OPTIC">Optik</option>
-            <option value="CDC">CDC</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Alasan Transfer *</label>
-          <input type="text" id="transferReasonInput" class="select-input" placeholder="Contoh: Pasien langsung ke poliklinik" required>
-        </div>
-        <button type="submit" class="btn btn-warning btn-block">🔄 Proses Transfer</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- 5. SYNC TICKET MODAL (KASIR) -->
-  <div id="syncModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>🔗 Gabungkan Antrean Kasir</h3>
-        <button id="closeSyncModalBtn" class="close-modal">&times;</button>
-      </div>
-      <form id="syncForm">
-        <p style="font-size: 11px; color: #64748b; margin-bottom: 10px;">
-          Pilih data kunjungan pasien dari Dokter/Poli untuk digabungkan ke tiket Kiosk Kasir ini.
-        </p>
-        <div class="form-group">
-          <label>Data Pasien Poliklinik:</label>
-          <select id="syncTargetVisitSelect" class="select-input" required>
-            <option value="">-- Pilih Data Pasien --</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">🔗 Gabungkan Tiket</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- 6. TIME CORRECTION MODAL -->
-  <div id="timeModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>⏱️ Koreksi Waktu Jam</h3>
-        <button id="closeTimeModalBtn" class="close-modal">&times;</button>
-      </div>
-      <form id="timeForm">
-        <div class="form-group">
-          <label>Field Waktu</label>
-          <select id="timeFieldSelect" class="select-input">
-            <option value="calledAt">Waktu Panggil</option>
-            <option value="serviceStartedAt">Waktu Mulai Layani</option>
-            <option value="serviceFinishedAt">Waktu Selesai</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Waktu Sebenarnya</label>
-          <input type="datetime-local" id="timeCorrectedInput" class="select-input" required>
-        </div>
-        <div class="form-group">
-          <label>Alasan Koreksi</label>
-          <input type="text" id="timeReasonInput" class="select-input" placeholder="Contoh: Lupa klik tombol mulai" required>
-        </div>
-        <button type="submit" class="btn btn-warning btn-block">⏱️ Simpan Koreksi Waktu</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- 7. MANUAL TICKET MODAL -->
-  <div id="manualModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>➕ Cetak Antrean Manual</h3>
-        <button id="closeManualBtn" class="close-modal">&times;</button>
-      </div>
-      <form id="manualTicketForm">
-        <div class="form-group">
-          <label>Kategori Antrean:</label>
-          <select id="manualType" class="select-input">
-            <option value="ADMISSION">📋 Admisi (A)</option>
-            <option value="CASHIER">💳 Kasir (K)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Tipe Pasien:</label>
-          <select id="manualPatientType" class="select-input">
-            <option value="UMUM">UMUM</option>
-            <option value="ASURANSI">ASURANSI / BPJS</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">Cetak / Ambil Antrean</button>
       </form>
     </div>
   </div>
