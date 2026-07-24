@@ -745,20 +745,33 @@ async function createTicket(unit, patientType) {
 }
 
 // --- STATE SWITCHING BUTTONS ---
-buttons.openNewTicketBtn.addEventListener('click', () => {
+window.toggleManualTicketMode = function() {
   state.isManualMode = true;
   renderCurrentState();
-});
+};
 
-buttons.refreshBtn.addEventListener('click', () => {
+window.cancelManualTicketMode = function() {
   state.isManualMode = false;
   refreshQueues();
-});
+};
 
-buttons.refreshBtn2.addEventListener('click', () => {
-  state.isManualMode = false;
-  refreshQueues();
-});
+if (buttons.openNewTicketBtn) {
+  buttons.openNewTicketBtn.addEventListener('click', () => {
+    window.toggleManualTicketMode();
+  });
+}
+
+if (buttons.refreshBtn) {
+  buttons.refreshBtn.addEventListener('click', () => {
+    window.cancelManualTicketMode();
+  });
+}
+
+if (buttons.refreshBtn2) {
+  buttons.refreshBtn2.addEventListener('click', () => {
+    window.cancelManualTicketMode();
+  });
+}
 
 // --- ACTIVE CONTROL BUTTONS (STATE 1 - MOCKUP 1) ---
 buttons.finishBtn.addEventListener('click', async () => {
