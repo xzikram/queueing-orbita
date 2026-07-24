@@ -25,6 +25,16 @@ let state = {
 };
 
 // --- GLOBAL STATE SWITCHING FUNCTIONS (DEFINED EARLY) ---
+window.onUnitSelectChange = function(selectEl) {
+  const newUnit = selectEl ? selectEl.value : (inputs.unitSelect ? inputs.unitSelect.value : 'ADMISSION');
+  console.log('[Orbita] onUnitSelectChange -> newUnit:', newUnit);
+  state.activeTab = newUnit;
+  state.isManualMode = false;
+  state.activeCall = null;
+  state.unitWaitingList = [];
+  refreshQueues();
+};
+
 window.toggleManualTicketMode = function() {
   console.log('[Orbita] toggleManualTicketMode triggered! Setting isManualMode = true');
   state.isManualMode = true;
@@ -284,6 +294,9 @@ buttons.logout.addEventListener('click', () => {
 async function initCallerScreen() {
   showScreen('caller');
   texts.userName.innerText = state.user.name || 'Administrator';
+  if (inputs.unitSelect && inputs.unitSelect.value) {
+    state.activeTab = inputs.unitSelect.value;
+  }
 
   startLiveClock();
   await loadCounters();
@@ -781,7 +794,7 @@ async function createTicket(unit, patientType) {
       res = await axios.post('/queue-tickets/admission', { patientType });
     }
     const ticketNo = res.data?.ticketNo || 'Baru';
-    showToast(`✅ Tiket ${ticketNo} berhasil dibuat!`);
+    showToast(`✅ Tiket ${ticketNo} berhasil dibuat!`, false);
     state.isManualMode = false;
     await refreshQueues();
     ipcRenderer.send('show-window');
