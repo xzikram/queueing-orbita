@@ -340,13 +340,16 @@ async function refreshQueues() {
     // Only direct Kiosk Kasir tickets (G, H) appear under Kasir waiting list!
     state.cashierList = allCashWaiting.filter(isCashierTicket);
 
-    // Active Calls
+    // Active Calls (ONLY for the currently selected Counter!)
     const activeAdm = admData.find(t => {
       const s = t.visit?.journeySessions?.[0];
-      return t.status === 'IN_PROGRESS' && s && ['CALLED', 'SERVING'].includes(s.status);
+      return t.status === 'IN_PROGRESS' && s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
     });
 
-    const activeKas = kasData.filter(isCashierTicket).find(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
+    const activeKas = kasData.filter(isCashierTicket).find(v => {
+      const s = v.journeySessions?.[0];
+      return s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
+    });
 
     if (state.activeTab === 'ADMISSION') {
       state.activeCall = activeAdm || null;
