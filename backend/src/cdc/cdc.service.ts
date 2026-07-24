@@ -44,6 +44,33 @@ export class CdcService {
     });
   }
 
+  async callPatient(visitId: string, counterId: string | undefined, userId: string) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: {
+        queueTicket: true,
+        selectedRoom: { include: { floor: true } },
+        selectedDoctor: true,
+      },
+    });
+    if (!visit) throw new NotFoundException('Visit tidak ditemukan');
+
+    const session = await this.journeyService.findSessionByVisitAndUnit(
+      visitId,
+      'CDC',
+    );
+    if (!session) throw new BadRequestException('Sesi CDC tidak ditemukan');
+
+    await this.journeyService.callSession(session.id, { createdBy: userId, counterId });
+    await this.prisma.visit.update({
+      where: { id: visitId },
+      data: { currentStatus: 'CALLED' },
+    });
+
+    this.displayGateway.triggerDashboardRefresh();
+    return { message: 'Pasien dipanggil ke CDC' };
+  }
+
   async startService(visitId: string, userId: string) {
     const session = await this.journeyService.findSessionByVisitAndUnit(
       visitId,

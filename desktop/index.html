@@ -58,6 +58,10 @@
         <span class="unit-label">🔄 Unit:</span>
         <select id="unitSelect" class="dark-unit-select">
           <option value="ADMISSION">🏢 Admisi</option>
+          <option value="ASSESSMENT">📋 Pengkajian</option>
+          <option value="DOCTOR">🩺 Dokter (Poli)</option>
+          <option value="BDR">🩸 BDR</option>
+          <option value="CDC">🔬 CDC</option>
           <option value="CASHIER">💳 Kasir</option>
         </select>
       </div>
@@ -75,13 +79,10 @@
         </div>
       </div>
 
-      <!-- Card 3: Tab Navigation Bar (Admisi vs Kasir) -->
+      <!-- Card 3: Active Unit Bar -->
       <div class="tab-pill-bar">
-        <button id="tabAdmisi" class="tab-pill active">
-          📋 Admisi (<span id="countAdmisi">0</span>)<span id="admisiDot" class="red-dot" style="display:none;"></span>
-        </button>
-        <button id="tabKasir" class="tab-pill">
-          💳 Kasir (<span id="countKasir">0</span>)
+        <button id="activeUnitTabBtn" class="tab-pill active" style="cursor:default;">
+          <span id="activeUnitIcon">📋</span> <span id="activeUnitTitle">Admisi</span> (<span id="countActiveUnit">0</span>)<span id="activeUnitDot" class="red-dot" style="display:none;"></span>
         </button>
       </div>
 

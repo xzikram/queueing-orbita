@@ -31,6 +31,15 @@ export class CdcController {
     return this.service.getDestinations();
   }
 
+  @Post(':visitId/call')
+  call(
+    @Param('visitId') visitId: string,
+    @Body() body: { counterId?: string },
+    @Request() req: any,
+  ) {
+    return this.service.callPatient(visitId, body?.counterId || '', req.user.id);
+  }
+
   @Post(':visitId/start')
   start(@Param('visitId') visitId: string, @Request() req: any) {
     return this.service.startService(visitId, req.user.id);

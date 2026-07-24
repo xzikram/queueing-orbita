@@ -14,15 +14,114 @@ let state = {
   doctors: [],
   schedules: [],
   selectedCounter: localStorage.getItem('orbita_selected_counter') || null,
-  activeTab: 'ADMISSION', // 'ADMISSION' | 'CASHIER'
-  admissionList: [],
-  cashierList: [],
+  activeTab: 'ADMISSION', // 'ADMISSION' | 'ASSESSMENT' | 'DOCTOR' | 'BDR' | 'CDC' | 'CASHIER'
+  unitWaitingList: [],
   activeCall: null,
   isManualMode: false,
   clockTimer: null,
 
   targetCancelTicket: null,
   lastActiveCallId: null,
+};
+
+const UNIT_CONFIG = {
+  ADMISSION: {
+    label: 'Admisi',
+    icon: '🏢',
+    queueEndpoint: '/admission/queue',
+    callEndpoint: (id) => `/admission/${id}/call`,
+    finishEndpoint: (id) => `/admission/${id}/finish`,
+    holdEndpoint: (id) => `/admission/${id}/hold`,
+    cancelEndpoint: (id) => `/admission/${id}/cancel`,
+    hasDoctorForm: true,
+    hasDestSelect: true,
+    destOptions: [
+      { value: 'ASSESSMENT', label: '📋 Pengkajian' },
+      { value: 'DOCTOR', label: '🩺 Dokter (Poli)' },
+      { value: 'BDR', label: '🩸 BDR' },
+      { value: 'CDC', label: '🔬 CDC' },
+      { value: 'CASHIER', label: '💳 Kasir' },
+      { value: 'PHARMACY', label: '💊 Farmasi' },
+    ]
+  },
+  ASSESSMENT: {
+    label: 'Pengkajian',
+    icon: '📋',
+    queueEndpoint: '/assessment/queue',
+    callEndpoint: (id) => `/assessment/${id}/call`,
+    finishEndpoint: (id) => `/assessment/${id}/finish`,
+    holdEndpoint: (id) => `/assessment/${id}/hold`,
+    cancelEndpoint: (id) => `/assessment/${id}/cancel`,
+    hasDoctorForm: false,
+    hasDestSelect: true,
+    destOptions: [
+      { value: 'DOCTOR', label: '🩺 Dokter (Poli)' },
+      { value: 'BDR', label: '🩸 BDR' },
+      { value: 'CDC', label: '🔬 CDC' },
+      { value: 'CASHIER', label: '💳 Kasir' },
+      { value: 'PHARMACY', label: '💊 Farmasi' },
+    ]
+  },
+  DOCTOR: {
+    label: 'Dokter (Poli)',
+    icon: '🩺',
+    queueEndpoint: '/doctor-queue/queue',
+    callEndpoint: (id) => `/doctor-queue/${id}/call`,
+    finishEndpoint: (id) => `/doctor-queue/${id}/finish`,
+    holdEndpoint: (id) => `/doctor-queue/${id}/hold`,
+    cancelEndpoint: (id) => `/doctor-queue/${id}/cancel`,
+    hasDoctorForm: false,
+    hasDestSelect: true,
+    destOptions: [
+      { value: 'BDR', label: '🩸 BDR' },
+      { value: 'CDC', label: '🔬 CDC' },
+      { value: 'CASHIER', label: '💳 Kasir' },
+      { value: 'PHARMACY', label: '💊 Farmasi' },
+    ]
+  },
+  BDR: {
+    label: 'BDR',
+    icon: '🩸',
+    queueEndpoint: '/bdr/queue',
+    callEndpoint: (id) => `/bdr/${id}/call`,
+    finishEndpoint: (id) => `/bdr/${id}/finish`,
+    holdEndpoint: (id) => `/bdr/${id}/hold`,
+    cancelEndpoint: (id) => `/bdr/${id}/cancel`,
+    hasDoctorForm: false,
+    hasDestSelect: true,
+    destOptions: [
+      { value: 'DOCTOR', label: '🩺 Dokter (Poli)' },
+      { value: 'CASHIER', label: '💳 Kasir' },
+      { value: 'PHARMACY', label: '💊 Farmasi' },
+    ]
+  },
+  CDC: {
+    label: 'CDC',
+    icon: '🔬',
+    queueEndpoint: '/cdc/queue',
+    callEndpoint: (id) => `/cdc/${id}/call`,
+    finishEndpoint: (id) => `/cdc/${id}/finish`,
+    holdEndpoint: (id) => `/cdc/${id}/hold`,
+    cancelEndpoint: (id) => `/cdc/${id}/cancel`,
+    hasDoctorForm: false,
+    hasDestSelect: true,
+    destOptions: [
+      { value: 'CASHIER', label: '💳 Kasir' },
+      { value: 'PHARMACY', label: '💊 Farmasi' },
+    ]
+  },
+  CASHIER: {
+    label: 'Kasir',
+    icon: '💳',
+    queueEndpoint: '/cashier/queue',
+    callEndpoint: (id) => `/cashier/${id}/call`,
+    finishEndpoint: (id) => `/cashier/${id}/finish`,
+    holdEndpoint: (id) => `/cashier/${id}/hold`,
+    cancelEndpoint: (id) => `/cashier/${id}/cancel`,
+    hasDoctorForm: false,
+    hasDestSelect: false,
+    destOptions: []
+  }
 };
 
 // --- DOM ELEMENTS ---
@@ -180,17 +279,6 @@ function startLiveClock() {
 }
 
 // --- UNIT SELECTOR DROPDOWN (ADMISI VS KASIR) ---
-inputs.unitSelect.addEventListener('change', (e) => {
-  const val = e.target.value;
-  state.activeTab = val;
-  if (val === 'ADMISSION') {
-    buttons.tabAdmisi.classList.add('active');
-    buttons.tabKasir.classList.remove('active');
-  } else {
-    buttons.tabKasir.classList.add('active');
-    buttons.tabAdmisi.classList.remove('active');
-  }
-  renderCurrentState();
 });
 
 buttons.tabAdmisi.addEventListener('click', () => {
@@ -415,59 +503,63 @@ if (inputs.doctorInput) {
 // --- QUEUE FETCHING ---
 async function refreshQueues() {
   try {
-    const [admRes, kasRes] = await Promise.all([
-      axios.get('/admission/queue').catch(() => ({ data: [] })),
-      axios.get('/cashier/queue').catch(() => ({ data: [] }))
-    ]);
+    const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
+    const res = await axios.get(config.queueEndpoint).catch(() => ({ data: [] }));
 
-    const admData = Array.isArray(admRes.data) ? admRes.data : (admRes.data?.waitingList || []);
-    const kasData = Array.isArray(kasRes.data) ? kasRes.data : (kasRes.data?.waitingList || []);
-
-    state.admissionList = admData.filter(t => {
-      const session = t.visit?.journeySessions?.[0];
-      return t.status === 'WAITING' || (t.status === 'IN_PROGRESS' && session?.status === 'SKIPPED');
-    });
+    const rawData = Array.isArray(res.data) ? res.data : (res.data?.waitingList || res.data?.queue || []);
 
     const isCashierTicket = (v) => {
       const ticketNo = v.doctorTicketNo || v.queueTicket?.ticketNo || v.ticketNo || '';
       return ticketNo.startsWith('G') || ticketNo.startsWith('H') || ticketNo.startsWith('K');
     };
 
-    const allCashWaiting = kasData.filter(v => {
-      const s = v.journeySessions?.[0];
-      return s?.status === 'WAITING' || s?.status === 'SKIPPED';
-    });
+    if (state.activeTab === 'CASHIER') {
+      state.unitWaitingList = rawData.filter(v => {
+        const s = v.journeySessions?.[0];
+        return (s?.status === 'WAITING' || s?.status === 'SKIPPED') && isCashierTicket(v);
+      });
 
-    // Only direct Kiosk Kasir tickets (G, H) appear under Kasir waiting list!
-    state.cashierList = allCashWaiting.filter(isCashierTicket);
+      state.activeCall = rawData.filter(isCashierTicket).find(v => {
+        const s = v.journeySessions?.[0];
+        return s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
+      }) || null;
 
-    // Active Calls (ONLY for the currently selected Counter!)
-    const activeAdm = admData.find(t => {
-      const s = t.visit?.journeySessions?.[0];
-      return t.status === 'IN_PROGRESS' && s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
-    });
-
-    const activeKas = kasData.filter(isCashierTicket).find(v => {
-      const s = v.journeySessions?.[0];
-      return s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
-    });
-
-    if (state.activeTab === 'ADMISSION') {
-      state.activeCall = activeAdm || null;
     } else {
-      state.activeCall = activeKas || null;
+      state.unitWaitingList = rawData.filter(t => {
+        const s = t.journeySessions?.[0] || t.visit?.journeySessions?.[0];
+        const status = t.status || s?.status;
+        return status === 'WAITING' || status === 'SKIPPED' || (t.status === 'IN_PROGRESS' && s?.status === 'SKIPPED');
+      });
+
+      state.activeCall = rawData.find(t => {
+        const s = t.journeySessions?.[0] || t.visit?.journeySessions?.[0];
+        const status = t.status || s?.status;
+        return (status === 'IN_PROGRESS' || s?.status === 'CALLED' || s?.status === 'SERVING') && 
+               s?.counterId === state.selectedCounter;
+      }) || null;
     }
 
-    texts.countAdmisi.innerText = state.admissionList.length;
-    texts.countKasir.innerText = state.cashierList.length;
-    texts.admisiDot.style.display = state.admissionList.length > 0 ? 'inline-block' : 'none';
+    const iconEl = document.getElementById('activeUnitIcon');
+    const titleEl = document.getElementById('activeUnitTitle');
+    const countEl = document.getElementById('countActiveUnit');
+    const dotEl = document.getElementById('activeUnitDot');
+
+    if (iconEl) iconEl.innerText = config.icon;
+    if (titleEl) titleEl.innerText = config.label;
+    if (countEl) countEl.innerText = state.unitWaitingList.length;
+    if (dotEl) dotEl.style.display = state.unitWaitingList.length > 0 ? 'inline-block' : 'none';
 
     renderCurrentState();
-  } catch (err) {}
+  } catch (err) {
+    console.error("refreshQueues error:", err);
+  }
 }
 
 // --- RENDER 3 STATES (MOCKUP 1, 2, & 3) ---
 function renderCurrentState() {
+  const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
+  updateNextUnitSelect();
+
   if (state.activeCall) {
     // === STATE 1: ACTIVE CALL / SERVING (MOCKUP 1) ===
     containers.activeStateContainer.style.display = 'block';
@@ -492,8 +584,14 @@ function renderCurrentState() {
 
     texts.activePatientType.innerText = t.patientType || t.visit?.patientType || 'Umum';
 
-    if (state.activeTab === 'ADMISSION') {
-      document.getElementById('innerFormBox').style.display = 'flex';
+    const innerFormBox = document.getElementById('innerFormBox');
+    const doctorFormRow = innerFormBox ? innerFormBox.children[0] : null;
+    const ticketNoRow = innerFormBox ? innerFormBox.children[1] : null;
+
+    if (config.hasDoctorForm) {
+      innerFormBox.style.display = 'flex';
+      if (doctorFormRow) doctorFormRow.style.display = 'flex';
+      if (ticketNoRow) ticketNoRow.style.display = 'flex';
       
       // If patient changed or no last active call recorded, update/reset doctor input fields!
       if (state.lastActiveCallId !== t.id) {
@@ -523,8 +621,12 @@ function renderCurrentState() {
           }
         }
       }
+    } else if (config.hasDestSelect) {
+      innerFormBox.style.display = 'flex';
+      if (doctorFormRow) doctorFormRow.style.display = 'none';
+      if (ticketNoRow) ticketNoRow.style.display = 'none';
     } else {
-      document.getElementById('innerFormBox').style.display = 'none';
+      innerFormBox.style.display = 'none';
     }
 
   } else if (state.isManualMode) {
@@ -547,7 +649,7 @@ function renderCurrentState() {
     containers.idleControlsBox.style.display = 'flex';
     containers.manualControlsBox.style.display = 'none';
 
-    const waitingList = state.activeTab === 'ADMISSION' ? state.admissionList : state.cashierList;
+    const waitingList = state.unitWaitingList || [];
     if (waitingList.length > 0) {
       const itemsToShow = waitingList.slice(0, 3);
       
@@ -598,14 +700,10 @@ async function callPatientInQueue(item) {
     containers.counterModal.classList.add('active');
     return;
   }
+  const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
+  const ticketId = item.id || item.visitId;
   try {
-    if (state.activeTab === 'ADMISSION') {
-      const ticketId = item.id;
-      await axios.post(`/admission/${ticketId}/call`, { counterId: state.selectedCounter });
-    } else {
-      const visitId = item.id || item.visitId;
-      await axios.post(`/cashier/${visitId}/call`, { counterId: state.selectedCounter });
-    }
+    await axios.post(config.callEndpoint(ticketId), { counterId: state.selectedCounter });
     await refreshQueues();
     ipcRenderer.send('show-window');
   } catch (err) {
@@ -685,11 +783,12 @@ buttons.refreshBtn2.addEventListener('click', () => {
 // --- ACTIVE CONTROL BUTTONS (STATE 1 - MOCKUP 1) ---
 buttons.finishBtn.addEventListener('click', async () => {
   if (!state.activeCall) return;
-  const ticketId = state.activeCall.id;
-  const nextUnitType = inputs.nextUnitSelect.value || 'ASSESSMENT';
+  const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
+  const ticketId = state.activeCall.id || state.activeCall.visitId || state.activeCall.queueTicketId;
+  const nextUnitType = inputs.nextUnitSelect ? inputs.nextUnitSelect.value : null;
 
   try {
-    if (state.activeTab === 'ADMISSION') {
+    if (config.hasDoctorForm) {
       const docVal = inputs.doctorInput ? inputs.doctorInput.value.trim() : '';
       const ticketNoVal = inputs.doctorTicketNoInput ? inputs.doctorTicketNoInput.value.trim() : '';
 
@@ -710,9 +809,11 @@ buttons.finishBtn.addEventListener('click', async () => {
           doctorTicketNo: ticketNoVal
         }).catch(() => {});
       }
-      await axios.post(`/admission/${ticketId}/finish`, { nextUnitType });
+      await axios.post(config.finishEndpoint(ticketId), { nextUnitType });
+    } else if (config.hasDestSelect) {
+      await axios.post(config.finishEndpoint(ticketId), { nextUnitType });
     } else {
-      await axios.post(`/cashier/${ticketId}/finish`);
+      await axios.post(config.finishEndpoint(ticketId));
     }
     state.activeCall = null;
     await refreshQueues();
@@ -723,11 +824,11 @@ buttons.finishBtn.addEventListener('click', async () => {
 
 buttons.recallBtn.addEventListener('click', async () => {
   if (!state.activeCall || !state.selectedCounter) return;
+  const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
   const ticketId = state.activeCall.id || state.activeCall.queueTicketId;
-  const endpoint = state.activeTab === 'ADMISSION' ? `/admission/${ticketId}/call` : `/cashier/${ticketId}/call`;
   
   try {
-    await axios.post(endpoint, { counterId: state.selectedCounter });
+    await axios.post(config.callEndpoint(ticketId), { counterId: state.selectedCounter });
     ipcRenderer.send('show-window');
   } catch (err) {
     alert("Gagal panggil ulang: " + (err.response?.data?.message || err.message));
@@ -736,11 +837,11 @@ buttons.recallBtn.addEventListener('click', async () => {
 
 buttons.holdBtn.addEventListener('click', async () => {
   if (!state.activeCall) return;
+  const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
   const ticketId = state.activeCall.id;
-  const prefix = state.activeTab === 'ADMISSION' ? 'admission' : 'cashier';
 
   try {
-    await axios.post(`/${prefix}/${ticketId}/hold`);
+    await axios.post(config.holdEndpoint(ticketId));
     state.activeCall = null;
     await refreshQueues();
   } catch (err) {
@@ -762,11 +863,11 @@ buttons.closeCancelModal.addEventListener('click', () => {
 document.getElementById('cancelForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!state.targetCancelTicket) return;
+  const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
   const reason = inputs.cancelReasonInput.value.trim();
 
   try {
-    const prefix = state.activeTab === 'ADMISSION' ? 'admission' : 'cashier';
-    await axios.post(`/${prefix}/${state.targetCancelTicket.id}/cancel`, { reason });
+    await axios.post(config.cancelEndpoint(state.targetCancelTicket.id), { reason });
     containers.cancelModal.classList.remove('active');
     state.targetCancelTicket = null;
     state.activeCall = null;
