@@ -22,6 +22,7 @@ let state = {
   clockTimer: null,
 
   targetCancelTicket: null,
+  lastActiveCallId: null,
 };
 
 // --- DOM ELEMENTS ---
@@ -479,8 +480,34 @@ function renderCurrentState() {
 
     if (state.activeTab === 'ADMISSION') {
       document.getElementById('innerFormBox').style.display = 'flex';
-      if (t.visit?.selectedDoctorId || t.selectedDoctorId) {
-        inputs.doctorSelect.value = t.visit?.selectedDoctorId || t.selectedDoctorId;
+      
+      // If patient changed or no last active call recorded, update/reset doctor input fields!
+      if (state.lastActiveCallId !== t.id) {
+        state.lastActiveCallId = t.id;
+        
+        const existingDocId = t.visit?.selectedDoctorId || t.selectedDoctorId;
+        const existingTicketNo = t.doctorTicketNo || t.visit?.doctorTicketNo;
+
+        let matchedLabel = '';
+        if (existingDocId && state.doctorOptionsMap) {
+          matchedLabel = Object.keys(state.doctorOptionsMap).find(lbl => state.doctorOptionsMap[lbl].id === existingDocId) || '';
+        }
+
+        if (matchedLabel) {
+          if (inputs.doctorInput) inputs.doctorInput.value = matchedLabel;
+          if (inputs.doctorTicketNoInput) {
+            inputs.doctorTicketNoInput.value = existingTicketNo || '';
+            inputs.doctorTicketNoInput.disabled = false;
+          }
+        } else {
+          // Clear doctor inputs for new patient
+          if (inputs.doctorInput) inputs.doctorInput.value = '';
+          if (inputs.doctorTicketNoInput) {
+            inputs.doctorTicketNoInput.value = '';
+            inputs.doctorTicketNoInput.disabled = true;
+            inputs.doctorTicketNoInput.placeholder = "Pilih dokter dahulu...";
+          }
+        }
       }
     } else {
       document.getElementById('innerFormBox').style.display = 'none';
