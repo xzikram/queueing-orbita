@@ -210,8 +210,13 @@ buttons.tabKasir.addEventListener('click', () => {
 
 // --- COUNTER MANAGEMENT ---
 async function loadCounters() {
+  const list = inputs.counterButtonList;
   try {
+    console.log('loadCounters: fetching from', axios.defaults.baseURL + '/counters');
+    list.innerHTML = '<div style="text-align:center;padding:12px;color:#64748b;font-weight:600;">⏳ Memuat loket...</div>';
+    
     const res = await axios.get('/counters');
+    console.log('loadCounters: response', JSON.stringify(res.data).substring(0, 200));
     state.counters = Array.isArray(res.data) ? res.data : [];
     
     renderCounterButtons();
@@ -225,7 +230,12 @@ async function loadCounters() {
     highlightSelectedCounterBtn();
     if (state.selectedCounter) await fetchCounterStatus(state.selectedCounter);
   } catch (err) {
-    console.error("Gagal memuat counter:", err);
+    console.error('loadCounters ERROR:', err.message, err.response?.status, err.response?.data);
+    list.innerHTML = `<div style="text-align:center;padding:16px;color:#ef4444;font-weight:700;font-size:12px;">
+      ❌ Gagal memuat counter<br>
+      <span style="font-size:10px;color:#94a3b8;font-weight:400;">${err.message}</span><br>
+      <button onclick="loadCounters()" style="margin-top:8px;padding:6px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:11px;">🔄 Coba Lagi</button>
+    </div>`;
   }
 }
 
@@ -299,8 +309,10 @@ buttons.toggleCounterStatus.addEventListener('click', async () => {
   }
 });
 
-buttons.changeCounter.addEventListener('click', () => {
+buttons.changeCounter.addEventListener('click', async () => {
   containers.counterModal.classList.add('active');
+  await loadCounters();
+  highlightSelectedCounterBtn();
 });
 
 buttons.closeCounterModal.addEventListener('click', () => {
@@ -435,13 +447,57 @@ function renderCurrentState() {
     renderCategoryGrid();
 
   } else {
-    // === STATE 2: IDLE / EMPTY (MOCKUP 2) ===
+    // === STATE 2: IDLE / WAITING QUEUE CARD (MOCKUP 2) ===
     containers.activeStateContainer.style.display = 'none';
     containers.activeControlsGrid.style.display = 'none';
 
     containers.idleStateContainer.style.display = 'flex';
     containers.idleControlsBox.style.display = 'flex';
     containers.manualControlsBox.style.display = 'none';
+
+    const waitingList = state.activeTab === 'ADMISSION' ? state.admissionList : state.cashierList;
+    if (waitingList.length > 0) {
+      const nextTicket = waitingList[0];
+      const rawNo = nextTicket.ticketNo || nextTicket.doctorTicketNo || nextTicket.queueTicket?.ticketNo || 'A001';
+      
+      containers.idleStateContainer.innerHTML = `
+        <div class="waiting-ticket-card">
+          <div class="waiting-badge">⏱️ Menunggu Dipanggil (${waitingList.length})</div>
+          <div class="waiting-ticket-no">${rawNo}</div>
+          <button id="callWaitingBtn" class="btn-call-waiting">
+            📢 PANGGIL ANTREAN (${rawNo})
+          </button>
+        </div>
+      `;
+
+      const btn = document.getElementById('callWaitingBtn');
+      if (btn) {
+        btn.addEventListener('click', () => callPatientInQueue(nextTicket));
+      }
+    } else {
+      containers.idleStateContainer.innerHTML = `<div class="empty-state-text">Antrean Kosong</div>`;
+    }
+  }
+}
+
+async function callPatientInQueue(item) {
+  if (!state.selectedCounter) {
+    alert("Silakan pilih loket terlebih dahulu!");
+    containers.counterModal.classList.add('active');
+    return;
+  }
+  try {
+    if (state.activeTab === 'ADMISSION') {
+      const ticketId = item.id;
+      await axios.post(`/admission/${ticketId}/call`, { counterId: state.selectedCounter });
+    } else {
+      const visitId = item.id || item.visitId;
+      await axios.post(`/cashier/${visitId}/call`, { counterId: state.selectedCounter });
+    }
+    await refreshQueues();
+    ipcRenderer.send('show-window');
+  } catch (err) {
+    alert("Gagal memanggil antrean: " + (err.response?.data?.message || err.message));
   }
 }
 
