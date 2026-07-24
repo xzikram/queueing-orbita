@@ -611,9 +611,18 @@ function renderCurrentState() {
     containers.activeControlsGrid.style.display = 'none';
 
     containers.idleStateContainer.style.display = 'flex';
-    containers.idleStateContainer.innerHTML = `<div class="empty-state-text" style="color:#2563eb;font-weight:700;">🎟️ Pilih Kategori Tiket Baru</div>`;
+    containers.idleStateContainer.innerHTML = `
+      <div class="waiting-card-container" style="padding: 4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0;">
+          <span style="font-size:12px;font-weight:800;color:#1e3a8a;">🎟️ AMBIL TIKET BARU</span>
+          <button onclick="window.cancelManualTicketMode()" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:3px 10px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;">❌ Batal</button>
+        </div>
+        <div id="centerCategoryGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 0;"></div>
+      </div>
+    `;
+
     containers.idleControlsBox.style.display = 'none';
-    containers.manualControlsBox.style.display = 'flex';
+    containers.manualControlsBox.style.display = 'none';
 
     renderCategoryGrid();
 
@@ -690,7 +699,9 @@ async function callPatientInQueue(item) {
 
 // --- DYNAMIC CATEGORY GRID (MOCKUP 3 - ADMISI: A-D, KASIR: G-H) ---
 function renderCategoryGrid() {
-  containers.categoryGrid.innerHTML = '';
+  const grid = document.getElementById('centerCategoryGrid') || containers.categoryGrid;
+  if (!grid) return;
+  grid.innerHTML = '';
 
   if (state.activeTab === 'CASHIER') {
     // Kasir Categories: UMUM (G), ASURANSI (H)
@@ -702,9 +713,11 @@ function renderCategoryGrid() {
     cats.forEach(c => {
       const btn = document.createElement('button');
       btn.className = `btn-cat ${c.color}`;
+      btn.style.padding = '12px 6px';
+      btn.style.fontSize = '12px';
       btn.innerText = c.label;
       btn.addEventListener('click', () => createTicket('CASHIER', c.type));
-      containers.categoryGrid.appendChild(btn);
+      grid.appendChild(btn);
     });
 
   } else {
@@ -719,9 +732,11 @@ function renderCategoryGrid() {
     cats.forEach(c => {
       const btn = document.createElement('button');
       btn.className = `btn-cat ${c.color}`;
+      btn.style.padding = '12px 6px';
+      btn.style.fontSize = '12px';
       btn.innerText = c.label;
       btn.addEventListener('click', () => createTicket('ADMISSION', c.type));
-      containers.categoryGrid.appendChild(btn);
+      grid.appendChild(btn);
     });
   }
 }
