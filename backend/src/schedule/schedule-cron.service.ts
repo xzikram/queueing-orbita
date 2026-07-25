@@ -31,4 +31,14 @@ export class ScheduleCronService implements OnModuleInit {
       this.logger.error('Failed to execute daily HIS sync', error);
     }
   }
+
+  // Run every 30 seconds to auto-sync registrations from Kiosk SIMRS into Pengkajian Queue
+  @Cron('*/30 * * * * *')
+  async handleKioskRegistrationsSync() {
+    try {
+      await this.scheduleService.syncSimrsRegistrations();
+    } catch (error) {
+      // silent catch for background polling
+    }
+  }
 }

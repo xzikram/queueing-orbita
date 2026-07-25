@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HisApiService } from '../adapters/his-api.service';
 import { parseLocalDate } from '../common/timezone.utils';
+import { DisplayGateway } from '../websocket/display.gateway';
 
 @Injectable()
 export class ScheduleService {
@@ -10,6 +11,7 @@ export class ScheduleService {
   constructor(
     private prisma: PrismaService,
     private hisApiService: HisApiService,
+    private displayGateway: DisplayGateway,
   ) {}
 
   async findActiveToday() {
@@ -810,6 +812,179 @@ export class ScheduleService {
       return `Poli ${parts[1]}`;
     }
     return roomId;
+  }
+
+  async syncSimrsRegistrations() {
+    let tzOffset = 8;
+    if (process.env.TZ === 'Asia/Jakarta') tzOffset = 7;
+    else if (process.env.TZ === 'Asia/Jayapura') tzOffset = 9;
+
+    const now = new Date();
+    const localTime = now.getTime() + tzOffset * 60 * 60 * 1000;
+    const localDate = new Date(localTime);
+
+    const year = localDate.getUTCFullYear();
+    const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getUTCDate()).padStart(2, '0');
+    const isoDateStr = `${year}-${month}-${day}`;
+
+    const startOfDay = new Date(`${isoDateStr}T00:00:00.000Z`);
+
+    const bridgeUrl =
+      process.env.SIMRS_BRIDGE_URL || 'http://192.168.40.141:88/qc/bridge.ashx';
+    const bridgeToken =
+      process.env.SIMRS_BRIDGE_TOKEN || 'OrbitaSecureBridge2026';
+    const url = new URL(bridgeUrl);
+    url.searchParams.append('token', bridgeToken);
+
+    const sql = `
+      SELECT r.RegistrationNo, r.PatientID, r.ParamedicID, r.RegistrationQue,
+             r.isProcessQue, r.IsClosed, r.ServiceUnitID,
+             p.FirstName, p.LastName, p.MedicalNo
+      FROM Registration r
+      INNER JOIN Patient p ON r.PatientID = p.PatientID
+      WHERE r.RegistrationNo LIKE 'REG/OP/%'
+        AND r.RegistrationDate >= '${isoDateStr} 00:00:00'
+        AND r.IsVoid = 0
+      ORDER BY r.RegistrationDate ASC
+    `;
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ query: sql }).toString(),
+        signal: AbortSignal.timeout(10000),
+      });
+      const simrsRegs = await res.json();
+      if (!Array.isArray(simrsRegs) || simrsRegs.length === 0) return { addedCount: 0 };
+
+      const doctors = await this.prisma.doctor.findMany({
+        include: { defaultRoom: { include: { floor: true } } },
+      });
+      const floors = await this.prisma.floor.findMany();
+      const rooms = await this.prisma.room.findMany({ include: { floor: true } });
+
+      let addedCount = 0;
+
+      for (const reg of simrsRegs) {
+        const fullName = `${reg.FirstName || ''} ${reg.LastName || ''}`.trim();
+        const rawRm = reg.PatientID;
+        const formattedRm = reg.MedicalNo || rawRm;
+
+        const existingVisit = await this.prisma.visit.findFirst({
+          where: {
+            visitDate: { gte: startOfDay },
+            OR: [
+              { patientRmNo: rawRm },
+              { patientRmNo: formattedRm },
+              { patientRmNo: { contains: rawRm.replace(/[^0-9]/g, '') } },
+            ],
+          },
+        });
+
+        if (existingVisit) continue;
+
+        const doc = doctors.find((d) => d.doctorCode === reg.ParamedicID);
+        const todaySchedule = await this.prisma.doctorSchedule.findFirst({
+          where: { doctorId: doc?.id, scheduleDate: { gte: startOfDay }, status: 'ACTIVE' },
+          include: { room: { include: { floor: true } }, floor: true },
+        });
+
+        let targetRoom = todaySchedule?.room || doc?.defaultRoom;
+        let targetFloor = todaySchedule?.floor || doc?.defaultRoom?.floor;
+
+        if (!targetRoom) {
+          if (reg.ParamedicID === 'D217') {
+            targetRoom = rooms.find((r) => r.code === 'A1-602' || r.name.includes('6B'));
+            targetFloor = targetRoom?.floor || floors.find((f) => f.floorNumber === 6);
+          } else {
+            targetFloor = floors.find((f) => f.floorNumber === 6) || floors[0];
+            targetRoom = rooms.find((r) => r.floorId === targetFloor?.id) || rooms[0];
+          }
+        }
+
+        const initials = doc?.doctorInitials || doc?.doctorCode || 'DR';
+        const doctorTicketNo = `${initials}${String(reg.RegistrationQue || 1).padStart(3, '0')}`;
+
+        let ticket = await this.prisma.queueTicket.findFirst({
+          where: { ticketNo: doctorTicketNo, queueDate: { gte: startOfDay } },
+        });
+
+        if (!ticket) {
+          ticket = await this.prisma.queueTicket.create({
+            data: {
+              ticketNo: doctorTicketNo,
+              queueDate: startOfDay,
+              patientType: 'ONLINE',
+              status: 'FINISHED',
+              selectedDoctorId: doc?.id,
+              selectedRoomId: targetRoom?.id,
+              selectedFloorId: targetFloor?.id,
+            },
+          });
+        }
+
+        const visit = await this.prisma.visit.create({
+          data: {
+            visitCode: `V-SIMRS-${reg.RegistrationNo}`,
+            queueTicketId: ticket.id,
+            visitDate: startOfDay,
+            patientRmNo: rawRm,
+            patientName: fullName,
+            patientType: 'ONLINE',
+            selectedDoctorId: doc?.id,
+            selectedFloorId: targetFloor?.id,
+            selectedRoomId: targetRoom?.id,
+            currentUnitType: 'ASSESSMENT',
+            currentStatus: 'WAITING',
+            doctorTicketNo,
+          },
+        });
+
+        await this.prisma.journeyUnitSession.create({
+          data: {
+            visitId: visit.id,
+            unitType: 'ASSESSMENT',
+            status: 'WAITING',
+            floorId: targetFloor?.id,
+            roomId: targetRoom?.id,
+            doctorId: doc?.id,
+            queueTicketId: ticket.id,
+            createdBy: 'Auto Sync SIMRS Kiosk',
+          },
+        });
+
+        await this.prisma.journeyEvent.create({
+          data: {
+            visitId: visit.id,
+            unitType: 'ASSESSMENT',
+            eventType: 'WAITING_CREATED',
+            eventTime: new Date(),
+            floorId: targetFloor?.id,
+            roomId: targetRoom?.id,
+            doctorId: doc?.id,
+            note: 'Diimpor otomatis dari Kiosk SIMRS',
+          },
+        });
+
+        addedCount++;
+      }
+
+      if (addedCount > 0) {
+        this.logger.log(
+          `Auto-synced ${addedCount} new Kiosk SIMRS registration(s) into Orbita Pengkajian.`,
+        );
+        this.displayGateway.triggerDashboardRefresh();
+      }
+
+      return { addedCount };
+    } catch (err: any) {
+      this.logger.warn(
+        `Failed to auto-sync Kiosk SIMRS registrations: ${err.message}`,
+      );
+      return { addedCount: 0 };
+    }
   }
 }
 
