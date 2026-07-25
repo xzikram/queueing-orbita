@@ -38,23 +38,23 @@ export class QueueService {
     const prefix =
       schedule.doctor.doctorCode || (data.patientType === 'UMUM' ? 'U' : 'A');
 
-    const lastTicket = await this.prisma.queueTicket.findFirst({
+    const tickets = await this.prisma.queueTicket.findMany({
       where: {
         queueDate: { gte: today, lt: tomorrow },
         selectedDoctorId: schedule.doctorId,
       },
-      orderBy: { createdAt: 'desc' },
+      select: { ticketNo: true },
     });
 
-    let nextNumber = 1;
-    if (lastTicket) {
-      // The ticket number format is Prefix + 3 digit number (e.g. HB001)
-      // Extract the number part by replacing the prefix
-      const numberPart = lastTicket.ticketNo.replace(prefix, '');
-      const lastNum = parseInt(numberPart) || 0;
-      nextNumber = lastNum + 1;
+    const regex = new RegExp(`^${prefix}\\d+$`);
+    let maxNum = 0;
+    for (const t of tickets) {
+      if (regex.test(t.ticketNo)) {
+        const num = parseInt(t.ticketNo.slice(prefix.length), 10) || 0;
+        if (num > maxNum) maxNum = num;
+      }
     }
-
+    const nextNumber = maxNum + 1;
     const ticketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
 
     // Create ticket and increment booked count
@@ -113,21 +113,23 @@ export class QueueService {
         throw new BadRequestException('Kuota dokter sudah penuh');
     }
 
-    const lastTicket = await this.prisma.queueTicket.findFirst({
+    const tickets = await this.prisma.queueTicket.findMany({
       where: {
         queueDate: { gte: today, lt: tomorrow },
         ticketNo: { startsWith: prefix },
       },
-      orderBy: { createdAt: 'desc' },
+      select: { ticketNo: true },
     });
 
-    let nextNumber = 1;
-    if (lastTicket) {
-      const numberPart = lastTicket.ticketNo.replace(prefix, '');
-      const lastNum = parseInt(numberPart) || 0;
-      nextNumber = lastNum + 1;
+    const regex = new RegExp(`^${prefix}\\d{1,4}$`);
+    let maxNum = 0;
+    for (const t of tickets) {
+      if (regex.test(t.ticketNo)) {
+        const num = parseInt(t.ticketNo.slice(prefix.length), 10) || 0;
+        if (num > maxNum) maxNum = num;
+      }
     }
-
+    const nextNumber = maxNum + 1;
     const ticketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
 
     const ticketData: any = {
@@ -178,21 +180,23 @@ export class QueueService {
 
     const prefix = data.patientType === 'UMUM' ? 'G' : 'H';
 
-    const lastTicket = await this.prisma.queueTicket.findFirst({
+    const tickets = await this.prisma.queueTicket.findMany({
       where: {
         queueDate: { gte: today, lt: tomorrow },
         ticketNo: { startsWith: prefix },
       },
-      orderBy: { createdAt: 'desc' },
+      select: { ticketNo: true },
     });
 
-    let nextNumber = 1;
-    if (lastTicket) {
-      const numberPart = lastTicket.ticketNo.replace(prefix, '');
-      const lastNum = parseInt(numberPart) || 0;
-      nextNumber = lastNum + 1;
+    const regex = new RegExp(`^${prefix}\\d{1,4}$`);
+    let maxNum = 0;
+    for (const t of tickets) {
+      if (regex.test(t.ticketNo)) {
+        const num = parseInt(t.ticketNo.slice(prefix.length), 10) || 0;
+        if (num > maxNum) maxNum = num;
+      }
     }
-
+    const nextNumber = maxNum + 1;
     const ticketNo = `${prefix}${String(nextNumber).padStart(3, '0')}`;
 
     // Create ticket AND a visit starting at CASHIER directly
@@ -223,6 +227,8 @@ export class QueueService {
           visitId: v.id,
           unitType: 'CASHIER',
           status: 'WAITING',
+          waitingStartedAt: new Date(),
+          queueTicketId: t.id,
         },
       });
 
