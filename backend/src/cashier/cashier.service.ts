@@ -191,10 +191,10 @@ export class CashierService {
     await this.journeyService.finishService(session.id, { createdBy: userId });
     await this.prisma.visit.update({
       where: { id: visitId },
-      data: { currentStatus: 'COMPLETED' },
+      data: { currentStatus: 'FINISHED', finishedAt: new Date() },
     });
     this.displayGateway.triggerDashboardRefresh();
-    return { message: 'Layanan kasir dan pembayaran selesai' };
+    return { message: 'Layanan kasir selesai' };
   }
 
   async setNextDestination(

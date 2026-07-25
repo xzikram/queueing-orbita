@@ -883,48 +883,7 @@ export class ScheduleService {
           },
         });
 
-        if (existingVisit) {
-          // If SIMRS shows transaction is closed or sent to Kasir, move visit to CASHIER in Orbita
-          if (
-            (reg.IsClosed === 1 || reg.IsClosed === true) &&
-            existingVisit.currentUnitType !== 'CASHIER' &&
-            existingVisit.currentUnitType !== 'PHARMACY' &&
-            existingVisit.currentStatus !== 'FINISHED'
-          ) {
-            await this.prisma.visit.update({
-              where: { id: existingVisit.id },
-              data: {
-                currentUnitType: 'CASHIER',
-                currentStatus: 'WAITING',
-              },
-            });
-
-            const cashierSession = await this.prisma.journeyUnitSession.findFirst({
-              where: { visitId: existingVisit.id, unitType: 'CASHIER' },
-            });
-            if (!cashierSession) {
-              await this.prisma.journeyUnitSession.create({
-                data: {
-                  visitId: existingVisit.id,
-                  unitType: 'CASHIER',
-                  status: 'WAITING',
-                  floorId: existingVisit.selectedFloorId,
-                  roomId: existingVisit.selectedRoomId,
-                  doctorId: existingVisit.selectedDoctorId,
-                  queueTicketId: existingVisit.queueTicketId,
-                  createdBy: 'Auto SIMRS Billing Sync',
-                },
-              });
-            } else {
-              await this.prisma.journeyUnitSession.update({
-                where: { id: cashierSession.id },
-                data: { status: 'WAITING', serviceFinishedAt: null },
-              });
-            }
-            addedCount++;
-          }
-          continue;
-        }
+        if (existingVisit) continue;
 
         const doc = doctors.find((d) => d.doctorCode === reg.ParamedicID);
         const todaySchedule = await this.prisma.doctorSchedule.findFirst({
