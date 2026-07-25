@@ -291,21 +291,11 @@ export default function FrontDeskPage() {
     return t.status === 'IN_PROGRESS' && session && ['CALLED', 'SERVING'].includes(session.status);
   });
 
-  const isCashierTicket = (v: any) => {
-    const ticketNo = v.queueTicket?.ticketNo || v.doctorTicketNo || '';
-    return ticketNo.startsWith('G') || ticketNo.startsWith('H');
-  };
-
-  const allCashWaiting = cashierQueue.filter(v => {
+  const cashWaiting = cashierQueue.filter(v => {
     const s = v.journeySessions?.[0];
     return s?.status === 'WAITING' || s?.status === 'SKIPPED';
   });
-
-  const cashWaiting = allCashWaiting.filter(isCashierTicket);
-  const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status)).filter(isCashierTicket);
-  const cashNeedDest = cashierQueue.filter(v => v.currentStatus === 'WAITING_DESTINATION').filter(isCashierTicket);
-
-  const patientCashWaiting = allCashWaiting.filter(v => !isCashierTicket(v) && v.patientName);
+  const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
 
   return (
     <div className={styles.page}>
@@ -499,70 +489,51 @@ export default function FrontDeskPage() {
           </div>
 
           <div className={`glass-card ${styles.column}`} style={{ borderTop: '4px solid #10b981' }}>
-            <div className={styles.columnHeader}><h3>🔄 Kasir Aktif ({cashActive.length + cashNeedDest.length})</h3></div>
+            <div className={styles.columnHeader}><h3>🔄 Kasir Aktif ({cashActive.length})</h3></div>
             <div className={styles.queueList}>
-              {cashActive.length === 0 && cashNeedDest.length === 0 ? <div className={styles.empty}>Tidak ada</div> : (
-                <>
-                  {cashActive.map((v: any) => {
-                    const s = v.journeySessions?.[0];
-                    const isCalled = s?.status === 'CALLED';
-                    const isMyTicket = s?.counterId === selectedCounter;
-                    return (
-                      <div 
-                        key={v.id} 
-                        className={`${styles.compactCard} ${styles.activeCardCompact}`}
-                        style={{ opacity: isMyTicket ? 1 : 0.6 }}
-                      >
-                        <div className={styles.cardLeft}>
-                          <div className={styles.ticketHeaderCompact}>
-                            <span className={styles.ticketNoCompact}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                            <span className={`badge ${isCalled ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{s?.status}</span>
-                          </div>
-                          <div className={styles.ticketInfoCompact}>
-                            <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
-                            <span> • 🖥️ {s?.counter?.name || 'Counter Lain'}</span>
-                            {v.patientName && <span> • 👤 {v.patientName}</span>}
-                          </div>
-                        </div>
-                        <div className={styles.cardRight} style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {(isCalled || s?.status === 'SERVING') && (
-                            <>
-                              <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')} disabled={actionLoading === v.id || !isMyTicket}>
-                                ✅ Selesai
-                              </button>
-                              <button className="btn btn-warning btn-sm" onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id || !selectedCounter || !isMyTicket} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
-                            </>
-                          )}
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }} disabled={actionLoading === v.id || !isMyTicket}>🔄</button>
-                          <button className="btn btn-warning btn-sm" onClick={() => holdAction(v.id, 'CASHIER')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }} disabled={actionLoading === v.id || !isMyTicket}>⏸️</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} disabled={actionLoading === v.id || !isMyTicket}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18"></line>
-                              <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {cashNeedDest.map((v: any) => (
-                    <div key={v.id} className={`${styles.compactCard} ${styles.activeCardCompact}`}>
+              {cashActive.length === 0 ? <div className={styles.empty}>Tidak ada</div> : (
+                cashActive.map((v: any) => {
+                  const s = v.journeySessions?.[0];
+                  const isCalled = s?.status === 'CALLED';
+                  const isMyTicket = s?.counterId === selectedCounter;
+                  return (
+                    <div 
+                      key={v.id} 
+                      className={`${styles.compactCard} ${styles.activeCardCompact}`}
+                      style={{ opacity: isMyTicket ? 1 : 0.6 }}
+                    >
                       <div className={styles.cardLeft}>
                         <div className={styles.ticketHeaderCompact}>
                           <span className={styles.ticketNoCompact}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
-                          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>SELESAI</span>
+                          <span className={`badge ${isCalled ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{s?.status}</span>
                         </div>
                         <div className={styles.ticketInfoCompact}>
                           <span>👨‍⚕️ {v.selectedDoctor?.doctorName || '-'}</span>
+                          <span> • 🖥️ {s?.counter?.name || 'Counter Lain'}</span>
                           {v.patientName && <span> • 👤 {v.patientName}</span>}
                         </div>
                       </div>
-                      <div className={styles.cardRight}>
-                        <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')}>✅ Selesai</button>
+                      <div className={styles.cardRight} style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {(isCalled || s?.status === 'SERVING') && (
+                          <>
+                            <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => action(v.id, 'CASHIER', 'finish')} disabled={actionLoading === v.id || !isMyTicket}>
+                              ✅ Selesai
+                            </button>
+                            <button className="btn btn-warning btn-sm" onClick={() => callPatient(v.id, 'CASHIER')} disabled={actionLoading === v.id || !selectedCounter || !isMyTicket} style={{ padding: '6px 10px', fontSize: '0.8rem' }}>🔁 Ulang</button>
+                          </>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal({ ticket: v, type: 'CASHIER' }); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b', padding: '6px 10px' }} disabled={actionLoading === v.id || !isMyTicket}>🔄</button>
+                        <button className="btn btn-warning btn-sm" onClick={() => holdAction(v.id, 'CASHIER')} title="Hold/Pause" style={{ background: '#d97706', color: '#fff', borderColor: '#d97706', padding: '6px 10px' }} disabled={actionLoading === v.id || !isMyTicket}>⏸️</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => openCancelModal(v, 'CASHIER')} title="Batal/Drop" style={{ background: '#ef4444', color: '#fff', borderColor: '#ef4444', padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} disabled={actionLoading === v.id || !isMyTicket}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </>
+                  );
+                })
               )}
             </div>
           </div>
