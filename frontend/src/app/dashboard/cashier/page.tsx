@@ -172,6 +172,7 @@ export default function CashierPage() {
   });
 
   const active = queue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status) && isCashierTicket(v));
+  const patientWaitingList = queue.filter((v: any) => v.patientName);
 
   return (
     <div className={styles.unitPage}>

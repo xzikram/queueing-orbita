@@ -301,6 +301,7 @@ export default function FrontDeskPage() {
     return (s?.status === 'WAITING' || s?.status === 'SKIPPED') && isCashierTicket(v);
   });
   const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status) && isCashierTicket(v));
+  const patientCashWaiting = cashierQueue.filter((v: any) => v.patientName);
 
   return (
     <div className={styles.page}>
