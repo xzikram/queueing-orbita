@@ -30,11 +30,6 @@ export class ReportsService {
   private buildWhereClause(query: any): Prisma.JourneyUnitSessionWhereInput {
     const where: Prisma.JourneyUnitSessionWhereInput = {
       status: 'FINISHED',
-      waitingStartedAt: { not: null },
-      serviceStartedAt: { not: null },
-      serviceFinishedAt: { not: null },
-      waitingDurationSeconds: { not: null },
-      serviceDurationSeconds: { not: null },
     };
 
     if (query.startDate && query.endDate) {
