@@ -291,11 +291,16 @@ export default function FrontDeskPage() {
     return t.status === 'IN_PROGRESS' && session && ['CALLED', 'SERVING'].includes(session.status);
   });
 
+  const isCashierTicket = (v: any) => {
+    const ticketNo = v.queueTicket?.ticketNo || v.doctorTicketNo || '';
+    return ticketNo.startsWith('G') || ticketNo.startsWith('H');
+  };
+
   const cashWaiting = cashierQueue.filter(v => {
     const s = v.journeySessions?.[0];
-    return s?.status === 'WAITING' || s?.status === 'SKIPPED';
+    return (s?.status === 'WAITING' || s?.status === 'SKIPPED') && isCashierTicket(v);
   });
-  const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
+  const cashActive = cashierQueue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status) && isCashierTicket(v));
 
   return (
     <div className={styles.page}>

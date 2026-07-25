@@ -161,12 +161,17 @@ export default function CashierPage() {
     }
   };
 
+  const isCashierTicket = (v: any) => {
+    const ticketNo = v.doctorTicketNo || v.queueTicket?.ticketNo || '';
+    return ticketNo.startsWith('G') || ticketNo.startsWith('H');
+  };
+
   const waiting = queue.filter(v => {
     const s = v.journeySessions?.[0];
-    return s?.status === 'WAITING' || s?.status === 'SKIPPED';
+    return (s?.status === 'WAITING' || s?.status === 'SKIPPED') && isCashierTicket(v);
   });
 
-  const active = queue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status));
+  const active = queue.filter(v => ['CALLED', 'SERVING'].includes(v.journeySessions?.[0]?.status) && isCashierTicket(v));
 
   return (
     <div className={styles.unitPage}>
