@@ -26,11 +26,42 @@ export default function AssessmentPage() {
   // Conflict detection
   const [conflictInfo, setConflictInfo] = useState<{ savedFloorId: string; savedFloorName: string } | null>(null);
 
+  const isKioskSimrs = (v: any) => {
+    return (
+      v.visitCode?.startsWith('V-SIMRS-') ||
+      v.createdBy?.includes('SIMRS') ||
+      v.createdBy?.includes('Kiosk') ||
+      (v.doctorTicketNo?.startsWith('FL') && (v.patientType === 'ONLINE' || v.queueTicket?.patientType === 'ONLINE'))
+    );
+  };
+
   const isAppointment = (v: any) => {
     return (
       v.patientType === 'ONLINE' ||
       v.queueTicket?.patientType === 'ONLINE' ||
       v.queueTicket?.ticketNo?.startsWith('D')
+    );
+  };
+
+  const renderPatientBadge = (v: any) => {
+    if (isKioskSimrs(v)) {
+      return (
+        <span className="badge" style={{ backgroundColor: '#7c3aed', color: '#fff', fontWeight: 600 }}>
+          🖥️ KIOSK SIMRS
+        </span>
+      );
+    }
+    if (isAppointment(v)) {
+      return (
+        <span className="badge" style={{ backgroundColor: '#2563eb', color: '#fff', fontWeight: 600 }}>
+          📅 APPOINTMENT
+        </span>
+      );
+    }
+    return (
+      <span className="badge" style={{ backgroundColor: '#0891b2', color: '#fff', fontWeight: 600 }}>
+        🚶 WALK-IN
+      </span>
     );
   };
 
@@ -218,9 +249,7 @@ export default function AssessmentPage() {
                 <div className={styles.ticketHeader}>
                   <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span className="badge" style={isAppointment(v) ? { backgroundColor: '#2563eb', color: '#fff', fontWeight: 600 } : { backgroundColor: '#0891b2', color: '#fff', fontWeight: 600 }}>
-                      {isAppointment(v) ? '📅 APPOINTMENT' : '🚶 WALK-IN'}
-                    </span>
+                    {renderPatientBadge(v)}
                     <span className="badge badge-warning">WAITING</span>
                   </div>
                 </div>
@@ -247,9 +276,7 @@ export default function AssessmentPage() {
                 <div className={styles.ticketHeader}>
                   <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <span className="badge" style={isAppointment(v) ? { backgroundColor: '#2563eb', color: '#fff', fontWeight: 600 } : { backgroundColor: '#0891b2', color: '#fff', fontWeight: 600 }}>
-                      {isAppointment(v) ? '📅 APPOINTMENT' : '🚶 WALK-IN'}
-                    </span>
+                    {renderPatientBadge(v)}
                     <span className="badge badge-success">SERVING</span>
                   </div>
                 </div>
