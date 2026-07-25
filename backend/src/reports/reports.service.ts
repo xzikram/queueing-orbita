@@ -422,8 +422,6 @@ export class ReportsService {
     const where: Prisma.JourneyUnitSessionWhereInput = {
       unitType: unitType as any,
       status: 'FINISHED',
-      waitingDurationSeconds: { not: null },
-      serviceDurationSeconds: { not: null },
     };
 
     if (query.startDate && query.endDate) {
@@ -470,10 +468,8 @@ export class ReportsService {
       hourlyDistribution[hour]++;
     });
 
-    if (totalPatients === 0) {
-      minWait = 0;
-      minServe = 0;
-    }
+    if (totalPatients === 0 || minWait === Infinity) minWait = 0;
+    if (totalPatients === 0 || minServe === Infinity) minServe = 0;
 
     return {
       totalPatients,
