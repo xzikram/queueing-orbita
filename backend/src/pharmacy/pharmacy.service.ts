@@ -80,77 +80,81 @@ export class PharmacyService {
     }
 
     for (const p of prescriptions) {
-      if (!p.RegistrationNo) continue;
-      const regInfo = regMap.get(p.RegistrationNo) || {
-        medicalNo: '-',
-        patientName: 'Pasien SIMRS',
-      };
+      try {
+        if (!p.RegistrationNo) continue;
+        const regInfo = regMap.get(p.RegistrationNo) || {
+          medicalNo: '-',
+          patientName: 'Pasien SIMRS',
+        };
 
-      let visit = await this.prisma.visit.findFirst({
-        where: {
-          visitDate: { gte: today, lt: tomorrow },
-          ...(regInfo.medicalNo !== '-' ? { patientRmNo: regInfo.medicalNo } : { patientName: regInfo.patientName }),
-        },
-      });
-
-      if (!visit) {
-        const ticketNo = await this.generatePharmacyTicketNo();
-        const ticket = await this.prisma.queueTicket.create({
-          data: {
-            ticketNo,
-            patientType: 'UMUM',
-            status: 'WAITING',
-            queueDate: today,
+        let visit = await this.prisma.visit.findFirst({
+          where: {
+            visitDate: { gte: today, lt: tomorrow },
+            ...(regInfo.medicalNo !== '-' ? { patientRmNo: regInfo.medicalNo } : { patientName: regInfo.patientName }),
           },
         });
 
-        const visitCode = `VIS-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        visit = await this.prisma.visit.create({
-          data: {
-            visitCode,
-            queueTicketId: ticket.id,
-            patientName: regInfo.patientName,
-            patientRmNo: regInfo.medicalNo,
-            patientType: 'UMUM',
-            visitDate: today,
-            currentUnitType: 'PHARMACY',
-            currentStatus: 'SERVING',
-          },
-        });
-      }
+        if (!visit) {
+          const ticketNo = await this.generatePharmacyTicketNo();
+          const ticket = await this.prisma.queueTicket.create({
+            data: {
+              ticketNo,
+              patientType: 'UMUM',
+              status: 'WAITING',
+              queueDate: today,
+            },
+          });
 
-      if (visit && (visit.patientName === 'Pasien SIMRS' || !visit.patientName) && regInfo.patientName !== 'Pasien SIMRS') {
-        await this.prisma.visit.update({
-          where: { id: visit.id },
-          data: { patientName: regInfo.patientName },
-        });
-        visit.patientName = regInfo.patientName;
-      }
+          const visitCode = `VIS-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          visit = await this.prisma.visit.create({
+            data: {
+              visitCode,
+              queueTicketId: ticket.id,
+              patientName: regInfo.patientName,
+              patientRmNo: regInfo.medicalNo,
+              patientType: 'UMUM',
+              visitDate: today,
+              currentUnitType: 'PHARMACY',
+              currentStatus: 'SERVING',
+            },
+          });
+        }
 
-      let pharmacySession = await this.prisma.journeyUnitSession.findFirst({
-        where: {
-          visitId: visit.id,
-          unitType: 'PHARMACY',
-        },
-      });
+        if (visit && (visit.patientName === 'Pasien SIMRS' || !visit.patientName) && regInfo.patientName !== 'Pasien SIMRS') {
+          await this.prisma.visit.update({
+            where: { id: visit.id },
+            data: { patientName: regInfo.patientName },
+          });
+          visit.patientName = regInfo.patientName;
+        }
 
-      if (!pharmacySession) {
-        await this.prisma.journeyUnitSession.create({
-          data: {
+        let pharmacySession = await this.prisma.journeyUnitSession.findFirst({
+          where: {
             visitId: visit.id,
             unitType: 'PHARMACY',
-            status: 'SERVING',
-            waitingStartedAt: new Date(),
-            serviceStartedAt: new Date(),
           },
         });
-        await this.prisma.visit.update({
-          where: { id: visit.id },
-          data: {
-            currentUnitType: 'PHARMACY',
-            currentStatus: 'SERVING',
-          },
-        });
+
+        if (!pharmacySession) {
+          await this.prisma.journeyUnitSession.create({
+            data: {
+              visitId: visit.id,
+              unitType: 'PHARMACY',
+              status: 'SERVING',
+              waitingStartedAt: new Date(),
+              serviceStartedAt: new Date(),
+            },
+          });
+          await this.prisma.visit.update({
+            where: { id: visit.id },
+            data: {
+              currentUnitType: 'PHARMACY',
+              currentStatus: 'SERVING',
+            },
+          });
+        }
+      } catch (err) {
+        console.error('Failed to sync single prescription for pharmacy:', err);
       }
     }
   }
@@ -550,22 +554,21 @@ export class PharmacyService {
 
   async generatePharmacyTicketNo(): Promise<string> {
     const { today, tomorrow } = getLocalDateBoundaries();
-    const lastTicket = await this.prisma.queueTicket.findFirst({
+    const tickets = await this.prisma.queueTicket.findMany({
       where: {
         queueDate: { gte: today, lt: tomorrow },
         ticketNo: { startsWith: 'F' },
       },
-      orderBy: { ticketNo: 'desc' },
+      select: { ticketNo: true },
     });
 
-    let nextNumber = 1;
-    if (lastTicket) {
-      const numberPart = lastTicket.ticketNo.substring(1);
-      const lastNum = parseInt(numberPart) || 0;
-      nextNumber = lastNum + 1;
+    let maxNum = 0;
+    for (const t of tickets) {
+      const num = parseInt(t.ticketNo.replace(/\D/g, ''), 10) || 0;
+      if (num > maxNum) maxNum = num;
     }
 
-    return `F${String(nextNumber).padStart(3, '0')}`;
+    return `F${String(maxNum + 1).padStart(3, '0')}`;
   }
 
   async createManualVisit(patientName: string, customTicketNo: string | undefined, userId: string) {
