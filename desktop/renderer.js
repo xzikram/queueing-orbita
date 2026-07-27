@@ -10,6 +10,9 @@ let state = {
   serverUrl: localStorage.getItem('orbita_server_url') || DEFAULT_SERVER_URL,
   socket: null,
   counters: [],
+  floors: [],
+  selectedFloor: localStorage.getItem('orbita_selected_floor') || null,
+  selectedDoctor: localStorage.getItem('orbita_selected_doctor') || null,
   counterStatus: 'STANDBY',
   doctors: [],
   schedules: [],
@@ -345,6 +348,18 @@ function applyRoleUnitFiltering() {
   state.activeTab = select.value || allowedUnits[0];
 }
 
+async function loadFloors() {
+  try {
+    const res = await axios.get('/floors');
+    state.floors = Array.isArray(res.data) ? res.data : [];
+    if (state.floors.length > 0 && (!state.selectedFloor || !state.floors.some(f => f.id === state.selectedFloor))) {
+      state.selectedFloor = state.floors[0].id;
+    }
+  } catch (err) {
+    console.error('loadFloors ERROR:', err);
+  }
+}
+
 // --- CALLER SCREEN ENGINE ---
 async function initCallerScreen() {
   showScreen('caller');
@@ -357,8 +372,10 @@ async function initCallerScreen() {
   }
 
   startLiveClock();
+  await loadFloors();
   await loadCounters();
   await loadDoctors();
+  updateCounterUI();
   await refreshQueues();
   initSocket();
 }
@@ -410,10 +427,12 @@ function updateCounterModalTitle() {
   const modalHeader = document.querySelector('#counterModal h3');
   if (!modalHeader) return;
 
-  if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
-    modalHeader.innerText = '🏢 Pilih Lantai Jaga';
+  if (state.activeTab === 'ASSESSMENT') {
+    modalHeader.innerText = '🏢 Pilih Lantai Pengkajian';
+  } else if (state.activeTab === 'BDR') {
+    modalHeader.innerText = '🩸 Pilih Lantai BDR';
   } else if (state.activeTab === 'DOCTOR') {
-    modalHeader.innerText = '🩺 Pilih Poli / Ruang Dokter';
+    modalHeader.innerText = '🩺 Pilih Jadwal Dokter / Poli';
   } else if (state.activeTab === 'CDC') {
     modalHeader.innerText = '🔬 Pilih Ruang CDC';
   } else {
@@ -423,38 +442,88 @@ function updateCounterModalTitle() {
 
 function renderCounterButtons() {
   const list = inputs.counterButtonList;
+  if (!list) return;
   list.innerHTML = '';
-  if (state.counters.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada lokasi tersedia</div>';
-    return;
-  }
-  state.counters.forEach(c => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'counter-btn';
-    btn.dataset.counterId = c.id;
 
-    let icon = '📍';
-    let label = c.name;
-
-    if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
-      icon = '🏢';
-      const num = c.name.replace(/[^0-9]/g, '') || '1';
-      label = `Lantai ${num}`;
-    } else if (state.activeTab === 'DOCTOR') {
-      icon = '🩺';
-      const num = c.name.replace(/[^0-9]/g, '') || '1';
-      label = `Poli ${num}`;
-    } else if (state.activeTab === 'CDC') {
-      icon = '🔬';
-      const num = c.name.replace(/[^0-9]/g, '') || '1';
-      label = `Ruang CDC ${num}`;
+  if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
+    if (state.floors.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada lantai di database</div>';
+      return;
     }
-
-    btn.innerHTML = `<span class="counter-icon">${icon}</span> ${label}`;
-    btn.addEventListener('click', () => selectCounter(c.id));
-    list.appendChild(btn);
-  });
+    state.floors.forEach(f => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'counter-btn';
+      if (f.id === state.selectedFloor) btn.classList.add('selected');
+      btn.innerHTML = `<span class="counter-icon">🏢</span> ${f.name}`;
+      btn.addEventListener('click', () => {
+        state.selectedFloor = f.id;
+        localStorage.setItem('orbita_selected_floor', f.id);
+        updateCounterUI();
+        highlightSelectedCounterBtn();
+        containers.counterModal.classList.remove('active');
+        refreshQueues();
+      });
+      list.appendChild(btn);
+    });
+  } else if (state.activeTab === 'DOCTOR') {
+    if (state.schedules.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada jadwal dokter hari ini</div>';
+      return;
+    }
+    state.schedules.forEach(s => {
+      const docName = s.doctor?.doctorName || s.doctorName || 'Dokter';
+      const roomName = s.room?.name || s.roomName || '';
+      const label = roomName ? `${docName} (${roomName})` : docName;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'counter-btn';
+      if (s.id === state.selectedDoctor) btn.classList.add('selected');
+      btn.innerHTML = `<span class="counter-icon">🩺</span> ${label}`;
+      btn.addEventListener('click', () => {
+        state.selectedDoctor = s.id;
+        localStorage.setItem('orbita_selected_doctor', s.id);
+        updateCounterUI();
+        highlightSelectedCounterBtn();
+        containers.counterModal.classList.remove('active');
+        refreshQueues();
+      });
+      list.appendChild(btn);
+    });
+  } else if (state.activeTab === 'CDC') {
+    const listFloors = state.floors.length > 0 ? state.floors : [{ id: 'cdc1', name: 'CDC Lantai 6' }];
+    listFloors.forEach(f => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'counter-btn';
+      if (f.id === state.selectedFloor) btn.classList.add('selected');
+      btn.innerHTML = `<span class="counter-icon">🔬</span> CDC (${f.name})`;
+      btn.addEventListener('click', () => {
+        state.selectedFloor = f.id;
+        localStorage.setItem('orbita_selected_floor', f.id);
+        updateCounterUI();
+        highlightSelectedCounterBtn();
+        containers.counterModal.classList.remove('active');
+        refreshQueues();
+      });
+      list.appendChild(btn);
+    });
+  } else {
+    // ADMISSION or CASHIER
+    if (state.counters.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada counter tersedia</div>';
+      return;
+    }
+    state.counters.forEach(c => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'counter-btn';
+      if (c.id === state.selectedCounter) btn.classList.add('selected');
+      btn.innerHTML = `<span class="counter-icon">📍</span> ${c.name}`;
+      btn.addEventListener('click', () => selectCounter(c.id));
+      list.appendChild(btn);
+    });
+  }
 }
 
 function selectCounter(counterId) {
@@ -470,7 +539,13 @@ function selectCounter(counterId) {
 function highlightSelectedCounterBtn() {
   const btns = inputs.counterButtonList.querySelectorAll('.counter-btn');
   btns.forEach(b => {
-    b.classList.toggle('selected', b.dataset.counterId === state.selectedCounter);
+    if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR' || state.activeTab === 'CDC') {
+      b.classList.toggle('selected', b.innerHTML.includes(state.selectedFloor));
+    } else if (state.activeTab === 'DOCTOR') {
+      b.classList.toggle('selected', b.innerHTML.includes(state.selectedDoctor));
+    } else {
+      b.classList.toggle('selected', b.dataset.counterId === state.selectedCounter);
+    }
   });
 }
 
@@ -483,20 +558,25 @@ async function fetchCounterStatus(counterId) {
 }
 
 function updateCounterUI() {
-  const current = state.counters.find(c => c.id === state.selectedCounter);
-  let rawName = current ? current.name : '';
-
   if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
-    const num = rawName ? (rawName.replace(/[^0-9]/g, '') || '1') : '1';
-    texts.currentCounterName.innerText = `Lantai ${num}`;
+    const floor = state.floors.find(f => f.id === state.selectedFloor);
+    texts.currentCounterName.innerText = floor ? floor.name : 'Lantai 5';
   } else if (state.activeTab === 'DOCTOR') {
-    const num = rawName ? (rawName.replace(/[^0-9]/g, '') || '1') : '1';
-    texts.currentCounterName.innerText = `Poli ${num}`;
+    const sched = state.schedules.find(s => s.id === state.selectedDoctor);
+    if (sched) {
+      const docName = sched.doctor?.doctorName || sched.doctorName || 'Dokter';
+      const roomName = sched.room?.name || sched.roomName || '';
+      texts.currentCounterName.innerText = roomName ? `${docName} (${roomName})` : docName;
+    } else {
+      texts.currentCounterName.innerText = 'Poli Dokter';
+    }
   } else if (state.activeTab === 'CDC') {
-    const num = rawName ? (rawName.replace(/[^0-9]/g, '') || '1') : '1';
-    texts.currentCounterName.innerText = `Ruang CDC ${num}`;
+    const floor = state.floors.find(f => f.id === state.selectedFloor);
+    texts.currentCounterName.innerText = floor ? `CDC (${floor.name})` : 'CDC Lantai 6';
   } else {
-    texts.currentCounterName.innerText = rawName || 'Counter 1';
+    // ADMISSION or CASHIER
+    const current = state.counters.find(c => c.id === state.selectedCounter);
+    texts.currentCounterName.innerText = current ? current.name : 'Counter 1';
   }
 }
 
