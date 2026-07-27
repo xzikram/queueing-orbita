@@ -11,7 +11,9 @@ let state = {
   socket: null,
   counters: [],
   floors: [],
+  rooms: [],
   selectedFloor: localStorage.getItem('orbita_selected_floor') || null,
+  selectedRoom: localStorage.getItem('orbita_selected_room') || null,
   selectedDoctor: localStorage.getItem('orbita_selected_doctor') || null,
   counterStatus: 'STANDBY',
   doctors: [],
@@ -362,6 +364,19 @@ async function loadFloors() {
   }
 }
 
+async function loadRooms() {
+  try {
+    const res = await axios.get('/rooms');
+    const all = Array.isArray(res.data) ? res.data : [];
+    state.rooms = all.filter(r => ['DOCTOR', 'DOCTOR_CHILD'].includes(r.roomType));
+    if (state.rooms.length > 0 && (!state.selectedRoom || !state.rooms.some(r => r.id === state.selectedRoom))) {
+      state.selectedRoom = state.rooms[0].id;
+    }
+  } catch (err) {
+    console.error('loadRooms ERROR:', err);
+  }
+}
+
 // --- CALLER SCREEN ENGINE ---
 async function initCallerScreen() {
   showScreen('caller');
@@ -375,6 +390,7 @@ async function initCallerScreen() {
 
   startLiveClock();
   await loadFloors();
+  await loadRooms();
   await loadCounters();
   await loadDoctors();
   updateCounterUI();
@@ -434,7 +450,7 @@ function updateCounterModalTitle() {
   } else if (state.activeTab === 'BDR') {
     modalHeader.innerText = '🩸 Pilih Lantai BDR';
   } else if (state.activeTab === 'DOCTOR') {
-    modalHeader.innerText = '🩺 Pilih Jadwal Dokter / Poli';
+    modalHeader.innerText = '🩺 Pilih Ruangan / Poli Dokter';
   } else if (state.activeTab === 'CDC') {
     modalHeader.innerText = '🔬 Pilih Ruang CDC';
   } else {
@@ -469,22 +485,19 @@ function renderCounterButtons() {
       list.appendChild(btn);
     });
   } else if (state.activeTab === 'DOCTOR') {
-    if (state.schedules.length === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada jadwal dokter hari ini</div>';
+    if (state.rooms.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada ruangan poli di database</div>';
       return;
     }
-    state.schedules.forEach(s => {
-      const docName = s.doctor?.doctorName || s.doctorName || 'Dokter';
-      const roomName = s.room?.name || s.roomName || '';
-      const label = roomName ? `${docName} (${roomName})` : docName;
+    state.rooms.forEach(r => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'counter-btn';
-      if (s.id === state.selectedDoctor) btn.classList.add('selected');
-      btn.innerHTML = `<span class="counter-icon">🩺</span> ${label}`;
+      if (r.id === state.selectedRoom) btn.classList.add('selected');
+      btn.innerHTML = `<span class="counter-icon">🩺</span> ${r.name}`;
       btn.addEventListener('click', () => {
-        state.selectedDoctor = s.id;
-        localStorage.setItem('orbita_selected_doctor', s.id);
+        state.selectedRoom = r.id;
+        localStorage.setItem('orbita_selected_room', r.id);
         updateCounterUI();
         highlightSelectedCounterBtn();
         containers.counterModal.classList.remove('active');
@@ -544,7 +557,7 @@ function highlightSelectedCounterBtn() {
     if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR' || state.activeTab === 'CDC') {
       b.classList.toggle('selected', b.innerHTML.includes(state.selectedFloor));
     } else if (state.activeTab === 'DOCTOR') {
-      b.classList.toggle('selected', b.innerHTML.includes(state.selectedDoctor));
+      b.classList.toggle('selected', b.innerHTML.includes(state.selectedRoom));
     } else {
       b.classList.toggle('selected', b.dataset.counterId === state.selectedCounter);
     }
@@ -567,14 +580,10 @@ function updateCounterUI() {
       state.selectedFloor = floor.id;
     }
   } else if (state.activeTab === 'DOCTOR') {
-    const sched = state.schedules.find(s => s.id === state.selectedDoctor) || state.schedules[0];
-    if (sched) {
-      const docName = sched.doctor?.doctorName || sched.doctorName || 'Dokter';
-      const roomName = sched.room?.name || sched.roomName || '';
-      texts.currentCounterName.innerText = roomName ? `${docName} (${roomName})` : docName;
-      if (state.selectedDoctor !== sched.id) state.selectedDoctor = sched.id;
-    } else {
-      texts.currentCounterName.innerText = 'Poli Dokter';
+    const room = state.rooms.find(r => r.id === state.selectedRoom) || state.rooms[0];
+    texts.currentCounterName.innerText = room ? room.name : 'Poli 5A';
+    if (room && state.selectedRoom !== room.id) {
+      state.selectedRoom = room.id;
     }
   } else if (state.activeTab === 'CDC') {
     const floor = state.floors.find(f => f.id === state.selectedFloor) || state.floors[0];
@@ -719,8 +728,8 @@ async function refreshQueues() {
     let endpoint = config.queueEndpoint;
     if ((state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR' || state.activeTab === 'CDC') && state.selectedFloor) {
       endpoint += `?floorId=${state.selectedFloor}`;
-    } else if (state.activeTab === 'DOCTOR' && state.selectedDoctor) {
-      endpoint += `?scheduleId=${state.selectedDoctor}`;
+    } else if (state.activeTab === 'DOCTOR' && state.selectedRoom) {
+      endpoint += `?roomId=${state.selectedRoom}`;
     }
 
     console.log(`[Orbita Queue] Fetching queue for ${state.activeTab} from ${endpoint}`);
