@@ -32,6 +32,7 @@ window.onUnitSelectChange = function(selectEl) {
   state.isManualMode = false;
   state.activeCall = null;
   state.unitWaitingList = [];
+  if (typeof updateCounterUI === 'function') updateCounterUI();
   refreshQueues();
 };
 
@@ -405,11 +406,26 @@ async function loadCounters() {
   }
 }
 
+function updateCounterModalTitle() {
+  const modalHeader = document.querySelector('#counterModal h3');
+  if (!modalHeader) return;
+
+  if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
+    modalHeader.innerText = '🏢 Pilih Lantai Jaga';
+  } else if (state.activeTab === 'DOCTOR') {
+    modalHeader.innerText = '🩺 Pilih Poli / Ruang Dokter';
+  } else if (state.activeTab === 'CDC') {
+    modalHeader.innerText = '🔬 Pilih Ruang CDC';
+  } else {
+    modalHeader.innerText = '📍 Pilih Loket Jaga';
+  }
+}
+
 function renderCounterButtons() {
   const list = inputs.counterButtonList;
   list.innerHTML = '';
   if (state.counters.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada counter tersedia</div>';
+    list.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-weight:600;">Tidak ada lokasi tersedia</div>';
     return;
   }
   state.counters.forEach(c => {
@@ -417,7 +433,25 @@ function renderCounterButtons() {
     btn.type = 'button';
     btn.className = 'counter-btn';
     btn.dataset.counterId = c.id;
-    btn.innerHTML = `<span class="counter-icon">📍</span> ${c.name}`;
+
+    let icon = '📍';
+    let label = c.name;
+
+    if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
+      icon = '🏢';
+      const num = c.name.replace(/[^0-9]/g, '') || '1';
+      label = `Lantai ${num}`;
+    } else if (state.activeTab === 'DOCTOR') {
+      icon = '🩺';
+      const num = c.name.replace(/[^0-9]/g, '') || '1';
+      label = `Poli ${num}`;
+    } else if (state.activeTab === 'CDC') {
+      icon = '🔬';
+      const num = c.name.replace(/[^0-9]/g, '') || '1';
+      label = `Ruang CDC ${num}`;
+    }
+
+    btn.innerHTML = `<span class="counter-icon">${icon}</span> ${label}`;
     btn.addEventListener('click', () => selectCounter(c.id));
     list.appendChild(btn);
   });
@@ -450,7 +484,20 @@ async function fetchCounterStatus(counterId) {
 
 function updateCounterUI() {
   const current = state.counters.find(c => c.id === state.selectedCounter);
-  texts.currentCounterName.innerText = current ? current.name : 'Loket';
+  let rawName = current ? current.name : '';
+
+  if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
+    const num = rawName ? (rawName.replace(/[^0-9]/g, '') || '1') : '1';
+    texts.currentCounterName.innerText = `Lantai ${num}`;
+  } else if (state.activeTab === 'DOCTOR') {
+    const num = rawName ? (rawName.replace(/[^0-9]/g, '') || '1') : '1';
+    texts.currentCounterName.innerText = `Poli ${num}`;
+  } else if (state.activeTab === 'CDC') {
+    const num = rawName ? (rawName.replace(/[^0-9]/g, '') || '1') : '1';
+    texts.currentCounterName.innerText = `Ruang CDC ${num}`;
+  } else {
+    texts.currentCounterName.innerText = rawName || 'Counter 1';
+  }
 }
 
 function updateCounterStatusUI() {
@@ -477,6 +524,7 @@ buttons.toggleCounterStatus.addEventListener('click', async () => {
 
 buttons.changeCounter.addEventListener('click', async () => {
   containers.counterModal.classList.add('active');
+  updateCounterModalTitle();
   await loadCounters();
   highlightSelectedCounterBtn();
 });
