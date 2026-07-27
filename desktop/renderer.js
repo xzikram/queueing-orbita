@@ -881,10 +881,22 @@ function renderCurrentState() {
     containers.activeStateContainer.style.display = 'block';
     containers.activeControlsGrid.style.display = 'grid';
 
+    const t = state.activeCall;
+    const activeSessionStatus = t.journeySessions?.[0]?.status || t.status || 'SERVING';
+
     if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'CDC') {
       if (buttons.recallBtn) buttons.recallBtn.style.display = 'none';
-      if (buttons.startBtn) buttons.startBtn.style.display = 'inline-block';
+      if (buttons.startBtn) buttons.startBtn.style.display = (activeSessionStatus === 'CALLED' || activeSessionStatus === 'WAITING') ? 'inline-block' : 'none';
+    } else if (state.activeTab === 'DOCTOR' || state.activeTab === 'BDR') {
+      if (activeSessionStatus === 'CALLED') {
+        if (buttons.recallBtn) buttons.recallBtn.style.display = 'inline-block';
+        if (buttons.startBtn) buttons.startBtn.style.display = 'inline-block';
+      } else {
+        if (buttons.recallBtn) buttons.recallBtn.style.display = 'none';
+        if (buttons.startBtn) buttons.startBtn.style.display = 'none';
+      }
     } else {
+      // ADMISSION or CASHIER
       if (buttons.recallBtn) buttons.recallBtn.style.display = 'inline-block';
       if (buttons.startBtn) buttons.startBtn.style.display = 'none';
     }
@@ -1189,10 +1201,16 @@ if (buttons.startBtn) {
   buttons.startBtn.addEventListener('click', async () => {
     if (!state.activeCall) return;
     const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
-    const ticketId = state.activeCall.id || state.activeCall.queueTicketId;
+    const ticketId = state.activeCall.id || state.activeCall.visitId || state.activeCall.queueTicketId;
     try {
-      await axios.post(config.callEndpoint(ticketId), { counterId: state.selectedCounter });
-      showToast("▶️ Layanan dimulai!");
+      const startEndpoint = (state.activeTab === 'DOCTOR')
+        ? `/doctor-queue/${ticketId}/start`
+        : (state.activeTab === 'BDR')
+          ? `/bdr/${ticketId}/start`
+          : config.callEndpoint(ticketId);
+
+      await axios.post(startEndpoint, { counterId: state.selectedCounter });
+      showToast("▶️ Layanan dimulai!", false);
       await refreshQueues();
     } catch (err) {
       alert("Gagal memulai layanan: " + (err.response?.data?.message || err.message));
@@ -1203,7 +1221,7 @@ if (buttons.startBtn) {
 buttons.recallBtn.addEventListener('click', async () => {
   if (!state.activeCall || !state.selectedCounter) return;
   const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
-  const ticketId = state.activeCall.id || state.activeCall.queueTicketId;
+  const ticketId = state.activeCall.id || state.activeCall.visitId || state.activeCall.queueTicketId;
   
   try {
     await axios.post(config.callEndpoint(ticketId), { counterId: state.selectedCounter });
@@ -1223,7 +1241,7 @@ buttons.recallBtn.addEventListener('click', async () => {
 buttons.holdBtn.addEventListener('click', async () => {
   if (!state.activeCall) return;
   const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
-  const ticketId = state.activeCall.id;
+  const ticketId = state.activeCall.id || state.activeCall.visitId || state.activeCall.queueTicketId;
 
   try {
     await axios.post(config.holdEndpoint(ticketId));
@@ -1250,9 +1268,10 @@ document.getElementById('cancelForm').addEventListener('submit', async (e) => {
   if (!state.targetCancelTicket) return;
   const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
   const reason = inputs.cancelReasonInput.value.trim();
+  const ticketId = state.targetCancelTicket.id || state.targetCancelTicket.visitId || state.targetCancelTicket.queueTicketId;
 
   try {
-    await axios.post(config.cancelEndpoint(state.targetCancelTicket.id), { reason });
+    await axios.post(config.cancelEndpoint(ticketId), { reason });
     containers.cancelModal.classList.remove('active');
     state.targetCancelTicket = null;
     state.activeCall = null;
@@ -1270,17 +1289,19 @@ function initSocket() {
     transports: ['websocket', 'polling']
   });
   
-  state.socket.on('queue-updated', () => {
+  const handleRefresh = () => {
     refreshQueues().then(() => {
       if (state.activeCall) {
         ipcRenderer.send('show-window');
       }
     });
-  });
+  };
 
-  state.socket.on('dashboard-refresh', () => {
-    refreshQueues();
-  });
+  state.socket.on('queue-updated', handleRefresh);
+  state.socket.on('queueUpdate', handleRefresh);
+  state.socket.on('dashboard-refresh', handleRefresh);
+  state.socket.on('dashboardRefresh', handleRefresh);
+  state.socket.on('displayRefresh', handleRefresh);
 
   state.socket.on('counterStatusChanged', (data) => {
     if (data.counterId === state.selectedCounter) {
