@@ -64,7 +64,11 @@ echo "✅ Folder upload siap"
 
 echo ""
 echo "[5/5] Me-restart PM2 Services..."
-pm2 restart all --update-env
+cd backend
+pm2 delete orbita-backend 2>/dev/null || true
+pm2 start dist/src/main.js --name "orbita-backend"
+cd ..
+pm2 restart orbita-frontend 2>/dev/null || pm2 save
 
 echo ""
 echo "======================================"
