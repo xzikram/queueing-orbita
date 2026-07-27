@@ -207,6 +207,7 @@ const buttons = {
   holdBtn: document.getElementById('holdBtn'),
   cancelBtn: document.getElementById('cancelBtn'),
   closeCancelModal: document.getElementById('closeCancelModalBtn'),
+  refreshHeaderBtn: document.getElementById('refreshHeaderBtn'),
   refreshBtn: document.getElementById('refreshBtn'),
   refreshBtn2: document.getElementById('refreshBtn2'),
   openNewTicketBtn: document.getElementById('openNewTicketBtn'),
@@ -610,9 +611,7 @@ async function refreshQueues() {
 
       state.activeCall = rawData.find(t => {
         const s = t.journeySessions?.[0] || t.visit?.journeySessions?.[0];
-        const status = t.status || s?.status;
-        return (status === 'IN_PROGRESS' || s?.status === 'CALLED' || s?.status === 'SERVING') && 
-               s?.counterId === state.selectedCounter;
+        return s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
       }) || null;
     }
 
@@ -845,6 +844,13 @@ if (buttons.openNewTicketBtn) {
   buttons.openNewTicketBtn.addEventListener('click', (e) => {
     e.preventDefault();
     window.toggleManualTicketMode();
+  });
+}
+
+if (buttons.refreshHeaderBtn) {
+  buttons.refreshHeaderBtn.addEventListener('click', () => {
+    state.isManualMode = false;
+    refreshQueues();
   });
 }
 
