@@ -710,11 +710,19 @@ if (inputs.doctorInput) {
   });
 }
 
-// --- QUEUE FETCHING ---
 async function refreshQueues() {
   try {
     const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
-    const res = await axios.get(config.queueEndpoint).catch(() => ({ data: [] }));
+    
+    let endpoint = config.queueEndpoint;
+    if ((state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR' || state.activeTab === 'CDC') && state.selectedFloor) {
+      endpoint += `?floorId=${state.selectedFloor}`;
+    } else if (state.activeTab === 'DOCTOR' && state.selectedDoctor) {
+      endpoint += `?scheduleId=${state.selectedDoctor}`;
+    }
+
+    console.log(`[Orbita Queue] Fetching queue for ${state.activeTab} from ${endpoint}`);
+    const res = await axios.get(endpoint).catch(() => ({ data: [] }));
 
     const rawData = Array.isArray(res.data) ? res.data : (res.data?.waitingList || res.data?.queue || []);
 
@@ -731,10 +739,55 @@ async function refreshQueues() {
 
       state.activeCall = rawData.filter(isCashierTicket).find(v => {
         const s = v.journeySessions?.[0];
-        return s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
+        return s && ['CALLED', 'SERVING'].includes(s.status) && (s.counterId === state.selectedCounter || !state.selectedCounter);
+      }) || null;
+
+    } else if (state.activeTab === 'ASSESSMENT') {
+      state.unitWaitingList = rawData.filter(v => {
+        const s = v.journeySessions?.[0];
+        return !s || s.status === 'WAITING' || s.status === 'SKIPPED';
+      });
+
+      state.activeCall = rawData.find(v => {
+        const s = v.journeySessions?.[0];
+        return s && ['CALLED', 'SERVING'].includes(s.status);
+      }) || null;
+
+    } else if (state.activeTab === 'BDR') {
+      state.unitWaitingList = rawData.filter(v => {
+        const s = v.journeySessions?.[0];
+        return !s || s.status === 'WAITING' || s.status === 'SKIPPED';
+      });
+
+      state.activeCall = rawData.find(v => {
+        const s = v.journeySessions?.[0];
+        return s && ['CALLED', 'SERVING'].includes(s.status);
+      }) || null;
+
+    } else if (state.activeTab === 'CDC') {
+      state.unitWaitingList = rawData.filter(v => {
+        const s = v.journeySessions?.[0];
+        return !s || s.status === 'WAITING' || s.status === 'SKIPPED';
+      });
+
+      state.activeCall = rawData.find(v => {
+        const s = v.journeySessions?.[0];
+        return s && ['CALLED', 'SERVING'].includes(s.status);
+      }) || null;
+
+    } else if (state.activeTab === 'DOCTOR') {
+      state.unitWaitingList = rawData.filter(v => {
+        const s = v.journeySessions?.[0];
+        return !s || s.status === 'WAITING' || s.status === 'SKIPPED';
+      });
+
+      state.activeCall = rawData.find(v => {
+        const s = v.journeySessions?.[0];
+        return s && ['CALLED', 'SERVING'].includes(s.status);
       }) || null;
 
     } else {
+      // ADMISSION
       state.unitWaitingList = rawData.filter(t => {
         const s = t.journeySessions?.[0] || t.visit?.journeySessions?.[0];
         const status = t.status || s?.status;
@@ -743,7 +796,7 @@ async function refreshQueues() {
 
       state.activeCall = rawData.find(t => {
         const s = t.journeySessions?.[0] || t.visit?.journeySessions?.[0];
-        return s && ['CALLED', 'SERVING'].includes(s.status) && s.counterId === state.selectedCounter;
+        return s && ['CALLED', 'SERVING'].includes(s.status) && (s.counterId === state.selectedCounter || !state.selectedCounter);
       }) || null;
     }
 
