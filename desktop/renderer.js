@@ -559,24 +559,29 @@ async function fetchCounterStatus(counterId) {
 
 function updateCounterUI() {
   if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR') {
-    const floor = state.floors.find(f => f.id === state.selectedFloor);
+    const floor = state.floors.find(f => f.id === state.selectedFloor) || state.floors[0];
     texts.currentCounterName.innerText = floor ? floor.name : 'Lantai 5';
+    if (floor && state.selectedFloor !== floor.id) {
+      state.selectedFloor = floor.id;
+    }
   } else if (state.activeTab === 'DOCTOR') {
-    const sched = state.schedules.find(s => s.id === state.selectedDoctor);
+    const sched = state.schedules.find(s => s.id === state.selectedDoctor) || state.schedules[0];
     if (sched) {
       const docName = sched.doctor?.doctorName || sched.doctorName || 'Dokter';
       const roomName = sched.room?.name || sched.roomName || '';
       texts.currentCounterName.innerText = roomName ? `${docName} (${roomName})` : docName;
+      if (state.selectedDoctor !== sched.id) state.selectedDoctor = sched.id;
     } else {
       texts.currentCounterName.innerText = 'Poli Dokter';
     }
   } else if (state.activeTab === 'CDC') {
-    const floor = state.floors.find(f => f.id === state.selectedFloor);
+    const floor = state.floors.find(f => f.id === state.selectedFloor) || state.floors[0];
     texts.currentCounterName.innerText = floor ? `CDC (${floor.name})` : 'CDC Lantai 6';
   } else {
     // ADMISSION or CASHIER
-    const current = state.counters.find(c => c.id === state.selectedCounter);
+    const current = state.counters.find(c => c.id === state.selectedCounter) || state.counters[0];
     texts.currentCounterName.innerText = current ? current.name : 'Counter 1';
+    if (current && state.selectedCounter !== current.id) state.selectedCounter = current.id;
   }
 }
 
