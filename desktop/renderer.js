@@ -93,7 +93,7 @@ const UNIT_CONFIG = {
     label: 'Pengkajian',
     icon: '📋',
     queueEndpoint: '/assessment/queue',
-    callEndpoint: (id) => `/assessment/${id}/call`,
+    callEndpoint: (id) => `/assessment/${id}/start`,
     finishEndpoint: (id) => `/assessment/${id}/finish`,
     holdEndpoint: (id) => `/assessment/${id}/hold`,
     cancelEndpoint: (id) => `/assessment/${id}/cancel`,
@@ -139,7 +139,7 @@ const UNIT_CONFIG = {
     label: 'CDC',
     icon: '🔬',
     queueEndpoint: '/cdc/queue',
-    callEndpoint: (id) => `/cdc/${id}/call`,
+    callEndpoint: (id) => `/cdc/${id}/start`,
     finishEndpoint: (id) => `/cdc/${id}/finish`,
     holdEndpoint: (id) => `/cdc/${id}/hold`,
     cancelEndpoint: (id) => `/cdc/${id}/cancel`,
@@ -351,7 +351,9 @@ function applyRoleUnitFiltering() {
 async function loadFloors() {
   try {
     const res = await axios.get('/floors');
-    state.floors = Array.isArray(res.data) ? res.data : [];
+    const allFloors = Array.isArray(res.data) ? res.data : [];
+    // Filter out Lantai 1 for Pengkajian & BDR matching Web Dashboard logic
+    state.floors = allFloors.filter(f => f.floorNumber !== 1 && !f.name.includes('Lantai 1') && f.name !== 'Lantai 1');
     if (state.floors.length > 0 && (!state.selectedFloor || !state.floors.some(f => f.id === state.selectedFloor))) {
       state.selectedFloor = state.floors[0].id;
     }
@@ -976,6 +978,10 @@ function renderCurrentState() {
     if (waitingList.length > 0) {
       const itemsToShow = waitingList.slice(0, 3);
       
+      const isStartMode = (state.activeTab === 'ASSESSMENT' || state.activeTab === 'CDC');
+      const btnLabel = isStartMode ? '▶️ Mulai' : '📢 Panggil';
+      const badgeTitle = isStartMode ? `⏱️ MENUNGGU DIKAJI (${waitingList.length})` : `⏱️ MENUNGGU DIPANGGIL (${waitingList.length})`;
+
       const rowsHtml = itemsToShow.map((t, idx) => {
         const rawNo = t.ticketNo || t.doctorTicketNo || t.queueTicket?.ticketNo || 'A001';
         const rawType = String(t.patientType || t.visit?.patientType || t.queueTicket?.patientType || 'BARU');
@@ -990,7 +996,7 @@ function renderCurrentState() {
               <span class="ticket-item-tag ${tagClass}">${typeStr}</span>
             </div>
             <button class="btn-call-row" data-index="${idx}">
-              📢 Panggil
+              ${btnLabel}
             </button>
           </div>
         `;
@@ -998,7 +1004,7 @@ function renderCurrentState() {
 
       containers.idleStateContainer.innerHTML = `
         <div class="waiting-card-container">
-          <div class="waiting-header-badge">⏱️ MENUNGGU DIPANGGIL (${waitingList.length})</div>
+          <div class="waiting-header-badge">${badgeTitle}</div>
           <div class="waiting-tickets-scroll">
             ${rowsHtml}
           </div>
