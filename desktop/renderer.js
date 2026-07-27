@@ -83,7 +83,6 @@ const UNIT_CONFIG = {
       { value: 'BDR', label: '🩸 BDR' },
       { value: 'CDC', label: '🔬 CDC' },
       { value: 'CASHIER', label: '💳 Kasir' },
-      { value: 'PHARMACY', label: '💊 Farmasi' },
     ]
   },
   ASSESSMENT: {
@@ -97,28 +96,9 @@ const UNIT_CONFIG = {
     hasDoctorForm: false,
     hasDestSelect: true,
     destOptions: [
+      { value: 'BDR', label: '🩸 BDR' },
       { value: 'DOCTOR', label: '🩺 Dokter (Poli)' },
-      { value: 'BDR', label: '🩸 BDR' },
       { value: 'CDC', label: '🔬 CDC' },
-      { value: 'CASHIER', label: '💳 Kasir' },
-      { value: 'PHARMACY', label: '💊 Farmasi' },
-    ]
-  },
-  DOCTOR: {
-    label: 'Dokter (Poli)',
-    icon: '🩺',
-    queueEndpoint: '/doctor-queue/queue',
-    callEndpoint: (id) => `/doctor-queue/${id}/call`,
-    finishEndpoint: (id) => `/doctor-queue/${id}/finish`,
-    holdEndpoint: (id) => `/doctor-queue/${id}/hold`,
-    cancelEndpoint: (id) => `/doctor-queue/${id}/cancel`,
-    hasDoctorForm: false,
-    hasDestSelect: true,
-    destOptions: [
-      { value: 'BDR', label: '🩸 BDR' },
-      { value: 'CDC', label: '🔬 CDC' },
-      { value: 'CASHIER', label: '💳 Kasir' },
-      { value: 'PHARMACY', label: '💊 Farmasi' },
     ]
   },
   BDR: {
@@ -133,8 +113,22 @@ const UNIT_CONFIG = {
     hasDestSelect: true,
     destOptions: [
       { value: 'DOCTOR', label: '🩺 Dokter (Poli)' },
-      { value: 'CASHIER', label: '💳 Kasir' },
-      { value: 'PHARMACY', label: '💊 Farmasi' },
+      { value: 'CDC', label: '🔬 CDC' },
+    ]
+  },
+  DOCTOR: {
+    label: 'Dokter (Poli)',
+    icon: '🩺',
+    queueEndpoint: '/doctor-queue/queue',
+    callEndpoint: (id) => `/doctor-queue/${id}/call`,
+    finishEndpoint: (id) => `/doctor-queue/${id}/finish`,
+    holdEndpoint: (id) => `/doctor-queue/${id}/hold`,
+    cancelEndpoint: (id) => `/doctor-queue/${id}/cancel`,
+    hasDoctorForm: false,
+    hasDestSelect: true,
+    destOptions: [
+      { value: 'FINISHED', label: '✅ Selesai (Pasien Pulang)' },
+      { value: 'CDC', label: '🔬 CDC (Penunjang)' },
     ]
   },
   CDC: {
@@ -148,8 +142,8 @@ const UNIT_CONFIG = {
     hasDoctorForm: false,
     hasDestSelect: true,
     destOptions: [
-      { value: 'CASHIER', label: '💳 Kasir' },
-      { value: 'PHARMACY', label: '💊 Farmasi' },
+      { value: 'DOCTOR', label: '🩺 Dokter (Poli)' },
+      { value: 'FINISHED', label: '✅ Selesai (Pasien Pulang)' },
     ]
   },
   CASHIER: {
@@ -203,6 +197,7 @@ const buttons = {
   closeCounterModal: document.getElementById('closeCounterModalBtn'),
   minBtn: document.getElementById('minBtn'),
   finishBtn: document.getElementById('finishBtn'),
+  startBtn: document.getElementById('startBtn'),
   recallBtn: document.getElementById('recallBtn'),
   holdBtn: document.getElementById('holdBtn'),
   cancelBtn: document.getElementById('cancelBtn'),
@@ -211,6 +206,9 @@ const buttons = {
   refreshBtn: document.getElementById('refreshBtn'),
   refreshBtn2: document.getElementById('refreshBtn2'),
   openNewTicketBtn: document.getElementById('openNewTicketBtn'),
+  closeFastFinishModal: document.getElementById('closeFastFinishModalBtn'),
+  confirmFastFinish: document.getElementById('confirmFastFinishBtn'),
+  cancelFastFinish: document.getElementById('cancelFastFinishBtn'),
 };
 
 const containers = {
@@ -221,6 +219,7 @@ const containers = {
   manualControlsBox: document.getElementById('manualControlsBox'),
   counterModal: document.getElementById('counterModal'),
   cancelModal: document.getElementById('cancelModal'),
+  fastFinishModal: document.getElementById('fastFinishModal'),
   categoryGrid: document.getElementById('categoryGrid'),
 };
 
@@ -626,8 +625,39 @@ async function refreshQueues() {
     if (dotEl) dotEl.style.display = state.unitWaitingList.length > 0 ? 'inline-block' : 'none';
 
     renderCurrentState();
+    checkAutoPopupAndReminders(state.unitWaitingList.length);
   } catch (err) {
     console.error("refreshQueues error:", err);
+  }
+}
+
+let lastWaitingCount = 0;
+let servingReminderInterval = null;
+
+function checkAutoPopupAndReminders(currentWaitingCount) {
+  // 1. Pop-Up on New Ticket Arrival
+  if (currentWaitingCount > lastWaitingCount && !state.activeCall) {
+    ipcRenderer.send('show-window');
+  }
+  lastWaitingCount = currentWaitingCount;
+
+  // 2. 1-Minute Recurring Reminder when Serving
+  if (state.activeCall) {
+    if (!servingReminderInterval) {
+      servingReminderInterval = setInterval(() => {
+        if (state.activeCall) {
+          ipcRenderer.send('show-window');
+        } else {
+          clearInterval(servingReminderInterval);
+          servingReminderInterval = null;
+        }
+      }, 60000); // 60 seconds
+    }
+  } else {
+    if (servingReminderInterval) {
+      clearInterval(servingReminderInterval);
+      servingReminderInterval = null;
+    }
   }
 }
 
@@ -653,6 +683,14 @@ function renderCurrentState() {
     // === STATE 1: ACTIVE CALL / SERVING (MOCKUP 1) ===
     containers.activeStateContainer.style.display = 'block';
     containers.activeControlsGrid.style.display = 'grid';
+
+    if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'CDC') {
+      if (buttons.recallBtn) buttons.recallBtn.style.display = 'none';
+      if (buttons.startBtn) buttons.startBtn.style.display = 'inline-block';
+    } else {
+      if (buttons.recallBtn) buttons.recallBtn.style.display = 'inline-block';
+      if (buttons.startBtn) buttons.startBtn.style.display = 'none';
+    }
 
     containers.idleStateContainer.style.display = 'none';
     containers.idleControlsBox.style.display = 'none';
@@ -866,8 +904,8 @@ if (buttons.refreshBtn2) {
   });
 }
 
-// --- ACTIVE CONTROL BUTTONS (STATE 1 - MOCKUP 1) ---
-buttons.finishBtn.addEventListener('click', async () => {
+// --- ACTIVE CONTROL BUTTONS (STATE 1) ---
+async function executeFinishTicket() {
   if (!state.activeCall) return;
   const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
   const ticketId = state.activeCall.id || state.activeCall.visitId || state.activeCall.queueTicketId;
@@ -906,7 +944,60 @@ buttons.finishBtn.addEventListener('click', async () => {
   } catch (err) {
     showToast(err.response?.data?.message || "Gagal menyelesaikan antrean");
   }
+}
+
+buttons.finishBtn.addEventListener('click', async () => {
+  if (!state.activeCall) return;
+
+  const serviceStartedAt = state.activeCall?.visit?.serviceStartedAt || 
+                           state.activeCall?.serviceStartedAt || 
+                           state.activeCall?.journeySessions?.[0]?.createdAt ||
+                           state.activeCall?.createdAt;
+  
+  const durationSeconds = serviceStartedAt ? Math.max(0, Math.round((Date.now() - new Date(serviceStartedAt).getTime()) / 1000)) : 60;
+
+  if (durationSeconds < 60) {
+    const textEl = document.getElementById('fastFinishSecondsText');
+    if (textEl) textEl.textContent = `${durationSeconds} detik`;
+    if (containers.fastFinishModal) containers.fastFinishModal.classList.add('active');
+  } else {
+    await executeFinishTicket();
+  }
 });
+
+if (buttons.confirmFastFinish) {
+  buttons.confirmFastFinish.addEventListener('click', async () => {
+    if (containers.fastFinishModal) containers.fastFinishModal.classList.remove('active');
+    await executeFinishTicket();
+  });
+}
+
+if (buttons.cancelFastFinish) {
+  buttons.cancelFastFinish.addEventListener('click', () => {
+    if (containers.fastFinishModal) containers.fastFinishModal.classList.remove('active');
+  });
+}
+
+if (buttons.closeFastFinishModal) {
+  buttons.closeFastFinishModal.addEventListener('click', () => {
+    if (containers.fastFinishModal) containers.fastFinishModal.classList.remove('active');
+  });
+}
+
+if (buttons.startBtn) {
+  buttons.startBtn.addEventListener('click', async () => {
+    if (!state.activeCall) return;
+    const config = UNIT_CONFIG[state.activeTab] || UNIT_CONFIG.ADMISSION;
+    const ticketId = state.activeCall.id || state.activeCall.queueTicketId;
+    try {
+      await axios.post(config.callEndpoint(ticketId), { counterId: state.selectedCounter });
+      showToast("▶️ Layanan dimulai!");
+      await refreshQueues();
+    } catch (err) {
+      alert("Gagal memulai layanan: " + (err.response?.data?.message || err.message));
+    }
+  });
+}
 
 buttons.recallBtn.addEventListener('click', async () => {
   if (!state.activeCall || !state.selectedCounter) return;
@@ -915,7 +1006,14 @@ buttons.recallBtn.addEventListener('click', async () => {
   
   try {
     await axios.post(config.callEndpoint(ticketId), { counterId: state.selectedCounter });
+    if (state.activeCall.visit) {
+      state.activeCall.visit.serviceStartedAt = new Date().toISOString();
+    } else {
+      state.activeCall.serviceStartedAt = new Date().toISOString();
+    }
     ipcRenderer.send('show-window');
+    showToast("📢 Panggil ulang & timer di-reset ke 00:00!", false);
+    await refreshQueues();
   } catch (err) {
     alert("Gagal panggil ulang: " + (err.response?.data?.message || err.message));
   }

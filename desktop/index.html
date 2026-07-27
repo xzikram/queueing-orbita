@@ -138,9 +138,10 @@
       <!-- BOTTOM CONTROL BAR CONTAINER (STATE DEPENDENT) -->
       <div class="bottom-control-container">
 
-        <!-- STATE 1 CONTROLS: 4 GRID ACTION BUTTONS (MOCKUP 1) -->
-        <div id="activeControlsGrid" class="controls-grid-4" style="display: none;">
+        <!-- STATE 1 CONTROLS: ACTION BUTTONS GRID -->
+        <div id="activeControlsGrid" class="controls-grid-4">
           <button id="finishBtn" class="action-btn finish-btn" title="Selesai">✅</button>
+          <button id="startBtn" class="action-btn recall-btn" title="Mulai Layanan" style="display:none; background:#dbeafe; color:#1e40af;">▶️</button>
           <button id="recallBtn" class="action-btn recall-btn" title="Panggil Ulang">📢</button>
           <button id="holdBtn" class="action-btn hold-btn" title="Hold / Pause">⏸️</button>
           <button id="cancelBtn" class="action-btn cancel-btn" title="Batal / Drop">❌</button>
@@ -207,6 +208,23 @@
         </div>
         <button type="submit" class="btn btn-danger btn-block">💾 Simpan Pembatalan</button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: FAST-FINISH GUARD (< 1 MINUTE CONFIRMATION) -->
+  <div id="fastFinishModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="color: #f59e0b;">⚠️ Konfirmasi Layanan Singkat</h3>
+        <button id="closeFastFinishModalBtn" class="close-modal">&times;</button>
+      </div>
+      <div style="font-size:12px; color:#475569; margin-bottom:14px; line-height:1.4;">
+        Durasi layanan baru berjalan <strong id="fastFinishSecondsText" style="color:#ea580c;">0 detik</strong> (kurang dari 1 menit).<br>Apakah Anda yakin ingin menyelesaikan antrean ini sekarang?
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="confirmFastFinishBtn" type="button" class="btn btn-primary" style="flex:1; background:#ea580c; border:none;">💾 Ya, Selesaikan</button>
+        <button id="cancelFastFinishBtn" type="button" class="btn btn-danger" style="flex:1; background:#cbd5e1; color:#0f172a; border:none;">❌ Batal</button>
+      </div>
     </div>
   </div>
 
