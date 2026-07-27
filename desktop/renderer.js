@@ -886,18 +886,10 @@ function renderCurrentState() {
 
     if (state.activeTab === 'ASSESSMENT' || state.activeTab === 'CDC') {
       if (buttons.recallBtn) buttons.recallBtn.style.display = 'none';
-      if (buttons.startBtn) buttons.startBtn.style.display = (activeSessionStatus === 'CALLED' || activeSessionStatus === 'WAITING') ? 'inline-block' : 'none';
-    } else if (state.activeTab === 'DOCTOR' || state.activeTab === 'BDR') {
-      if (activeSessionStatus === 'CALLED') {
-        if (buttons.recallBtn) buttons.recallBtn.style.display = 'inline-block';
-        if (buttons.startBtn) buttons.startBtn.style.display = 'inline-block';
-      } else {
-        if (buttons.recallBtn) buttons.recallBtn.style.display = 'none';
-        if (buttons.startBtn) buttons.startBtn.style.display = 'none';
-      }
+      if (buttons.startBtn) buttons.startBtn.style.display = 'none';
     } else {
-      // ADMISSION or CASHIER
-      if (buttons.recallBtn) buttons.recallBtn.style.display = 'inline-block';
+      // ADMISSION, CASHIER, BDR, DOCTOR
+      if (buttons.recallBtn) buttons.recallBtn.style.display = 'inline-block'; // 📢 Panggil Ulang
       if (buttons.startBtn) buttons.startBtn.style.display = 'none';
     }
 
