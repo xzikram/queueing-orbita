@@ -49,6 +49,15 @@ function createWindow() {
     mainWindow.setAlwaysOnTop(true, 'screen-saver');
   });
 
+  ipcMain.handle('get-app-version', () => {
+    return '1.0.0';
+  });
+
+  ipcMain.on('relaunch-app', () => {
+    app.relaunch();
+    app.exit(0);
+  });
+
   // Handle minimize to tray
   mainWindow.on('minimize', (event) => {
     // Keep window alive in background

@@ -233,6 +233,32 @@
     </div>
   </div>
 
+  <!-- MODAL: AUTO-UPDATE (1-CLICK UPDATE) -->
+  <div id="updateModal" class="modal">
+    <div class="modal-content" style="max-width: 320px; text-align: center;">
+      <div class="modal-header" style="justify-content: center; position: relative;">
+        <h3 style="color: #2563eb; margin: 0; font-size: 16px;">🚀 Pembaruan Tersedia</h3>
+        <button id="closeUpdateModalBtn" class="close-modal" style="position: absolute; right: 0;">&times;</button>
+      </div>
+      <div id="updateVersionBadge" style="font-weight: 700; font-size: 11px; color: #0284c7; margin: 8px 0;">
+        Versi v1.0.1
+      </div>
+      <div id="updateNotes" style="font-size: 11px; color: #475569; background: #f8fafc; border-radius: 6px; padding: 8px; text-align: left; max-height: 90px; overflow-y: auto; margin-bottom: 12px; border: 1px solid #e2e8f0; white-space: pre-line;">
+        Catatan rilis...
+      </div>
+      <div id="updateProgressContainer" style="display: none; margin-bottom: 12px;">
+        <div id="updateProgressText" style="font-size: 11px; color: #0284c7; margin-bottom: 4px; font-weight: 600;">Mengunduh... 0%</div>
+        <div style="background: #e2e8f0; border-radius: 4px; height: 6px; overflow: hidden;">
+          <div id="updateProgressBar" style="background: #2563eb; height: 100%; width: 0%; transition: width 0.2s;"></div>
+        </div>
+      </div>
+      <div id="updateModalBtns" style="display: flex; gap: 8px;">
+        <button id="btnDoUpdate" type="button" class="btn btn-primary" style="flex: 1; font-weight: 600;">⬇️ Update Sekarang</button>
+        <button id="btnSkipUpdate" type="button" class="btn btn-secondary" style="flex: 1; background: #cbd5e1; color: #334155; border: none;">Nanti</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST AUTO-DISAPPEARING NOTIFICATION -->
   <div id="toastNotification" class="toast-notification">
     <span id="toastMessage"></span>

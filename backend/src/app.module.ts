@@ -21,6 +21,7 @@ import { join } from 'path';
 import { ReportsModule } from './reports/reports.module';
 import { AuditModule } from './audit/audit.module';
 import { VideoModule } from './video/video.module';
+import { AppUpdateModule } from './app-update/app-update.module';
 import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -53,6 +54,7 @@ import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
     ReportsModule,
     AuditModule,
     VideoModule,
+    AppUpdateModule,
   ],
   providers: [
     {

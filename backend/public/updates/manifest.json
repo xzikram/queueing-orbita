@@ -1,0 +1,8 @@
+{
+  "latestVersion": "1.0.0",
+  "minSupportedVersion": "1.0.0",
+  "releaseNotes": "• Versi rilah resmi Orbita Queue Caller Desktop v1.0.0\n• Fitur Otomatisasi Dokter Tujuan di Pengkajian\n• Fitur Filter Semua Poli di Unit Dokter\n• Fitur Auto-Update 1-Klik",
+  "downloadUrl": "http://192.168.40.131:3001/api/app-update/download",
+  "forceUpdate": false,
+  "pubDate": "2026-07-28"
+}

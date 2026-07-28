@@ -1463,3 +1463,113 @@ function initSocket() {
     }
   });
 }
+
+// --- AUTO-UPDATE ENGINE (1-CLICK UPDATE) ---
+const CURRENT_APP_VERSION = '1.0.0';
+let activeUpdateInfo = null;
+
+async function checkAppUpdate(isManualCheck = false) {
+  try {
+    const serverUrl = cleanServerUrl(getInitialServerUrl());
+    const checkEndpoint = `${serverUrl}/api/app-update/check?currentVersion=${CURRENT_APP_VERSION}`;
+    
+    console.log('[Orbita Update] Checking update from:', checkEndpoint);
+    const res = await fetch(checkEndpoint).then(r => r.json()).catch(() => null);
+
+    if (!res || !res.hasUpdate) {
+      if (isManualCheck) {
+        showToast(`✅ Aplikasi sudah versi terbaru (v${CURRENT_APP_VERSION}).`);
+      }
+      return;
+    }
+
+    activeUpdateInfo = res;
+    showUpdateModal(res);
+  } catch (err) {
+    console.error('[Orbita Update] Check error:', err);
+    if (isManualCheck) {
+      showToast("❌ Gagal memeriksa pembaruan server.");
+    }
+  }
+}
+
+function showUpdateModal(info) {
+  const modal = document.getElementById('updateModal');
+  const badge = document.getElementById('updateVersionBadge');
+  const notes = document.getElementById('updateNotes');
+  const progressContainer = document.getElementById('updateProgressContainer');
+  const modalBtns = document.getElementById('updateModalBtns');
+
+  if (!modal) return;
+
+  if (badge) badge.innerText = `Versi Rilis v${info.latestVersion} (Versi Anda: v${CURRENT_APP_VERSION})`;
+  if (notes) notes.innerText = info.releaseNotes || 'Pembaruan stabilitas dan fitur baru.';
+  
+  if (progressContainer) progressContainer.style.display = 'none';
+  if (modalBtns) modalBtns.style.display = 'flex';
+
+  modal.classList.add('active');
+}
+
+document.getElementById('closeUpdateModalBtn')?.addEventListener('click', () => {
+  document.getElementById('updateModal')?.classList.remove('active');
+});
+
+document.getElementById('btnSkipUpdate')?.addEventListener('click', () => {
+  document.getElementById('updateModal')?.classList.remove('active');
+});
+
+document.getElementById('btnDoUpdate')?.addEventListener('click', async () => {
+  if (!activeUpdateInfo || !activeUpdateInfo.downloadUrl) return;
+
+  const modalBtns = document.getElementById('updateModalBtns');
+  const progressContainer = document.getElementById('updateProgressContainer');
+  const progressBar = document.getElementById('updateProgressBar');
+  const progressText = document.getElementById('updateProgressText');
+
+  if (modalBtns) modalBtns.style.display = 'none';
+  if (progressContainer) progressContainer.style.display = 'block';
+
+  try {
+    const downloadUrl = activeUpdateInfo.downloadUrl;
+    console.log('[Orbita Update] Downloading update from:', downloadUrl);
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 15;
+      if (progress > 90) clearInterval(interval);
+      if (progressBar) progressBar.style.width = `${Math.min(progress, 90)}%`;
+      if (progressText) progressText.innerText = `Mengunduh & memasang... ${Math.min(progress, 90)}%`;
+    }, 300);
+
+    const response = await fetch(downloadUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const buffer = await response.arrayBuffer();
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+
+    const tempDir = os.tmpdir();
+    const zipPath = path.join(tempDir, 'OrbitaQueueCaller-update.zip');
+    fs.writeFileSync(zipPath, Buffer.from(buffer));
+
+    clearInterval(interval);
+    if (progressBar) progressBar.style.width = '100%';
+    if (progressText) progressText.innerText = '✅ Pembaruan selesai! Memuat ulang aplikasi...';
+
+    setTimeout(() => {
+      ipcRenderer.send('relaunch-app');
+    }, 1200);
+
+  } catch (err) {
+    console.error('[Orbita Update] Download error:', err);
+    if (progressText) progressText.innerText = '❌ Gagal mengunduh update: ' + err.message;
+    if (modalBtns) modalBtns.style.display = 'flex';
+  }
+});
+
+// Auto check update 3 seconds after load
+setTimeout(() => {
+  checkAppUpdate(false);
+}, 3000);
