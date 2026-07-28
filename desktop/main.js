@@ -36,6 +36,14 @@ function createWindow() {
 
   mainWindow.loadFile('index.html', { query: { role: appRole } });
 
+  // Open DevTools keyboard shortcut (F12 or Ctrl+Shift+I)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -66,6 +74,16 @@ function createTray() {
           mainWindow.focus();
         }
       } 
+    },
+    {
+      label: '🔍 Inspect / DevTools (F12)',
+      click: () => {
+        if (mainWindow) {
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.webContents.openDevTools({ mode: 'detach' });
+        }
+      }
     },
     { 
       label: 'Always On Top', 

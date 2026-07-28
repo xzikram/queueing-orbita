@@ -83,10 +83,9 @@ export class AssessmentService {
       visitId,
       'ASSESSMENT',
     );
-    if (!session)
-      throw new BadRequestException('Sesi pengkajian tidak ditemukan');
-
-    await this.journeyService.finishService(session.id, { createdBy: userId });
+    if (session) {
+      await this.journeyService.finishService(session.id, { createdBy: userId });
+    }
 
     // Dynamic routing — use provided nextUnitType or default (BDR)
     const nextUnit =

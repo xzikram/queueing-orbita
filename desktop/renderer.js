@@ -4,10 +4,30 @@ const { ipcRenderer } = require('electron');
 
 const DEFAULT_SERVER_URL = 'http://192.168.40.131:3001';
 
+function cleanServerUrl(inputUrl) {
+  if (!inputUrl) return DEFAULT_SERVER_URL;
+  let url = inputUrl.trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'http://' + url;
+  }
+  url = url.replace(/\/+$/, '');
+  url = url.replace(/\/api$/, '');
+  return url;
+}
+
+function getInitialServerUrl() {
+  let saved = localStorage.getItem('orbita_server_url');
+  if (!saved || saved.includes('localhost') || saved.includes('127.0.0.1')) {
+    saved = DEFAULT_SERVER_URL;
+    localStorage.setItem('orbita_server_url', DEFAULT_SERVER_URL);
+  }
+  return cleanServerUrl(saved);
+}
+
 let state = {
   token: localStorage.getItem('orbita_token') || null,
   user: JSON.parse(localStorage.getItem('orbita_user') || 'null'),
-  serverUrl: localStorage.getItem('orbita_server_url') || DEFAULT_SERVER_URL,
+  serverUrl: getInitialServerUrl(),
   socket: null,
   counters: [],
   floors: [],
@@ -231,6 +251,7 @@ const containers = {
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
+  state.serverUrl = cleanServerUrl(state.serverUrl);
   inputs.serverUrl.value = state.serverUrl;
   
   if (state.token && state.user) {
@@ -267,41 +288,155 @@ function showScreen(name) {
   screens[name].classList.add('active');
 }
 
+let interceptorAdded = false;
 function setupAxios() {
-  axios.defaults.baseURL = state.serverUrl.replace(/\/$/, '') + '/api';
-  axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
+  const url = cleanServerUrl(state.serverUrl);
+  state.serverUrl = url;
+  axios.defaults.baseURL = url + '/api';
+  if (state.token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
+  }
+
+  if (!interceptorAdded) {
+    interceptorAdded = true;
+    axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response && error.response.status === 401 && state.token) {
+          console.warn('[Orbita] Session expired or invalid token (401). Redirecting to login screen.');
+          localStorage.removeItem('orbita_token');
+          localStorage.removeItem('orbita_user');
+          state.token = null;
+          state.user = null;
+          if (state.socket) {
+            state.socket.disconnect();
+            state.socket = null;
+          }
+          showScreen('login');
+          if (texts.loginError) {
+            texts.loginError.innerText = 'Sesi telah berakhir, silakan login kembali.';
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+  }
 }
 
 // --- LOGIN & LOGOUT ---
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const url = inputs.serverUrl.value.trim().replace(/\/$/, '');
-  const email = inputs.email.value.trim();
-  const password = inputs.password.value;
+window.handleLogin = async function() {
+  console.log('[Orbita] window.handleLogin triggered!');
+  const serverUrlEl = document.getElementById('serverUrl');
+  const emailEl = document.getElementById('email');
+  const passwordEl = document.getElementById('password');
+  const loginBtnEl = document.getElementById('loginBtn');
+  const loginErrorEl = document.getElementById('loginError');
+
+  const rawUrl = serverUrlEl ? serverUrlEl.value : '';
+  const url = cleanServerUrl(rawUrl);
+  const email = emailEl ? emailEl.value.trim() : '';
+  const password = passwordEl ? passwordEl.value : '';
+
+  if (serverUrlEl) serverUrlEl.value = url;
+
+  if (!email) {
+    if (loginErrorEl) loginErrorEl.innerText = "❌ Silakan isi Email atau NIK Petugas terlebih dahulu.";
+    if (emailEl) emailEl.focus();
+    return;
+  }
+
+  if (!password) {
+    if (loginErrorEl) loginErrorEl.innerText = "❌ Silakan isi Password terlebih dahulu.";
+    if (passwordEl) passwordEl.focus();
+    return;
+  }
+
+  if (loginBtnEl) loginBtnEl.disabled = true;
+  if (loginErrorEl) loginErrorEl.innerText = "⏳ Menghubungkan ke server " + url + "...";
 
   try {
-    buttons.login.disabled = true;
-    texts.loginError.innerText = "Menghubungkan ke server...";
+    const loginEndpoint = `${url}/api/auth/login`;
+    console.log('[Orbita] Posting login request to:', loginEndpoint);
 
-    const res = await axios.post(`${url}/api/auth/login`, { email, password });
-    
+    const response = await fetch(loginEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const msg = Array.isArray(data.message)
+        ? data.message.join(', ')
+        : (data.message || `HTTP ${response.status}`);
+      throw new Error(msg);
+    }
+
+    if (!data.access_token) {
+      throw new Error("Respon server tidak memiliki token akses valid.");
+    }
+
     state.serverUrl = url;
-    state.token = res.data.access_token;
-    state.user = res.data.user;
+    state.token = data.access_token;
+    state.user = data.user || { name: 'Administrator' };
 
     localStorage.setItem('orbita_server_url', url);
     localStorage.setItem('orbita_token', state.token);
     localStorage.setItem('orbita_user', JSON.stringify(state.user));
 
     setupAxios();
-    initCallerScreen();
+    if (loginErrorEl) loginErrorEl.innerText = "";
+    await initCallerScreen();
 
   } catch (err) {
-    texts.loginError.innerText = "Login gagal: " + (err.response?.data?.message || err.message);
+    console.error('[Orbita] Login error:', err);
+    if (loginErrorEl) {
+      loginErrorEl.innerText = "❌ Login gagal: " + (err.message || "Gagal terhubung ke server");
+    }
   } finally {
-    buttons.login.disabled = false;
+    if (loginBtnEl) loginBtnEl.disabled = false;
   }
-});
+};
+
+const loginBtnEl = document.getElementById('loginBtn');
+if (loginBtnEl) {
+  loginBtnEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.handleLogin();
+  });
+}
+
+const loginFormEl = document.getElementById('loginForm');
+if (loginFormEl) {
+  loginFormEl.addEventListener('submit', (e) => {
+    e.preventDefault();
+    window.handleLogin();
+  });
+}
+
+const passwordInputEl = document.getElementById('password');
+if (passwordInputEl) {
+  passwordInputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      window.handleLogin();
+    }
+  });
+}
+
+const emailInputEl = document.getElementById('email');
+if (emailInputEl) {
+  emailInputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      window.handleLogin();
+    }
+  });
+}
 
 buttons.logout.addEventListener('click', () => {
   localStorage.removeItem('orbita_token');
@@ -368,9 +503,15 @@ async function loadRooms() {
   try {
     const res = await axios.get('/rooms');
     const all = Array.isArray(res.data) ? res.data : [];
-    state.rooms = all.filter(r => ['DOCTOR', 'DOCTOR_CHILD'].includes(r.roomType));
-    if (state.rooms.length > 0 && (!state.selectedRoom || !state.rooms.some(r => r.id === state.selectedRoom))) {
-      state.selectedRoom = state.rooms[0].id;
+    const doctorRooms = all.filter(r => ['DOCTOR', 'DOCTOR_CHILD'].includes(r.roomType));
+    
+    state.rooms = [
+      { id: 'ALL', name: '✨ Semua Poli / Ruangan', code: 'ALL', roomType: 'DOCTOR' },
+      ...doctorRooms
+    ];
+
+    if (!state.selectedRoom || !state.rooms.some(r => r.id === state.selectedRoom)) {
+      state.selectedRoom = 'ALL';
     }
   } catch (err) {
     console.error('loadRooms ERROR:', err);
@@ -728,7 +869,7 @@ async function refreshQueues() {
     let endpoint = config.queueEndpoint;
     if ((state.activeTab === 'ASSESSMENT' || state.activeTab === 'BDR' || state.activeTab === 'CDC') && state.selectedFloor) {
       endpoint += `?floorId=${state.selectedFloor}`;
-    } else if (state.activeTab === 'DOCTOR' && state.selectedRoom) {
+    } else if (state.activeTab === 'DOCTOR' && state.selectedRoom && state.selectedRoom !== 'ALL') {
       endpoint += `?roomId=${state.selectedRoom}`;
     }
 
@@ -897,7 +1038,6 @@ function renderCurrentState() {
     containers.idleControlsBox.style.display = 'none';
     containers.manualControlsBox.style.display = 'none';
 
-    const t = state.activeCall;
     const rawNo = t.ticketNo || t.doctorTicketNo || t.queueTicket?.ticketNo || 'A001';
     
     // Split prefix letter & numbers (e.g. B & 002)
@@ -925,7 +1065,7 @@ function renderCurrentState() {
       if (state.lastActiveCallId !== t.id) {
         state.lastActiveCallId = t.id;
         
-        const existingDocId = t.visit?.selectedDoctorId || t.selectedDoctorId;
+        const existingDocId = t.visit?.selectedDoctorId || t.selectedDoctorId || t.selectedDoctor?.id || t.visit?.selectedDoctor?.id;
         const existingTicketNo = t.doctorTicketNo || t.visit?.doctorTicketNo;
 
         let matchedLabel = '';
@@ -933,10 +1073,26 @@ function renderCurrentState() {
           matchedLabel = Object.keys(state.doctorOptionsMap).find(lbl => state.doctorOptionsMap[lbl].id === existingDocId) || '';
         }
 
+        if (!matchedLabel && (t.selectedDoctor || t.visit?.selectedDoctor)) {
+          const docObj = t.selectedDoctor || t.visit?.selectedDoctor;
+          if (docObj?.id && state.doctorOptionsMap) {
+            matchedLabel = Object.keys(state.doctorOptionsMap).find(lbl => state.doctorOptionsMap[lbl].id === docObj.id) || '';
+          }
+        }
+
         if (matchedLabel) {
           if (inputs.doctorInput) inputs.doctorInput.value = matchedLabel;
+          const match = state.doctorOptionsMap[matchedLabel];
+          let finalTicketNo = existingTicketNo;
+          if (!finalTicketNo && match) {
+            const prefix = match.initials || match.code || 'DOC';
+            const rawNo = t.ticketNo || t.queueTicket?.ticketNo || '001';
+            const numMatch = rawNo.match(/\d+/);
+            const numStr = numMatch ? numMatch[0] : '001';
+            finalTicketNo = `${prefix}${numStr.padStart(3, '0')}`;
+          }
           if (inputs.doctorTicketNoInput) {
-            inputs.doctorTicketNoInput.value = existingTicketNo || '';
+            inputs.doctorTicketNoInput.value = finalTicketNo || '';
             inputs.doctorTicketNoInput.disabled = false;
           }
         } else {
@@ -1002,11 +1158,15 @@ function renderCurrentState() {
         const tagClass = rawType.toLowerCase();
         const isFirst = idx === 0;
         
+        const roomName = t.selectedRoom?.name || t.visit?.selectedRoom?.name || '';
+        const roomBadge = (state.activeTab === 'DOCTOR' && roomName) ? `<span class="ticket-item-tag" style="background:#e0f2fe; color:#0369a1; margin-left:4px;">🚪 ${roomName}</span>` : '';
+
         return `
           <div class="waiting-ticket-item ${isFirst ? 'primary' : ''}">
             <div class="ticket-item-left">
               <span class="ticket-item-no">${rawNo}</span>
               <span class="ticket-item-tag ${tagClass}">${typeStr}</span>
+              ${roomBadge}
             </div>
             <button class="btn-call-row" data-index="${idx}">
               ${btnLabel}
@@ -1276,8 +1436,9 @@ document.getElementById('cancelForm').addEventListener('submit', async (e) => {
 // --- SOCKET.IO REALTIME ENGINE ---
 function initSocket() {
   if (state.socket) return;
+  const socketUrl = cleanServerUrl(state.serverUrl);
   
-  state.socket = io(state.serverUrl, {
+  state.socket = io(socketUrl, {
     transports: ['websocket', 'polling']
   });
   

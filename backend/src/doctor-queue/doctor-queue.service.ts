@@ -29,8 +29,19 @@ export class DoctorQueueService {
       finishedAt: null,
       visitDate: { gte: today, lt: tomorrow },
     };
-    if (roomId) where.selectedRoomId = roomId;
-    if (floorId) where.selectedFloorId = floorId;
+
+    if (roomId) {
+      where.OR = [
+        { selectedRoomId: roomId },
+        { selectedRoomId: null },
+        { currentRoomId: roomId },
+      ];
+    } else if (floorId) {
+      where.OR = [
+        { selectedFloorId: floorId },
+        { selectedFloorId: null },
+      ];
+    }
 
     return this.prisma.visit.findMany({
       where,

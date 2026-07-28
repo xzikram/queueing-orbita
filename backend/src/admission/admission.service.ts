@@ -331,13 +331,12 @@ export class AdmissionService {
       ticket.visit.id,
       'ADMISSION',
     );
-    if (!session)
-      throw new BadRequestException('Sesi admission tidak ditemukan');
-
-    // Finish admission session
-    await this.journeyService.finishService(session.id, {
-      createdBy: data.userId,
-    });
+    if (session) {
+      // Finish admission session
+      await this.journeyService.finishService(session.id, {
+        createdBy: data.userId,
+      });
+    }
 
     // Re-fetch visit and ticket to get the latest data
     // (updatePatientData may have changed doctor/schedule/room/floor during admission)

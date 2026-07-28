@@ -74,12 +74,12 @@ export class CdcService {
       visitId,
       'CDC',
     );
-    if (!session) throw new BadRequestException('Sesi CDC tidak ditemukan');
-
-    await this.journeyService.finishService(session.id, {
-      createdBy: userId,
-      serviceName,
-    });
+    if (session) {
+      await this.journeyService.finishService(session.id, {
+        createdBy: userId,
+        serviceName,
+      });
+    }
 
     // Dynamic routing — use provided nextUnitType or default (CASHIER)
     const nextUnit =

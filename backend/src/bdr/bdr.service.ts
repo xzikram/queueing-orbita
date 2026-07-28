@@ -135,9 +135,9 @@ export class BdrService {
       visitId,
       'BDR',
     );
-    if (!session) throw new BadRequestException('Sesi BDR tidak ditemukan');
-
-    await this.journeyService.finishService(session.id, { createdBy: userId });
+    if (session) {
+      await this.journeyService.finishService(session.id, { createdBy: userId });
+    }
 
     // Dynamic routing — use provided nextUnitType or default (DOCTOR)
     const nextUnit =
