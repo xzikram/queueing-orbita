@@ -468,32 +468,51 @@ buttons.logout.addEventListener('click', () => {
 
 function applyRoleUnitFiltering() {
   const userRole = (state.user?.role || 'ADMIN').toUpperCase();
-  console.log('[Orbita] applyRoleUnitFiltering -> logged-in userRole:', userRole);
+  const permissions = Array.isArray(state.user?.permissions) ? state.user.permissions : [];
+  console.log('[Orbita] applyRoleUnitFiltering -> userRole:', userRole, 'permissions:', permissions);
 
-  const roleAllowedUnitsMap = {
-    ADMIN: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'],
-    MANAGEMENT: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'],
-    ADMISSION: ['ADMISSION', 'CASHIER'],
-    KEPALA_ADMISI: ['ADMISSION', 'CASHIER'],
-    ASSESSMENT: ['ASSESSMENT', 'BDR'],
-    BDR: ['BDR', 'ASSESSMENT'],
-    CDC: ['CDC', 'DOCTOR'],
-    DOCTOR: ['DOCTOR'],
-    CASHIER: ['CASHIER'],
-    PHARMACY: ['PHARMACY'],
-    OPTIC: ['OPTIC'],
-    QUEUE_OFFICER: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER']
+  const unitPermissionMap = {
+    ADMISSION: 'admission',
+    ASSESSMENT: 'assessment',
+    DOCTOR: 'doctor',
+    BDR: 'bdr',
+    CDC: 'cdc',
+    CASHIER: 'cashier',
+    PHARMACY: 'pharmacy',
+    OPTIC: 'optic',
   };
 
-  let allowedUnits = roleAllowedUnitsMap[userRole] || roleAllowedUnitsMap.ADMIN;
+  let allowedUnits = [];
 
-  // Fallback to exe URL query parameter if specified and user is ADMIN
-  if (userRole === 'ADMIN') {
+  if (userRole === 'ADMIN' || userRole === 'MANAGEMENT') {
+    allowedUnits = ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'];
     const urlParams = new URLSearchParams(window.location.search);
     const exeRole = urlParams.get('role');
     if (exeRole === 'ADMISI_KASIR') allowedUnits = ['ADMISSION', 'CASHIER'];
     else if (exeRole === 'PENGKAJIAN_CDC_DOKTER') allowedUnits = ['ASSESSMENT', 'CDC', 'DOCTOR'];
     else if (exeRole === 'BDR') allowedUnits = ['BDR'];
+  } else if (permissions.length > 0) {
+    // Dynamically filter units matching user's dynamic permissions configured in Master Data -> Akses Group
+    allowedUnits = Object.keys(unitPermissionMap).filter(unitKey => {
+      const permKey = unitPermissionMap[unitKey];
+      return permissions.includes(permKey);
+    });
+  }
+
+  // Fallback if no specific unit permission matched
+  if (allowedUnits.length === 0) {
+    const fallbackMap = {
+      ADMISSION: ['ADMISSION', 'CASHIER'],
+      KEPALA_ADMISI: ['ADMISSION', 'CASHIER'],
+      ASSESSMENT: ['ASSESSMENT', 'BDR'],
+      BDR: ['BDR', 'ASSESSMENT'],
+      CDC: ['CDC', 'DOCTOR'],
+      DOCTOR: ['DOCTOR'],
+      CASHIER: ['CASHIER'],
+      PHARMACY: ['PHARMACY'],
+      OPTIC: ['OPTIC'],
+    };
+    allowedUnits = fallbackMap[userRole] || ['ADMISSION'];
   }
 
   const select = inputs.unitSelect;
