@@ -285,7 +285,15 @@ if (inputs.unitSelect) {
 
 function showScreen(name) {
   Object.values(screens).forEach(s => s.classList.remove('active'));
-  screens[name].classList.add('active');
+  if (screens[name]) screens[name].classList.add('active');
+  if (name === 'login') {
+    const emailEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    const errorEl = document.getElementById('loginError');
+    if (emailEl) emailEl.value = '';
+    if (passEl) passEl.value = '';
+    if (errorEl) errorEl.innerText = '';
+  }
 }
 
 let interceptorAdded = false;
@@ -443,6 +451,14 @@ buttons.logout.addEventListener('click', () => {
   localStorage.removeItem('orbita_user');
   state.token = null;
   state.user = null;
+
+  const emailEl = document.getElementById('email');
+  const passEl = document.getElementById('password');
+  const errorEl = document.getElementById('loginError');
+  if (emailEl) emailEl.value = '';
+  if (passEl) passEl.value = '';
+  if (errorEl) errorEl.innerText = '';
+
   if (state.socket) {
     state.socket.disconnect();
     state.socket = null;
@@ -1519,6 +1535,18 @@ function showUpdateModal(info) {
   const notes = document.getElementById('updateNotes');
   const progressContainer = document.getElementById('updateProgressContainer');
   const modalBtns = document.getElementById('updateModalBtns');
+  const headerBtn = document.getElementById('updateHeaderBadgeBtn');
+
+  if (headerBtn) {
+    headerBtn.innerText = `🚀 Update v${info.latestVersion}`;
+    headerBtn.style.display = 'inline-block';
+    headerBtn.onclick = () => {
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+      }
+    };
+  }
 
   if (!modal) return;
 
@@ -1528,15 +1556,24 @@ function showUpdateModal(info) {
   if (progressContainer) progressContainer.style.display = 'none';
   if (modalBtns) modalBtns.style.display = 'flex';
 
+  modal.style.display = 'flex';
   modal.classList.add('active');
 }
 
 document.getElementById('closeUpdateModalBtn')?.addEventListener('click', () => {
-  document.getElementById('updateModal')?.classList.remove('active');
+  const modal = document.getElementById('updateModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+  }
 });
 
 document.getElementById('btnSkipUpdate')?.addEventListener('click', () => {
-  document.getElementById('updateModal')?.classList.remove('active');
+  const modal = document.getElementById('updateModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+  }
 });
 
 document.getElementById('btnDoUpdate')?.addEventListener('click', async () => {
@@ -1589,7 +1626,8 @@ document.getElementById('btnDoUpdate')?.addEventListener('click', async () => {
   }
 });
 
-// Auto check update 3 seconds after load
-setTimeout(() => {
+// Auto check update immediately and repeat every 30 seconds
+checkAppUpdate(false);
+setInterval(() => {
   checkAppUpdate(false);
-}, 3000);
+}, 30000);
