@@ -451,16 +451,34 @@ buttons.logout.addEventListener('click', () => {
 });
 
 function applyRoleUnitFiltering() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const role = urlParams.get('role') || 'ALL';
-  console.log('[Orbita] applyRoleUnitFiltering -> role:', role);
+  const userRole = (state.user?.role || 'ADMIN').toUpperCase();
+  console.log('[Orbita] applyRoleUnitFiltering -> logged-in userRole:', userRole);
 
-  const allowedUnits = {
-    ADMISI_KASIR: ['ADMISSION', 'CASHIER'],
-    PENGKAJIAN_CDC_DOKTER: ['ASSESSMENT', 'CDC', 'DOCTOR'],
-    BDR: ['BDR'],
-    ALL: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER']
-  }[role] || ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER'];
+  const roleAllowedUnitsMap = {
+    ADMIN: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'],
+    MANAGEMENT: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER', 'PHARMACY', 'OPTIC'],
+    ADMISSION: ['ADMISSION', 'CASHIER'],
+    KEPALA_ADMISI: ['ADMISSION', 'CASHIER'],
+    ASSESSMENT: ['ASSESSMENT', 'BDR'],
+    BDR: ['BDR', 'ASSESSMENT'],
+    CDC: ['CDC', 'DOCTOR'],
+    DOCTOR: ['DOCTOR'],
+    CASHIER: ['CASHIER'],
+    PHARMACY: ['PHARMACY'],
+    OPTIC: ['OPTIC'],
+    QUEUE_OFFICER: ['ADMISSION', 'ASSESSMENT', 'DOCTOR', 'BDR', 'CDC', 'CASHIER']
+  };
+
+  let allowedUnits = roleAllowedUnitsMap[userRole] || roleAllowedUnitsMap.ADMIN;
+
+  // Fallback to exe URL query parameter if specified and user is ADMIN
+  if (userRole === 'ADMIN') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const exeRole = urlParams.get('role');
+    if (exeRole === 'ADMISI_KASIR') allowedUnits = ['ADMISSION', 'CASHIER'];
+    else if (exeRole === 'PENGKAJIAN_CDC_DOKTER') allowedUnits = ['ASSESSMENT', 'CDC', 'DOCTOR'];
+    else if (exeRole === 'BDR') allowedUnits = ['BDR'];
+  }
 
   const select = inputs.unitSelect;
   if (!select) return;
@@ -471,7 +489,9 @@ function applyRoleUnitFiltering() {
     DOCTOR: '🩺 Dokter (Poli)',
     BDR: '🩸 BDR',
     CDC: '🔬 CDC',
-    CASHIER: '💳 Kasir'
+    CASHIER: '💳 Kasir',
+    PHARMACY: '💊 Farmasi',
+    OPTIC: '👓 Optik'
   };
 
   select.innerHTML = '';
