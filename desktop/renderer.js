@@ -62,6 +62,10 @@ window.onUnitSelectChange = function(selectEl) {
 };
 
 window.toggleManualTicketMode = function() {
+  if (!['ADMISSION', 'CASHIER'].includes(state.activeTab)) {
+    showToast('⚠️ Ambil tiket baru hanya tersedia untuk unit Admisi & Kasir.');
+    return;
+  }
   console.log('[Orbita] toggleManualTicketMode triggered! Setting isManualMode = true');
   state.isManualMode = true;
   renderCurrentState();
@@ -276,9 +280,10 @@ if (inputs.unitSelect) {
     state.unitWaitingList = [];
 
     if (buttons.openNewTicketBtn) {
-      buttons.openNewTicketBtn.style.display = 'flex';
+      buttons.openNewTicketBtn.style.display = ['ADMISSION', 'CASHIER'].includes(newUnit) ? 'flex' : 'none';
     }
 
+    updateCounterUI();
     refreshQueues();
   });
 }
@@ -782,13 +787,18 @@ function updateCounterUI() {
       state.selectedRoom = room.id;
     }
   } else if (state.activeTab === 'CDC') {
-    const floor = state.floors.find(f => f.id === state.selectedFloor) || state.floors[0];
-    texts.currentCounterName.innerText = floor ? `CDC (${floor.name})` : 'CDC Lantai 6';
+    const cdcFloor = state.floors.find(f => f.floorNumber === 6 || f.name.includes('Lantai 6')) || state.floors.find(f => f.id === state.selectedFloor) || state.floors[0];
+    if (cdcFloor) state.selectedFloor = cdcFloor.id;
+    texts.currentCounterName.innerText = cdcFloor ? `CDC (${cdcFloor.name})` : 'CDC (Lantai 6)';
   } else {
     // ADMISSION or CASHIER
     const current = state.counters.find(c => c.id === state.selectedCounter) || state.counters[0];
     texts.currentCounterName.innerText = current ? current.name : 'Counter 1';
     if (current && state.selectedCounter !== current.id) state.selectedCounter = current.id;
+  }
+
+  if (buttons.openNewTicketBtn) {
+    buttons.openNewTicketBtn.style.display = ['ADMISSION', 'CASHIER'].includes(state.activeTab) ? 'flex' : 'none';
   }
 }
 
