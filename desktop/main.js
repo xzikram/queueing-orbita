@@ -45,8 +45,14 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    if (isWindowValid(mainWindow)) {
+      mainWindow.show();
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 
   ipcMain.handle('get-app-version', () => {
@@ -64,6 +70,10 @@ function createWindow() {
   });
 }
 
+function isWindowValid(win) {
+  return win && !win.isDestroyed();
+}
+
 function createTray() {
   const iconPath = path.join(__dirname, 'icon.png');
   try {
@@ -77,7 +87,7 @@ function createTray() {
     { 
       label: 'Tampilkan Orbita Caller', 
       click: () => {
-        if (mainWindow) {
+        if (isWindowValid(mainWindow)) {
           if (mainWindow.isMinimized()) mainWindow.restore();
           mainWindow.show();
           mainWindow.focus();
@@ -87,7 +97,7 @@ function createTray() {
     {
       label: '🔍 Inspect / DevTools (F12)',
       click: () => {
-        if (mainWindow) {
+        if (isWindowValid(mainWindow)) {
           if (mainWindow.isMinimized()) mainWindow.restore();
           mainWindow.show();
           mainWindow.webContents.openDevTools({ mode: 'detach' });
@@ -99,7 +109,7 @@ function createTray() {
       type: 'checkbox', 
       checked: true,
       click: (item) => {
-        if (mainWindow) {
+        if (isWindowValid(mainWindow)) {
           mainWindow.setAlwaysOnTop(item.checked, 'screen-saver');
         }
       }
@@ -114,11 +124,11 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('Orbita Queue Caller (Admisi & Kasir)');
+  tray.setToolTip('Orbita Queue Caller');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
-    if (mainWindow) {
+    if (isWindowValid(mainWindow)) {
       if (mainWindow.isVisible()) {
         mainWindow.hide();
       } else {
@@ -137,7 +147,7 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
+    if (isWindowValid(mainWindow)) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       if (!mainWindow.isVisible()) mainWindow.show();
       mainWindow.focus();
@@ -156,7 +166,7 @@ if (!gotTheLock) {
 
 // IPC Handlers for Auto Pop-Up & Window Control
 ipcMain.on('show-window', () => {
-  if (mainWindow) {
+  if (isWindowValid(mainWindow)) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     if (!mainWindow.isVisible()) mainWindow.show();
     mainWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -165,19 +175,19 @@ ipcMain.on('show-window', () => {
 });
 
 ipcMain.on('minimize-window', () => {
-  if (mainWindow) {
+  if (isWindowValid(mainWindow)) {
     mainWindow.minimize();
   }
 });
 
 ipcMain.on('close-window', () => {
-  if (mainWindow) {
+  if (isWindowValid(mainWindow)) {
     mainWindow.hide();
   }
 });
 
 ipcMain.on('toggle-always-on-top', (event, flag) => {
-  if (mainWindow) {
+  if (isWindowValid(mainWindow)) {
     mainWindow.setAlwaysOnTop(flag, 'screen-saver');
   }
 });
