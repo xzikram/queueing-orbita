@@ -894,6 +894,60 @@ export class ScheduleService {
         let targetRoom = todaySchedule?.room || doc?.defaultRoom;
         let targetFloor = todaySchedule?.floor || doc?.defaultRoom?.floor;
 
+        // Dynamic lookup: query SIMRS Bridge ParamedicScheduleDate directly for doctor's active room today
+        if (!targetRoom && reg.ParamedicID) {
+          try {
+            const simrsSchedules = await this.querySimrsBridge(isoDateStr);
+            const docSimrsSched = simrsSchedules.find((s: any) => s.ParamedicID === reg.ParamedicID);
+            if (docSimrsSched?.RoomID) {
+              const roomCode = docSimrsSched.RoomID;
+              let room = rooms.find((r) => r.code === roomCode);
+              if (!room) {
+                const floorNum = this.getFloorNumber(roomCode);
+                let floor = floors.find((f) => f.floorNumber === floorNum);
+                if (!floor) {
+                  floor = await this.prisma.floor.create({
+                    data: { floorNumber: floorNum, name: `Lantai ${floorNum}` },
+                  });
+                  floors.push(floor);
+                }
+                const friendlyName = this.formatRoomName(roomCode);
+                room = await this.prisma.room.create({
+                  data: {
+                    code: roomCode,
+                    name: friendlyName,
+                    roomType: 'DOCTOR' as any,
+                    floorId: floor.id,
+                  },
+                  include: { floor: true },
+                });
+                rooms.push(room);
+              }
+              targetRoom = room;
+              targetFloor = room.floor || floors.find((f) => f.id === room.floorId);
+
+              if (doc && targetRoom) {
+                const fId = targetFloor?.id || targetRoom.floorId;
+                if (fId) {
+                  await this.prisma.doctorSchedule.create({
+                    data: {
+                      doctorId: doc.id,
+                      roomId: targetRoom.id,
+                      floorId: fId,
+                      scheduleDate: startOfDay,
+                      dayName: 'Hari Ini',
+                      startTime: docSimrsSched.StartTime1 || '08:00',
+                      endTime: docSimrsSched.EndTime1 || '14:00',
+                      quota: 50,
+                      status: 'ACTIVE',
+                    },
+                  }).catch(() => {});
+                }
+              }
+            }
+          } catch (e) {}
+        }
+
         if (!targetRoom) {
           if (reg.ParamedicID === 'D217') {
             targetRoom = rooms.find((r) => r.code === 'A1-602' || r.name.includes('6B'));
