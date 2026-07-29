@@ -6,6 +6,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { JourneyService } from '../journey/journey.service';
 
+import { DisplayGateway } from '../websocket/display.gateway';
+
 /**
  * Destination option returned by getAvailableDestinations
  */
@@ -29,6 +31,7 @@ export class RoutingService {
   constructor(
     private prisma: PrismaService,
     private journeyService: JourneyService,
+    private displayGateway: DisplayGateway,
   ) {}
 
   /**
@@ -422,5 +425,90 @@ export class RoutingService {
     }
 
     return null;
+  }
+
+  /**
+   * Change patient's Poli room and floor dynamically across all active unit sessions
+   */
+  async changePatientRoom(visitId: string, targetRoomId: string, userId?: string) {
+    let visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: { queueTicket: true },
+    });
+
+    if (!visit) {
+      visit = await this.prisma.visit.findFirst({
+        where: { queueTicketId: visitId },
+        include: { queueTicket: true },
+      });
+    }
+
+    if (!visit) throw new NotFoundException('Visit/Pasien tidak ditemukan');
+
+    const targetRoom = await this.prisma.room.findUnique({
+      where: { id: targetRoomId },
+      include: { floor: true },
+    });
+
+    if (!targetRoom) throw new NotFoundException('Ruangan Poli tujuan tidak ditemukan');
+
+    const targetFloorId = targetRoom.floorId;
+
+    // 1. Update Visit
+    await this.prisma.visit.update({
+      where: { id: visit.id },
+      data: {
+        selectedRoomId: targetRoom.id,
+        selectedFloorId: targetFloorId,
+        currentRoomId: targetRoom.id,
+      },
+    });
+
+    // 2. Update QueueTicket
+    if (visit.queueTicketId) {
+      await this.prisma.queueTicket.update({
+        where: { id: visit.queueTicketId },
+        data: {
+          selectedRoomId: targetRoom.id,
+          selectedFloorId: targetFloorId,
+        },
+      }).catch(() => {});
+    }
+
+    // 3. Update active JourneyUnitSessions
+    await this.prisma.journeyUnitSession.updateMany({
+      where: {
+        visitId: visit.id,
+        status: { notIn: ['FINISHED', 'CANCELLED'] },
+      },
+      data: {
+        roomId: targetRoom.id,
+        floorId: targetFloorId,
+      },
+    });
+
+    // 4. Log event
+    await this.prisma.journeyEvent.create({
+      data: {
+        visitId: visit.id,
+        unitType: (visit.currentUnitType || 'DOCTOR') as any,
+        eventType: 'ROOM_CHANGED' as any,
+        eventTime: new Date(),
+        roomId: targetRoom.id,
+        floorId: targetFloorId,
+        note: `Pindah lokasi Poli ke ${targetRoom.name} (${targetRoom.floor?.name || 'Lantai baru'})`,
+        createdBy: userId,
+      },
+    }).catch(() => {});
+
+    // 5. Real-time broadcast update
+    this.displayGateway.triggerDashboardRefresh();
+
+    return {
+      message: `Pasien berhasil dipindahkan ke ${targetRoom.name} (${targetRoom.floor?.name || ''})`,
+      visitId: visit.id,
+      roomName: targetRoom.name,
+      floorName: targetRoom.floor?.name,
+    };
   }
 }

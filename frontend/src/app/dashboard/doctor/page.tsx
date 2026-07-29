@@ -15,6 +15,8 @@ export default function DoctorQueuePage() {
   const [destinations, setDestinations] = useState<any[]>([]);
   const [transferModal, setTransferModal] = useState<string | null>(null);
   const [transferReason, setTransferReason] = useState('');
+  const [changeRoomModal, setChangeRoomModal] = useState<string | null>(null);
+  const [targetRoomId, setTargetRoomId] = useState('');
   // Conflict detection
   const [conflictInfo, setConflictInfo] = useState<{ savedRoomId: string; savedRoomName: string } | null>(null);
 
@@ -82,6 +84,20 @@ export default function DoctorQueuePage() {
       await loadQueue();
     } catch (err: any) { alert(err.response?.data?.message || 'Gagal'); }
     finally { setActionLoading(null); }
+  };
+
+  const confirmChangeRoom = async (visitId: string) => {
+    if (!targetRoomId) { alert('Silakan pilih Poli tujuan'); return; }
+    setChangeRoomModal(null);
+    setActionLoading(visitId);
+    try {
+      await api.post(`/doctor-queue/${visitId}/change-room`, { roomId: targetRoomId });
+      await loadQueue();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Gagal mengubah lokasi Poli');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const setDestination = async (visitId: string, destination: string) => {
@@ -194,6 +210,7 @@ export default function DoctorQueuePage() {
                 </div>
                 <div className={styles.actionBtns}>
                   <button className="btn btn-warning btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'call')} disabled={actionLoading === v.id}>📢 Panggil</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setTargetRoomId(v.selectedRoomId || ''); setChangeRoomModal(v.id); }} title="Pindah Poli / Ganti Lokasi" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}>✏️ Pindah Poli</button>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                 </div>
               </div>
@@ -213,7 +230,7 @@ export default function DoctorQueuePage() {
                         <span className={styles.ticketNo}>{v.doctorTicketNo || v.queueTicket?.ticketNo}</span>
                         <span className={`badge ${s?.status === 'CALLED' ? 'badge-warning' : 'badge-success'}`}>{s?.status}</span>
                       </div>
-                      <div className={styles.ticketInfo}><span>🚪 {v.selectedRoom?.name}</span></div>
+                      <div className={styles.ticketInfo}><span>🚪 {v.selectedRoom?.name} ({v.selectedRoom?.floor?.name || 'Lantai ?'})</span></div>
                       <div className={styles.actionBtns}>
                         {s?.status === 'CALLED' && (
                           <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
@@ -224,6 +241,7 @@ export default function DoctorQueuePage() {
                         {s?.status === 'SERVING' && (
                           <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => action(v.id, 'finish')} disabled={actionLoading === v.id}>✅ Selesai</button>
                         )}
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setTargetRoomId(v.selectedRoomId || ''); setChangeRoomModal(v.id); }} title="Pindah Poli / Ganti Lokasi" style={{ background: '#3b82f6', color: '#fff', borderColor: '#3b82f6' }}>✏️ Pindah Poli</button>
                         <button className="btn btn-secondary btn-sm" onClick={() => { setTransferReason(''); setTransferModal(v.id); }} title="Transfer" style={{ background: '#f59e0b', color: '#fff', borderColor: '#f59e0b' }}>🔄</button>
                       </div>
                     </div>
@@ -280,6 +298,50 @@ export default function DoctorQueuePage() {
               ))}
             </div>
             <button className={styles.modalClose} onClick={() => setTransferModal(null)}>Batal</button>
+          </div>
+        </div>
+      )}
+
+      {/* Change Room / Poli Modal */}
+      {changeRoomModal && (
+        <div className={styles.modalOverlay} onClick={() => setChangeRoomModal(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <h3 className={styles.modalTitle}>✏️ Pindahkan Lokasi Poli Pasien</h3>
+            <p style={{ marginBottom: '16px', color: '#475569', fontSize: '0.9rem' }}>
+              Pilih ruangan Poli tujuan. Pasien dan lantai antreannya (Pengkajian, BDR, Poli) otomatis akan berpindah ke ruangan dan lantai baru.
+            </p>
+            <div className="form-group" style={{ marginBottom: '20px' }}>
+              <label className="form-label">Ruangan Poli Tujuan *</label>
+              <select
+                className="form-input"
+                value={targetRoomId}
+                onChange={e => setTargetRoomId(e.target.value)}
+                style={{ padding: '12px', fontSize: '0.95rem' }}
+              >
+                <option value="">-- Pilih Ruangan / Poli --</option>
+                {rooms.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.floor?.name || 'Lantai ?'})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1, padding: '10px' }}
+                onClick={() => confirmChangeRoom(changeRoomModal)}
+              >
+                💾 Simpan & Pindahkan
+              </button>
+              <button
+                className={styles.modalClose}
+                style={{ margin: 0, padding: '10px 16px' }}
+                onClick={() => setChangeRoomModal(null)}
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </div>
       )}

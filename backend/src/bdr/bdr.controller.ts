@@ -15,12 +15,17 @@ import { PermissionsGuard } from '../common/guards/permissions.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Permission } from '../common/decorators/permission.decorator';
 
+import { RoutingService } from '../routing/routing.service';
+
 @Controller('bdr')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @Roles('ADMIN', 'BDR')
 @Permission('bdr')
 export class BdrController {
-  constructor(private service: BdrService) {}
+  constructor(
+    private service: BdrService,
+    private routingService: RoutingService,
+  ) {}
 
   @Get('queue')
   getQueue(@Query('floorId') floorId?: string) {
@@ -62,5 +67,18 @@ export class BdrController {
       reason: body.reason,
       userId: req.user.id,
     });
+  }
+
+  @Post(':visitId/change-room')
+  changeRoom(
+    @Param('visitId') visitId: string,
+    @Body() body: { roomId: string },
+    @Request() req: any,
+  ) {
+    return this.routingService.changePatientRoom(
+      visitId,
+      body.roomId,
+      req.user?.id,
+    );
   }
 }
