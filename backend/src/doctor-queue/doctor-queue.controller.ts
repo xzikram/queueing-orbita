@@ -46,8 +46,13 @@ export class DoctorQueueController {
   }
 
   @Post(':visitId/finish')
-  finish(@Param('visitId') visitId: string, @Request() req: any) {
-    return this.service.finishService(visitId, req.user.id);
+  finish(
+    @Param('visitId') visitId: string,
+    @Body() body: { nextUnitType?: string; destination?: string },
+    @Request() req: any,
+  ) {
+    const dest = body?.nextUnitType || body?.destination || 'FINISHED';
+    return this.service.finishService(visitId, req.user.id, dest);
   }
 
   @Post(':visitId/next-destination')
