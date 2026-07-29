@@ -27,7 +27,21 @@ export class BdrService {
       finishedAt: null,
       visitDate: { gte: today, lt: tomorrow },
     };
-    if (floorId) where.selectedFloorId = floorId;
+    if (floorId) {
+      const targetFloor = await this.prisma.floor.findUnique({
+        where: { id: floorId },
+      });
+      if (targetFloor) {
+        where.OR = [
+          { selectedFloorId: targetFloor.id },
+          { selectedFloor: { floorNumber: targetFloor.floorNumber } },
+          { selectedRoom: { floorId: targetFloor.id } },
+          { selectedRoom: { floor: { floorNumber: targetFloor.floorNumber } } },
+        ];
+      } else {
+        where.selectedFloorId = floorId;
+      }
+    }
 
     return this.prisma.visit.findMany({
       where,

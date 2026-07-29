@@ -1507,6 +1507,9 @@ async function executeFinishTicket() {
         await axios.post(config.finishEndpoint(ticketId), { nextUnitType });
       } else if (config.hasDestSelect) {
         await axios.post(config.finishEndpoint(ticketId), { nextUnitType });
+        if (state.activeTab === 'DOCTOR') {
+          await axios.post(`/doctor-queue/${ticketId}/next-destination`, { destination: nextUnitType || 'FINISHED' }).catch(() => {});
+        }
       } else {
         await axios.post(config.finishEndpoint(ticketId));
       }

@@ -24,23 +24,56 @@ export class DoctorQueueService {
     const where: any = {
       currentUnitType: 'DOCTOR',
       currentStatus: {
-        in: ['WAITING', 'CALLED', 'SERVING', 'WAITING_DESTINATION'],
+        in: ['WAITING', 'CALLED', 'SERVING'],
       },
       finishedAt: null,
       visitDate: { gte: today, lt: tomorrow },
     };
 
-    if (roomId) {
-      where.OR = [
-        { selectedRoomId: roomId },
-        { selectedRoomId: null },
-        { currentRoomId: roomId },
-      ];
+    if (roomId && roomId !== 'ALL') {
+      const targetRoom = await this.prisma.room.findUnique({
+        where: { id: roomId },
+      });
+
+      if (targetRoom) {
+        const matchingRooms = await this.prisma.room.findMany({
+          where: {
+            OR: [
+              { name: targetRoom.name },
+              { code: targetRoom.code },
+              { id: roomId },
+            ],
+          },
+          select: { id: true },
+        });
+        const matchingRoomIds = matchingRooms.map((r) => r.id);
+
+        where.OR = [
+          { selectedRoomId: { in: matchingRoomIds } },
+          { currentRoomId: { in: matchingRoomIds } },
+          { selectedRoom: { name: targetRoom.name } },
+        ];
+      } else {
+        where.OR = [
+          { selectedRoomId: roomId },
+          { currentRoomId: roomId },
+        ];
+      }
     } else if (floorId) {
-      where.OR = [
-        { selectedFloorId: floorId },
-        { selectedFloorId: null },
-      ];
+      const targetFloor = await this.prisma.floor.findUnique({
+        where: { id: floorId },
+      });
+
+      if (targetFloor) {
+        where.OR = [
+          { selectedFloorId: targetFloor.id },
+          { selectedFloor: { floorNumber: targetFloor.floorNumber } },
+          { selectedRoom: { floorId: targetFloor.id } },
+          { selectedRoom: { floor: { floorNumber: targetFloor.floorNumber } } },
+        ];
+      } else {
+        where.selectedFloorId = floorId;
+      }
     }
 
     return this.prisma.visit.findMany({

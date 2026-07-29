@@ -18,15 +18,34 @@ export class CdcService {
     private displayGateway: DisplayGateway,
   ) {}
 
-  async getQueue() {
+  async getQueue(floorId?: string) {
     const { today, tomorrow } = getLocalDateBoundaries();
+
+    const where: any = {
+      currentUnitType: 'CDC',
+      currentStatus: { in: ['WAITING', 'SERVING'] },
+      finishedAt: null,
+      visitDate: { gte: today, lt: tomorrow },
+    };
+
+    if (floorId) {
+      const targetFloor = await this.prisma.floor.findUnique({
+        where: { id: floorId },
+      });
+      if (targetFloor) {
+        where.OR = [
+          { selectedFloorId: targetFloor.id },
+          { selectedFloor: { floorNumber: targetFloor.floorNumber } },
+          { selectedRoom: { floorId: targetFloor.id } },
+          { selectedRoom: { floor: { floorNumber: targetFloor.floorNumber } } },
+        ];
+      } else {
+        where.selectedFloorId = floorId;
+      }
+    }
+
     return this.prisma.visit.findMany({
-      where: {
-        currentUnitType: 'CDC',
-        currentStatus: { in: ['WAITING', 'SERVING'] },
-        finishedAt: null,
-        visitDate: { gte: today, lt: tomorrow },
-      },
+      where,
       include: {
         queueTicket: true,
         selectedDoctor: true,

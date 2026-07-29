@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Param,
+  Query,
   Body,
   UseGuards,
   Request,
@@ -22,8 +23,8 @@ export class CdcController {
   constructor(private service: CdcService) {}
 
   @Get('queue')
-  getQueue() {
-    return this.service.getQueue();
+  getQueue(@Query('floorId') floorId?: string) {
+    return this.service.getQueue(floorId);
   }
 
   @Get('destinations')
