@@ -899,7 +899,7 @@ export class ScheduleService {
             targetRoom = rooms.find((r) => r.code === 'A1-602' || r.name.includes('6B'));
             targetFloor = targetRoom?.floor || floors.find((f) => f.floorNumber === 6);
           } else {
-            targetFloor = floors.find((f) => f.floorNumber === 6) || floors[0];
+            targetFloor = floors.find((f) => f.floorNumber === 5) || floors.find((f) => f.floorNumber === 6) || floors[0];
             targetRoom = rooms.find((r) => r.floorId === targetFloor?.id) || rooms[0];
           }
         }
